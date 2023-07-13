@@ -122,6 +122,14 @@ namespace BB_MOD
 
 		public GameObject beans;
 
+		private readonly bool[] accessedNPCs = new bool[] // Prevents the weights from being added again
+		{
+			false,
+			false,
+			false,
+			false
+		};
+
 		private readonly List<WeightedNPC> allNpcs = new List<WeightedNPC>();
 
 		private readonly List<Floors[]> npcPair = new List<Floors[]>();
@@ -130,13 +138,16 @@ namespace BB_MOD
 		{
 			get
 			{
+				if (accessedNPCs[0])
+					return new List<WeightedNPC>();
+
+				accessedNPCs[0] = true;
 				var npcs = new List<WeightedNPC>();
 				for (int i = 0; i < allNpcs.Count; i++)
 				{
 					if (npcPair[i].Contains(Floors.F1))
 					{
 						npcs.Add(allNpcs[i]);
-						Debug.Log(allNpcs[i].selection.gameObject.name);
 					}
 				}
 				return npcs;
@@ -147,6 +158,9 @@ namespace BB_MOD
 		{
 			get
 			{
+				if (accessedNPCs[1])
+					return new List<WeightedNPC>();
+				accessedNPCs[1] = true;
 				var npcs = new List<WeightedNPC>();
 				for (int i = 0; i < allNpcs.Count; i++)
 				{
@@ -161,6 +175,10 @@ namespace BB_MOD
 		{
 			get
 			{
+				if (accessedNPCs[2])
+					return new List<WeightedNPC>();
+
+				accessedNPCs[2] = true;
 				var npcs = new List<WeightedNPC>();
 				for (int i = 0; i < allNpcs.Count; i++)
 				{
@@ -175,6 +193,10 @@ namespace BB_MOD
 		{
 			get
 			{
+				if (accessedNPCs[3])
+					return new List<WeightedNPC>();
+
+				accessedNPCs[3] = true;
 				var npcs = new List<WeightedNPC>();
 				for (int i = 0; i < allNpcs.Count; i++)
 				{
