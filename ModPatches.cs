@@ -31,7 +31,7 @@ namespace BB_MOD
 			var sceneObject = Singleton<CoreGameManager>.Instance.sceneObject;
 
 			if (sceneObject.levelTitle == "F1") // Add potential npcs based on each floor
-				__instance.ld.potentialNPCs.AddRange(ContentManager.instance.f1Npcs);
+				__instance.ld.potentialNPCs.AddRange(ContentManager.instance.F1_Npcs);
 
 
 			items:
