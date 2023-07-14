@@ -30,13 +30,33 @@ namespace BB_MOD
 
 			var sceneObject = Singleton<CoreGameManager>.Instance.sceneObject;
 
-			if (sceneObject.levelTitle == "F1") // Add potential npcs based on each floor
-				__instance.ld.potentialNPCs.AddRange(ContentManager.instance.F1_Npcs);
+			switch (sceneObject.levelTitle.ToLower()) // Add potential npcs based on each floor
+			{
+				case "f1":
+					__instance.ld.potentialNPCs.AddRange(ContentManager.instance.F1_Npcs);
+				break;
+
+				case "f2":
+					__instance.ld.potentialNPCs.AddRange(ContentManager.instance.F2_Npcs);
+				break;
+
+				case "f3":
+					__instance.ld.potentialNPCs.AddRange(ContentManager.instance.F3_Npcs);
+				break;
+
+				case "end":
+					__instance.ld.potentialNPCs.AddRange(ContentManager.instance.END_Npcs);
+				break;
+				default:
+					Debug.LogWarning("Wasn\'t able to identify floor, putting all characters lol"); // Impossible case lmao
+					__instance.ld.potentialNPCs.AddRange(ContentManager.instance.AllNpcs);
+				break;
+			}
 
 
 			items:
 
-			Debug.Log("Items here lol");
+			Debug.Log("Items stuff here"); // Don't actually put anything in here, it's just a placeholder lol
 
 
 		}
@@ -46,17 +66,27 @@ namespace BB_MOD
 
 	internal class SetupCustomNPCs
 	{
-		private static void Postfix(NPC __instance, ref Character ___character, ref Navigator ___navigator, ref EnvironmentController ___ec)
+		private static void Postfix(NPC __instance, ref Character ___character, ref Navigator ___navigator, ref EnvironmentController ___ec, ref bool ___ignoreBelts, ref bool ___aggroed)
 		{
 			if (__instance.gameObject.name.StartsWith("CustomNPC_")) // setups NPC data here (for marked as customNpcs)
 			{
-				var data = __instance.gameObject.GetComponent<CustomNPCData>();
-				___character = data.MyCharacter;
+				// Setup
 				___navigator = __instance.gameObject.GetComponent<Navigator>();
 				___navigator.npc = __instance;
 				___navigator.ec = ContentManager.currentEc;
-				AccessTools.Field(typeof(Navigator), "avoidRooms").SetValue(___navigator, !data.EnterRooms); // Lazy to make another patch, so this is better
 				___ec = ContentManager.currentEc;
+
+				// Custom Data
+
+				var data = __instance.gameObject.GetComponent<CustomNPCData>();
+				___character = data.MyCharacter;
+				___ignoreBelts = data.IgnoreBelts;
+				___aggroed = data.Aggroed;
+				AccessTools.Field(typeof(Navigator), "avoidRooms").SetValue(___navigator, !data.EnterRooms);
+				Debug.Log(data.MyCharacter);
+				Debug.Log(!data.EnterRooms);
+				Debug.Log(data.IgnoreBelts);
+				Debug.Log(data.Aggroed);
 			}
 		}
 	}

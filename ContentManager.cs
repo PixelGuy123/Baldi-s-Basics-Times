@@ -1,11 +1,12 @@
-﻿using MTM101BaldAPI;
-using MTM101BaldAPI.AssetManager;
-using System.Linq;
-using System.IO;
-using System.Collections.Generic;
-using UnityEngine;
-using BB_MOD.NPCs;
+﻿using BB_MOD.NPCs;
 using HarmonyLib;
+using MTM101BaldAPI;
+using MTM101BaldAPI.AssetManager;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using UnityEngine;
+using UnityEngine.Networking;
 
 namespace BB_MOD
 {
@@ -27,23 +28,29 @@ namespace BB_MOD
 			instance = this;
 		}
 
+		// ------------------------------------------------------ NPC CREATION STUFF ------------------------------------------------------
+
 		public void SetupWeightNPCValues()
 		{
 			if (addedNPCs)
 				return;
 
 			// THIS IS THE PART WHERE YOU PUT YOUR CUSTOM CHARACTER
+			// Add the custom npc to the list using the CreateNPC<C> method as seen below (C stands for Character Class, which is the class the NPC will use)
 
-			// Parameters: name, weight (chance to spawn), name of the png file used (add your pngs inside Textures/npcs !!), character "enum" (put the name of the enum), includeAnimator (include the Animator component, do whatever you want with it)
-			// SpriteSize (Vector2), Floors (enum) set the floor your npc will spawn (can be an array; multiple floors), (optional) Rooms it can spawn, (Optional) enable looker on npc (enabled by default), (optional) can enter rooms (enabled by default)
-			allNpcs.Add(CreateNPC<OfficeChair>("OfficeChair", 50, "officechair.png", EnumExtensions.ExtendEnum<Character>("OfficeChair"), false, new Vector2(5f, 5f), Floors.F1, RoomCategory.Faculty, hasLooker: false));
+			// Parameters explained in order: name of game object, weight (chance to spawn), name of the png file used (add your pngs inside Textures/npcs !!), includeAnimator (include the Animator component, do whatever you want with it)
+			// PixelsPerUnit for the sprite, spriteYOffset (as the name suggests, changes the Y offset of the sprite, leave 0f to not change it), Floors (enum) set the floor your npc will spawn (can be an array; multiple floors), (optional) Rooms it can spawn, (Optional) enable looker on npc (enabled by default), (optional) can enter rooms (enabled by default)
+			// (Optional) Aggroed > basically if the npc DOESN'T go to the party event (disabled by default), (Optional) IgnoreBelts > if it ignores conveyor belts (disabled by default)
 
-			// End of Characters
+			allNpcs.Add(CreateNPC<OfficeChair>("OfficeChair", 50, "officechair.png", false, 15f, 0.25f, Floors.F1, RoomCategory.Faculty, hasLooker: false, aggored: true));
+
+			// End of Character Spawns
 
 			addedNPCs = true; // To not repeat instancing again
 		}
 
-		private WeightedNPC CreateNPC<C>(string name, int weight, string spriteFileName, Character character, bool includeAnimator, Vector2 spriteSize, Floors[] floor, bool hasLooker = true, bool enterRooms = true) where C : NPC // The order of everything here must be IN THE ORDER I PUT, or else it'll log annoying null exceptions
+
+		private WeightedNPC CreateNPC<C>(string name, int weight, string spriteFileName, bool includeAnimator, float pixelsPerUnit, float spriteYOffset, Floors[] floor, bool hasLooker = true, bool enterRooms = true, bool aggored = false, bool ignoreBelts = false) where C : NPC // The order of everything here must be IN THE ORDER I PUT, or else it'll log annoying null exceptions
 		{
 			// NOTE: Default Method will let custom npc spawn only in hallway
 
@@ -53,8 +60,10 @@ namespace BB_MOD
 
 			var customData = cBean.AddComponent<CustomNPCData>();
 
-			customData.MyCharacter = character;
+			customData.MyCharacter = EnumExtensions.ExtendEnum<Character>(name);
 			customData.EnterRooms = enterRooms;
+			customData.Aggroed = aggored;
+			customData.IgnoreBelts = ignoreBelts;
 
 			DontDestroyOnLoad(cBean);
 
@@ -70,15 +79,18 @@ namespace BB_MOD
 			cBean.GetComponent<C>().enabled = true;
 			var poster = AccessTools.Field(typeof(C), "poster");
 			var beansPoster = AccessTools.Field(typeof(Beans), "poster");
-			poster.SetValue(cBean.GetComponent<C>(), beansPoster.GetValue(beans.GetComponent<Beans>())); // Set values of poster (temporarily uses beans poster, change this later!!)
+			poster.SetValue(cBean.GetComponent<C>(), beansPoster.GetValue(beans.GetComponent<Beans>())); // Set values of poster (temporarily uses beans poster, I'll change this later!!)
 
 
 
 			cBean.GetComponent<C>().spriteBase = cBean.transform.Find("SpriteBase").gameObject;
 
-			var renderer = cBean.GetComponent<C>().spriteBase.transform.Find("Sprite").GetComponent<SpriteRenderer>();
-			renderer.sprite = AssetManager.SpriteFromTexture2D(AssetManager.TextureFromFile(Path.Combine(modPath, "Textures", "npc", spriteFileName))); // Adds custom sprite (yes, all of that just to get the sprite renderer)
-			renderer.size = spriteSize;
+			var sprite = cBean.GetComponent<C>().spriteBase.transform.Find("Sprite");
+
+			sprite.localPosition = new Vector3(0f, 0f + spriteYOffset, 0f); // Sets offset
+
+			var renderer = sprite.GetComponent<SpriteRenderer>();
+			renderer.sprite = AssetManager.SpriteFromTexture2D(AssetManager.TextureFromFile(Path.Combine(modPath, "Textures", "npc", spriteFileName)), new Vector2(0.5f, 0.5f), pixelsPerUnit); // Adds custom sprite (yes, all of that just to get the sprite renderer)
 
 			cBean.GetComponent<C>().spawnableRooms = new List<RoomCategory>() { RoomCategory.Hall };
 
@@ -92,33 +104,38 @@ namespace BB_MOD
 
 		}
 
-		private WeightedNPC CreateNPC<C>(string name, int weight, string spriteFileName, Character character, bool includeAnimator, Vector2 spriteSize, Floors floor, List<RoomCategory> roomsAllowedToSpawn, bool hasLooker = true, bool enterRooms = true) where C : NPC
+		private WeightedNPC CreateNPC<C>(string name, int weight, string spriteFileName, bool includeAnimator, float pixelsPerUnit, float spriteYOffset, Floors floor, List<RoomCategory> roomsAllowedToSpawn, bool hasLooker = true, bool enterRooms = true, bool aggored = true, bool ignoreBelts = false) where C : NPC
 		{
-			var npc = CreateNPC<C>(name, weight, spriteFileName, character, includeAnimator, spriteSize, new Floors[] { floor }, hasLooker, enterRooms);
+			var npc = CreateNPC<C>(name, weight, spriteFileName, includeAnimator, pixelsPerUnit, spriteYOffset, new Floors[] { floor }, hasLooker, enterRooms, aggored, ignoreBelts);
 			npc.selection.spawnableRooms = roomsAllowedToSpawn;
 			return npc;
 		}
 
-		private WeightedNPC CreateNPC<C>(string name, int weight, string spriteFileName, Character character, bool includeAnimator, Vector2 spriteSize, Floors[] floor, List<RoomCategory> roomsAllowedToSpawn, bool hasLooker = true, bool enterRooms = true) where C : NPC
+		private WeightedNPC CreateNPC<C>(string name, int weight, string spriteFileName, bool includeAnimator, float pixelsPerUnit, float spriteYOffset, Floors[] floor, List<RoomCategory> roomsAllowedToSpawn, bool hasLooker = true, bool enterRooms = true, bool aggored = true, bool ignoreBelts = false) where C : NPC
 		{
-			var npc = CreateNPC<C>(name, weight, spriteFileName, character, includeAnimator, spriteSize, floor, hasLooker, enterRooms);
+			var npc = CreateNPC<C>(name, weight, spriteFileName, includeAnimator, pixelsPerUnit, spriteYOffset, floor, hasLooker, enterRooms, aggored, ignoreBelts);
 			npc.selection.spawnableRooms = roomsAllowedToSpawn;
 			return npc;
 		}
 
-		private WeightedNPC CreateNPC<C>(string name, int weight, string spriteFileName, Character character, bool includeAnimator, Vector2 spriteSize, Floors floor, RoomCategory roomsAllowedToSpawn, bool hasLooker = true, bool enterRooms = true) where C : NPC
+		private WeightedNPC CreateNPC<C>(string name, int weight, string spriteFileName, bool includeAnimator, float pixelsPerUnit, float spriteYOffset, Floors floor, RoomCategory roomsAllowedToSpawn, bool hasLooker = true, bool enterRooms = true, bool aggored = true, bool ignoreBelts = false) where C : NPC
 		{
-			var npc = CreateNPC<C>(name, weight, spriteFileName, character, includeAnimator, spriteSize, new Floors[] { floor }, hasLooker, enterRooms);
+			var npc = CreateNPC<C>(name, weight, spriteFileName, includeAnimator, pixelsPerUnit, spriteYOffset, new Floors[] { floor }, hasLooker, enterRooms, aggored, ignoreBelts);
 			npc.selection.spawnableRooms = new List<RoomCategory>() { roomsAllowedToSpawn };
 			return npc;
 		}
 
-		private WeightedNPC CreateNPC<C>(string name, int weight, string spriteFileName, Character character, bool includeAnimator, Vector2 spriteSize, Floors[] floor, RoomCategory roomsAllowedToSpawn, bool hasLooker = true, bool enterRooms = true) where C : NPC
+		private WeightedNPC CreateNPC<C>(string name, int weight, string spriteFileName, bool includeAnimator, float pixelsPerUnit, float spriteYOffset, Floors[] floor, RoomCategory roomsAllowedToSpawn, bool hasLooker = true, bool enterRooms = true, bool aggored = true, bool ignoreBelts = false) where C : NPC
 		{
-			var npc = CreateNPC<C>(name, weight, spriteFileName, character, includeAnimator, spriteSize, floor, hasLooker, enterRooms);
+			var npc = CreateNPC<C>(name, weight, spriteFileName, includeAnimator, pixelsPerUnit, spriteYOffset, floor, hasLooker, enterRooms, aggored, ignoreBelts);
 			npc.selection.spawnableRooms = new List<RoomCategory>() { roomsAllowedToSpawn };
 			return npc;
 		}
+
+
+
+
+
 
 		public GameObject beans;
 
@@ -134,7 +151,7 @@ namespace BB_MOD
 
 		private readonly List<Floors[]> npcPair = new List<Floors[]>();
 
-		public List<WeightedNPC> F1_Npcs 
+		public List<WeightedNPC> F1_Npcs
 		{
 			get
 			{

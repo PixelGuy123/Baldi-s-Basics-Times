@@ -7,6 +7,15 @@ using UnityEngine;
 namespace BB_MOD.NPCs
 {
 
+	// Use this as a template NPC for your custom NPC
+
+	// ------ NPC SUMMARY ------
+	// Office Chair function will be staying in a faculty room
+	// if the player touches it, it'll get a random faculty and go for it (in fast speed)
+	// you will be dragged within the chair until it stops
+	// It is a force drag, which means you can't leave it
+	// Pros: while in the chair, you're basically invicible
+	// Cons: The cooldown for use it is REALLY long (around 5 minutes or something)
 	
     public class OfficeChair : NPC
     {
@@ -15,35 +24,40 @@ namespace BB_MOD.NPCs
             navigator.maxSpeed = runSpeed;
             navigator.SetSpeed(runSpeed);
 
-			audMan = GetComponent<AudioManager>();
+			// Audio Setup
 
-			audSource = gameObject.AddComponent<AudioSource>();
-			audSource.loop = true;
-			audSource.clip = aud_ChairRoll.soundClip;
+			audMan = GetComponent<AudioManager>();
+			
+			aud_ChairRoll = ObjectCreatorHandlers.CreateSoundObject(AssetManager.AudioClipFromFile(Path.Combine(ContentManager.modPath, "Audio", "npc", "ChairRolling.wav")), "Vfx_OFC_Walk", SoundType.Voice, Color.blue); // Creates audioClip
+
+			// Rest
 
 			isMovingToRoom = true;
 
-			aud_ChairRoll = ObjectCreatorHandlers.CreateSoundObject(AssetManager.AudioClipFromFile(Path.Combine(ContentManager.modPath, "Audio", "npc", "ChairRolling.wav")), "Vfx_OFC_Walk", SoundType.Voice, Color.blue);
+			
 
 			Debug.Log("I\'m initialized");
 
         }
         private void Update()
         {
-			if (!audSource.isPlaying && isMovingToRoom)
-				audSource.Play();
-			
-			else
-				audSource.Stop();
-			
+			if (Input.GetKeyDown(KeyCode.H)) // Debug the audio, press H to play it, and it should play a really not so expected noise
+				audMan.PlaySingle(aud_ChairRoll);
+				
 
-			if (!navigator.HasDestination)
-			{
-				//navigator.WanderRandom();
-			}
+			if (!Navigator.HasDestination)
+				WanderRandom();
+			
         }
 
-		private AudioSource audSource;
+		public override void DestinationEmpty()
+		{
+			base.DestinationEmpty();
+			if (!returningFromDetour)
+			{
+				WanderRandom();
+			}
+		}
 
 		private bool isMovingToRoom = false;
 

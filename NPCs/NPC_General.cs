@@ -16,9 +16,13 @@ namespace BB_MOD.NPCs
 	public class CustomNPCData : MonoBehaviour // EVERY CUSTOM NPC MUST HAVE THIS IN ORDER TO GET IT'S DATA (might not be much, but it really helps)
 	{
 		// General NPC stuff
-		public Character MyCharacter { get; set; }
+		public Character MyCharacter;
 
 		// Navigator Stuff
-		public bool EnterRooms { get; set; }
+		public bool EnterRooms;
+
+		public bool IgnoreBelts;
+
+		public bool Aggroed;
 	}
 }
