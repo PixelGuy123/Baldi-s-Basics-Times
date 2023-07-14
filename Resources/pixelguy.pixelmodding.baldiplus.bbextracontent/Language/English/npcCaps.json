@@ -1,3 +1,5 @@
 {"items":[
-	{"key":"Vfx_OFC_Walk","value":"*Office Chair Noises*"}
+	{"key":"Vfx_OFC_Walk","value":"*Office Chair Noises*"},
+	{"key":"PST_OFC_Name","value":"Office Chair"},
+	{"key":"PST_OFC_Desc","value":"A strange office chair, but useful for offices! Just get into one and it'll bring much joy for who rides it!"}
 ]}
