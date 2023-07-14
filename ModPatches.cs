@@ -83,10 +83,6 @@ namespace BB_MOD
 				___ignoreBelts = data.IgnoreBelts;
 				___aggroed = data.Aggroed;
 				AccessTools.Field(typeof(Navigator), "avoidRooms").SetValue(___navigator, !data.EnterRooms);
-				Debug.Log(data.MyCharacter);
-				Debug.Log(!data.EnterRooms);
-				Debug.Log(data.IgnoreBelts);
-				Debug.Log(data.Aggroed);
 			}
 		}
 	}
