@@ -40,10 +40,12 @@ namespace BB_MOD
 			// Add the custom npc to the list using the CreateNPC<C> method as seen below (C stands for Character Class, which is the class the NPC will use)
 
 			// Parameters explained in order: name of game object, weight (chance to spawn), name of all png files used (string array; support for multiple sprites, all saved on CustomNPCData component, first sprite is the default one), includeAnimator (include the Animator component, do whatever you want with it)
-			// PixelsPerUnit for the sprite (Resuming: Size of it, if a higher integer, smaller it'll be), spriteYOffset (as the name suggests, changes the Y offset of the sprite, leave 0f to not change it), Floors (enum) set the floor your npc will spawn (can be an array; multiple floors), (optional) Rooms it can spawn, (Optional) enable looker on npc (enabled by default), (optional) can enter rooms (enabled by default)
+			// PixelsPerUnit for the sprite (Resuming: Size of it, if a higher integer, smaller it'll be), spriteYOffset (as the name suggests, changes the Y offset of the sprite, leave 0f to not change it), PosterFileName (Put the name of the png used for the poster), keyForPosterName > the key for the poster's title (Languages/English/npcCaps.json)
+			// KeyForPoster > Key for NPC's Description, Floors (enum) set the floor your npc will spawn (can be an array; multiple floors), (optional) Rooms it can spawn
+			// (Optional) enable looker on npc (enabled by default), (optional) can enter rooms (enabled by default)
 			// (Optional) Aggroed > basically if the npc DOESN'T go to the party event (disabled by default), (Optional) IgnoreBelts > if it ignores conveyor belts (disabled by default), (Optional) capsuleRadius > basically the size of the collider of the NPC (Default is what beans uses)
 
-			allNpcs.Add(CreateNPC<OfficeChair>("OfficeChair", 50, new string[] { "officechair.png", "officechair_disabled.png" }, false, 18f, -0.8f, Floors.F1, RoomCategory.Faculty, hasLooker: false, aggored: true, capsuleRadius: 4f));
+			allNpcs.Add(CreateNPC<OfficeChair>("Office Chair", 50, new string[] { "officechair.png", "officechair_disabled.png" }, false, 18f, -0.8f, "pri_ofc.png", "PST_OFC_Name", "PST_OFC_Desc", Floors.F1, RoomCategory.Faculty, hasLooker: false, aggored: true, capsuleRadius: 4f));
 
 			// End of Character Spawns
 
@@ -51,7 +53,7 @@ namespace BB_MOD
 		}
 
 
-		private WeightedNPC CreateNPC<C>(string name, int weight, string[] spritesFileName, bool includeAnimator, float pixelsPerUnit, float spriteYOffset, Floors[] floor, bool hasLooker = true, bool enterRooms = true, bool aggored = false, bool ignoreBelts = false, float capsuleRadius = 0f) where C : NPC // The order of everything here must be IN THE ORDER I PUT, or else it'll log annoying null exceptions
+		private WeightedNPC CreateNPC<C>(string name, int weight, string[] spritesFileName, bool includeAnimator, float pixelsPerUnit, float spriteYOffset, string posterFileName, string keyForPosterName, string keyForPoster, Floors[] floor, bool hasLooker = true, bool enterRooms = true, bool aggored = false, bool ignoreBelts = false, float capsuleRadius = 0f) where C : NPC // The order of everything here must be IN THE ORDER I PUT, or else it'll log annoying null exceptions
 		{
 			try
 			{
@@ -87,8 +89,13 @@ namespace BB_MOD
 				cBean.SetActive(false);
 				cBean.GetComponent<C>().enabled = true;
 				var poster = AccessTools.Field(typeof(C), "poster");
-				var beansPoster = AccessTools.Field(typeof(Beans), "poster");
-				poster.SetValue(cBean.GetComponent<C>(), beansPoster.GetValue(beans.GetComponent<Beans>())); // Set values of poster (temporarily uses beans poster, I'll change this later!!)
+				var clonePoster = (PosterObject)AccessTools.Field(typeof(Beans), "poster").GetValue(beans.GetComponent<Beans>());
+				var textData = new PosterTextData[clonePoster.textData.Length];
+				Array.Copy(clonePoster.textData, textData, clonePoster.textData.Length); // Copies data from og text data to the new one
+				textData[0].textKey = keyForPosterName;
+				textData[1].textKey = keyForPoster; // item 0 = title; item 1 = description
+				
+				poster.SetValue(cBean.GetComponent<C>(), ObjectCreatorHandlers.CreatePosterObject(AssetManager.TextureFromFile(Path.Combine(modPath, "Textures", "npc", posterFileName)), clonePoster.material, textData)); // Set values of poster (temporarily uses beans poster, I'll change this later!!)
 
 
 
@@ -131,30 +138,30 @@ namespace BB_MOD
 
 		}
 
-		private WeightedNPC CreateNPC<C>(string name, int weight, string[] spriteFileName, bool includeAnimator, float pixelsPerUnit, float spriteYOffset, Floors floor, List<RoomCategory> roomsAllowedToSpawn, bool hasLooker = true, bool enterRooms = true, bool aggored = true, bool ignoreBelts = false, float capsuleRadius = 0f) where C : NPC
+		private WeightedNPC CreateNPC<C>(string name, int weight, string[] spriteFileName, bool includeAnimator, float pixelsPerUnit, float spriteYOffset, string posterFileName, string keyForPosterName, string keyForPoster, Floors floor, List<RoomCategory> roomsAllowedToSpawn, bool hasLooker = true, bool enterRooms = true, bool aggored = true, bool ignoreBelts = false, float capsuleRadius = 0f) where C : NPC
 		{
-			var npc = CreateNPC<C>(name, weight, spriteFileName, includeAnimator, pixelsPerUnit, spriteYOffset, new Floors[] { floor }, hasLooker, enterRooms, aggored, ignoreBelts, capsuleRadius);
+			var npc = CreateNPC<C>(name, weight, spriteFileName, includeAnimator, pixelsPerUnit, spriteYOffset, posterFileName, keyForPosterName, keyForPoster, new Floors[] { floor }, hasLooker, enterRooms, aggored, ignoreBelts, capsuleRadius);
 			npc.selection.spawnableRooms = roomsAllowedToSpawn;
 			return npc;
 		}
 
-		private WeightedNPC CreateNPC<C>(string name, int weight, string[] spriteFileName, bool includeAnimator, float pixelsPerUnit, float spriteYOffset, Floors[] floor, List<RoomCategory> roomsAllowedToSpawn, bool hasLooker = true, bool enterRooms = true, bool aggored = true, bool ignoreBelts = false, float capsuleRadius = 0f) where C : NPC
+		private WeightedNPC CreateNPC<C>(string name, int weight, string[] spriteFileName, bool includeAnimator, float pixelsPerUnit, float spriteYOffset, string posterFileName, string keyForPosterName, string keyForPoster, Floors[] floor, List<RoomCategory> roomsAllowedToSpawn, bool hasLooker = true, bool enterRooms = true, bool aggored = true, bool ignoreBelts = false, float capsuleRadius = 0f) where C : NPC
 		{
-			var npc = CreateNPC<C>(name, weight, spriteFileName, includeAnimator, pixelsPerUnit, spriteYOffset, floor, hasLooker, enterRooms, aggored, ignoreBelts, capsuleRadius);
+			var npc = CreateNPC<C>(name, weight, spriteFileName, includeAnimator, pixelsPerUnit, spriteYOffset, posterFileName, keyForPosterName, keyForPoster, floor, hasLooker, enterRooms, aggored, ignoreBelts, capsuleRadius);
 			npc.selection.spawnableRooms = roomsAllowedToSpawn;
 			return npc;
 		}
 
-		private WeightedNPC CreateNPC<C>(string name, int weight, string[] spriteFileName, bool includeAnimator, float pixelsPerUnit, float spriteYOffset, Floors floor, RoomCategory roomsAllowedToSpawn, bool hasLooker = true, bool enterRooms = true, bool aggored = true, bool ignoreBelts = false, float capsuleRadius = 0f) where C : NPC
+		private WeightedNPC CreateNPC<C>(string name, int weight, string[] spriteFileName, bool includeAnimator, float pixelsPerUnit, float spriteYOffset, string posterFileName, string keyForPosterName, string keyForPoster, Floors floor, RoomCategory roomsAllowedToSpawn, bool hasLooker = true, bool enterRooms = true, bool aggored = true, bool ignoreBelts = false, float capsuleRadius = 0f) where C : NPC
 		{
-			var npc = CreateNPC<C>(name, weight, spriteFileName, includeAnimator, pixelsPerUnit, spriteYOffset, new Floors[] { floor }, hasLooker, enterRooms, aggored, ignoreBelts, capsuleRadius);
+			var npc = CreateNPC<C>(name, weight, spriteFileName, includeAnimator, pixelsPerUnit, spriteYOffset, posterFileName, keyForPosterName, keyForPoster, new Floors[] { floor }, hasLooker, enterRooms, aggored, ignoreBelts, capsuleRadius);
 			npc.selection.spawnableRooms = new List<RoomCategory>() { roomsAllowedToSpawn };
 			return npc;
 		}
 
-		private WeightedNPC CreateNPC<C>(string name, int weight, string[] spriteFileName, bool includeAnimator, float pixelsPerUnit, float spriteYOffset, Floors[] floor, RoomCategory roomsAllowedToSpawn, bool hasLooker = true, bool enterRooms = true, bool aggored = true, bool ignoreBelts = false, float capsuleRadius = 0f) where C : NPC
+		private WeightedNPC CreateNPC<C>(string name, int weight, string[] spriteFileName, bool includeAnimator, float pixelsPerUnit, float spriteYOffset, string posterFileName, string keyForPosterName, string keyForPoster, Floors[] floor, RoomCategory roomsAllowedToSpawn, bool hasLooker = true, bool enterRooms = true, bool aggored = true, bool ignoreBelts = false, float capsuleRadius = 0f) where C : NPC
 		{
-			var npc = CreateNPC<C>(name, weight, spriteFileName, includeAnimator, pixelsPerUnit, spriteYOffset, floor, hasLooker, enterRooms, aggored, ignoreBelts, capsuleRadius);
+			var npc = CreateNPC<C>(name, weight, spriteFileName, includeAnimator, pixelsPerUnit, spriteYOffset, posterFileName, keyForPosterName, keyForPoster, floor, hasLooker, enterRooms, aggored, ignoreBelts, capsuleRadius);
 			npc.selection.spawnableRooms = new List<RoomCategory>() { roomsAllowedToSpawn };
 			return npc;
 		}

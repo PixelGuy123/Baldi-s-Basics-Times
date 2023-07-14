@@ -1,5 +1,4 @@
-﻿using HarmonyLib;
-using MTM101BaldAPI;
+﻿using MTM101BaldAPI;
 using MTM101BaldAPI.AssetManager;
 using System.Collections;
 using System.Collections.Generic;
@@ -14,7 +13,7 @@ namespace BB_MOD.NPCs
 
 	// ------ NPC SUMMARY ------
 	// Office Chair function will be staying in a faculty room
-	// if the player touches it, it'll get a random faculty and go for it (in fast speed)
+	// if the player touches it, it'll get a random faculty or office and go for it (in fast speed)
 	// you will be dragged within the chair until it stops
 	// It is a force drag, which means you can't leave it unless if you enter a blue locker or use teleporter
 	// Pros: while in the chair, you're basically invicible
@@ -52,7 +51,7 @@ namespace BB_MOD.NPCs
 		public override void Initialize()
 		{
 			base.Initialize();
-			AvailableFacultyTiles.AddRange(ec.AllTilesNoGarbage(false, false).Where(t => t.room.category == RoomCategory.Faculty && t.wallDirections.Length >= 2)); 
+			AvailableFacultyTiles.AddRange(ec.AllTilesNoGarbage(false, false).Where(t => (t.room.category == RoomCategory.Faculty || t.room.category == RoomCategory.Office) && t.wallDirections.Length >= 2)); 
 			// Get all corners of every single faculty room
 		}
 
