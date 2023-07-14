@@ -4,7 +4,7 @@ using UnityEngine;
 namespace BB_MOD.NPCs
 {
 	[HarmonyPatch(typeof(Baldi))]
-	[HarmonyPatch("OnTriggerEnter")] // Remember to remove this lol
+	[HarmonyPatch("OnTriggerEnter")] // Remember myself to remove this lol
 	class Baldistop
 	{
 		static bool Prefix()
@@ -13,7 +13,22 @@ namespace BB_MOD.NPCs
 		}
 	}
 
-	public class CustomNPCData : MonoBehaviour // EVERY CUSTOM NPC MUST HAVE THIS IN ORDER TO GET IT'S DATA (might not be much, but it really helps)
+	[HarmonyPatch(typeof(PlayerManager))]
+	[HarmonyPatch("Update")]
+
+	class LogPos
+	{
+		static void Postfix(PlayerManager __instance)
+		{
+			if (Input.GetKeyDown(KeyCode.H))
+			{
+				IntVector2 pos = IntVector2.GetGridPosition(__instance.transform.position);
+				Debug.Log("My player position is: " + pos.x + "," + pos.z);
+			}
+		}
+	}
+
+	public class CustomNPCData : MonoBehaviour // EVERY CUSTOM NPC MUST HAVE THIS IN ORDER TO GET IT'S DATA
 	{
 		// General NPC stuff
 		public Character MyCharacter;
@@ -24,5 +39,9 @@ namespace BB_MOD.NPCs
 		public bool IgnoreBelts;
 
 		public bool Aggroed;
+
+		public Sprite[] sprites;
+
+		public SpriteRenderer spriteObject;
 	}
 }
