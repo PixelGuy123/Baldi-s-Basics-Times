@@ -1,6 +1,11 @@
 ﻿using HarmonyLib;
+using MTM101BaldAPI.AssetManager;
 using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Reflection.Emit;
 using UnityEngine;
+using UnityEngine.U2D;
 
 namespace BB_MOD.NPCs
 {
@@ -41,7 +46,29 @@ namespace BB_MOD.NPCs
 		}
 	}
 
-	// Any patches here are used for debugging reasons and will only be deleted on final state
+	[HarmonyPatch(typeof(HappyBaldi), "SpawnWait", MethodType.Enumerator)]
+	class ChangeCount
+	{
+		private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+		{
+			bool changedCount = false;
+			using (var enumerator = instructions.GetEnumerator())
+			{
+				while (enumerator.MoveNext())
+				{
+					var instruction = enumerator.Current;
+					if (!changedCount && instruction.Is(OpCodes.Ldc_I4_S, 9))
+					{
+						changedCount = true;
+						instruction.operand = 0;
+					}
+					yield return instruction;
+				}
+			}
+		}
+	}
+
+	// Any patches above here are used for debugging reasons and will only be deleted on final state
 
 	public class CustomNPCData : MonoBehaviour // EVERY CUSTOM NPC MUST HAVE THIS IN ORDER TO GET IT'S DATA
 	{
@@ -60,6 +87,8 @@ namespace BB_MOD.NPCs
 		public SpriteRenderer spriteObject;
 
 		public PosterObject poster;
+
+		public bool useHeatMap;
 
 		public Character[] replacementCharacters = Array.Empty<Character>();
 	}

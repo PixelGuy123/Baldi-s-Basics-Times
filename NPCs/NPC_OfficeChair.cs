@@ -32,7 +32,6 @@ namespace BB_MOD.NPCs
 			// Audio Setup
 
 			audMan = GetComponent<AudioManager>();
-			audMan.volumeModifier = 70f;
 
 			aud_ChairRoll = ObjectCreatorHandlers.CreateSoundObject(AssetManager.AudioClipFromFile(Path.Combine(ContentManager.modPath, "Audio", "npc", "ChairRolling.wav")), "Vfx_OFC_Walk", SoundType.Voice, Color.blue); // Creates audioClip
 
@@ -91,6 +90,7 @@ namespace BB_MOD.NPCs
 			}
 			if (movingPlayer)
 			{
+				movingPlayer.Am.moveMods.Remove(moveMod);
 				movingPlayer.invincible = false;
 				movingPlayer.plm.height = playerHeight;
 				movingPlayer.gameObject.layer = playerLayer;
@@ -149,6 +149,7 @@ namespace BB_MOD.NPCs
 				playerLayer = player.gameObject.layer; // Saves last layer, to guarantee nothing goes wrong
 				player.gameObject.layer = hideLayer;
 				player.plm.height = 8f;
+				player.plm.am.moveMods.Add(moveMod);
 				isMovingToRoom = true;
 				audMan.SetLoop(true);
 				audMan.QueueAudio(aud_ChairRoll);
@@ -177,6 +178,8 @@ namespace BB_MOD.NPCs
 		private bool beginningPhase = true;
 
 		private PlayerManager movingPlayer = null;
+
+		private readonly MovementModifier moveMod = new MovementModifier(new Vector3(), 0f);
 
 		private TileController targetRoomTile = null;
 

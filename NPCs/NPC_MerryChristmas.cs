@@ -25,7 +25,6 @@ namespace BB_MOD.NPCs
 			// Audio Setup
 
 			audMan = GetComponent<AudioManager>();
-			audMan.volumeModifier = 100f;
 			
 			aud_MerryChristmas = ObjectCreatorHandlers.CreateSoundObject(AssetManager.AudioClipFromFile(Path.Combine(ContentManager.modPath, "Audio", "npc", "HappyHolidays.wav")), "Vfx_HapH_MerryChristmas", SoundType.Voice, new Color(153,0,0)); // Creates audioClip
 
