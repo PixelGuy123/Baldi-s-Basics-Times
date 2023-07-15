@@ -43,5 +43,7 @@ namespace BB_MOD.NPCs
 		public Sprite[] sprites;
 
 		public SpriteRenderer spriteObject;
+
+		public PosterObject poster;
 	}
 }

@@ -66,7 +66,7 @@ namespace BB_MOD
 
 	internal class SetupCustomNPCs
 	{
-		private static void Postfix(NPC __instance, ref Character ___character, ref Navigator ___navigator, ref EnvironmentController ___ec, ref bool ___ignoreBelts, ref bool ___aggroed)
+		private static void Postfix(NPC __instance, ref Character ___character, ref Navigator ___navigator, ref EnvironmentController ___ec, ref bool ___ignoreBelts, ref bool ___aggroed, ref PosterObject ___poster)
 		{
 			if (__instance.gameObject.name.StartsWith("CustomNPC_")) // setups NPC data here (for marked as customNpcs)
 			{
@@ -82,7 +82,21 @@ namespace BB_MOD
 				___character = data.MyCharacter;
 				___ignoreBelts = data.IgnoreBelts;
 				___aggroed = data.Aggroed;
-				AccessTools.Field(typeof(Navigator), "avoidRooms").SetValue(___navigator, !data.EnterRooms);
+				___poster = data.poster;
+			}
+		}
+	}
+
+	[HarmonyPatch(typeof(Navigator), "Start")]
+
+	internal class SetupCustomNPCs_Navigator
+	{
+		private static void Prefix(NPC ___npc , ref bool ___avoidRooms) // Sets up the avoid rooms thing
+		{
+			if (___npc.gameObject.name.StartsWith("CustomNPC_"))
+			{
+				___avoidRooms = !___npc.gameObject.GetComponent<CustomNPCData>().EnterRooms;
+				Debug.Log(!___npc.gameObject.GetComponent<CustomNPCData>().EnterRooms);
 			}
 		}
 	}

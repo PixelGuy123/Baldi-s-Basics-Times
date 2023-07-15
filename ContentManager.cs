@@ -3,11 +3,12 @@ using HarmonyLib;
 using MTM101BaldAPI;
 using MTM101BaldAPI.AssetManager;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEngine;
-using UnityEngine.Networking;
+using static UnityEngine.GraphicsBuffer;
 
 namespace BB_MOD
 {
@@ -78,6 +79,10 @@ namespace BB_MOD
 
 				DontDestroyOnLoad(cBean);
 
+				var beanPoster = beans.GetComponent<Beans>().Poster; // Get beans poster to set data
+
+				customData.poster = ObjectCreatorHandlers.CreatePosterObject(AssetManager.TextureFromFile(Path.Combine(modPath, "Textures", "npc", posterFileName)), beanPoster.material, ConvertPosterTextData(beanPoster.textData, keyForPosterName, keyForPoster));
+
 				cBean.AddComponent<C>(); // Adds main component: Custom NPC
 
 				if (!includeAnimator)
@@ -88,14 +93,6 @@ namespace BB_MOD
 
 				cBean.SetActive(false);
 				cBean.GetComponent<C>().enabled = true;
-				var poster = AccessTools.Field(typeof(C), "poster");
-				var clonePoster = (PosterObject)AccessTools.Field(typeof(Beans), "poster").GetValue(beans.GetComponent<Beans>());
-				var textData = new PosterTextData[clonePoster.textData.Length];
-				Array.Copy(clonePoster.textData, textData, clonePoster.textData.Length); // Copies data from og text data to the new one
-				textData[0].textKey = keyForPosterName;
-				textData[1].textKey = keyForPoster; // item 0 = title; item 1 = description
-				
-				poster.SetValue(cBean.GetComponent<C>(), ObjectCreatorHandlers.CreatePosterObject(AssetManager.TextureFromFile(Path.Combine(modPath, "Textures", "npc", posterFileName)), clonePoster.material, textData)); // Set values of poster (temporarily uses beans poster, I'll change this later!!)
 
 
 
@@ -166,9 +163,27 @@ namespace BB_MOD
 			return npc;
 		}
 
+		private PosterTextData[] ConvertPosterTextData(PosterTextData[] source, string keyForPosterName, string keyForPoster) // Gets the Poster Text Data and converts it to a new one, so it doesn't get by reference (I hate this)
+		{
+			var newPosterTextData = new PosterTextData[source.Length];
+			for (int i = 0; i < source.Length; i++)
+			{
+				newPosterTextData[i] = new PosterTextData()
+				{
+					position = source[i].position,
+					alignment = source[i].alignment,
+					style = source[i].style,
+					color = source[i].color,
+					font = source[i].font,
+					fontSize = source[i].fontSize,
+					size = source[i].size
+				};
 
-
-
+			}
+			newPosterTextData[0].textKey = keyForPosterName;
+			newPosterTextData[1].textKey = keyForPoster;
+			return newPosterTextData;
+		}
 
 
 		public GameObject beans;
