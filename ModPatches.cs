@@ -14,6 +14,8 @@ namespace BB_MOD
 	{
 		private static void Prefix(LevelGenerator __instance)
 		{
+			var sceneObject = Singleton<CoreGameManager>.Instance.sceneObject;
+			ContentManager.currentEc = __instance.Ec;
 			if (!ContentManager.instance.beans)
 			{
 				try
@@ -27,18 +29,21 @@ namespace BB_MOD
 				}
 			}
 
-			ContentManager.currentEc = __instance.Ec;
-
-
-
 			ContentManager.instance.SetupWeightNPCValues();
 
-			var sceneObject = Singleton<CoreGameManager>.Instance.sceneObject;
+			
 			__instance.ld.potentialNPCs.AddRange(ContentManager.instance.GetNPCs(sceneObject.levelTitle.ToFloorIdentifier()));
 
 		items:
 
-			Debug.Log("Items stuff here"); // Don't actually put anything in here, it's just a placeholder lol
+			ContentManager.instance.SetupItemWeights();
+
+			__instance.ld.items.AddRangeToArray(ContentManager.instance.GetItems(sceneObject.levelTitle.ToFloorIdentifier()).ToArray());
+
+			foreach (var item in __instance.ld.items)
+			{
+				Debug.Log(item.selection.name);
+			}
 		}
 	}
 

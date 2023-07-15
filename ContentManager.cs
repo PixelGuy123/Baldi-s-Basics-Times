@@ -25,7 +25,7 @@ namespace BB_MOD
 		END
 	}
 
-	public static class FloorExtensions
+	public static class FloorEnumExtensions
 	{
 		public static Floors ToFloorIdentifier(this string name)
 		{
@@ -46,6 +46,22 @@ namespace BB_MOD
 					return Floors.None;
 			}
 		}
+
+		public static Items GetItemByName(this List<Items> items, string name)
+		{
+			foreach (var item in items)
+			{
+				if (item.GetName().ToLower() == name.ToLower())
+					return item;
+			}
+			return Items.None;
+		}
+
+		public static void Replace<T>(this List<T> values, int index, T value)
+		{
+			values.RemoveAt(index);
+			values.Insert(index - 1, value);
+		}
 	}
 
 	public class ContentManager : MonoBehaviour
@@ -58,7 +74,7 @@ namespace BB_MOD
 
 			// Add every single BB+ item into the list (default weight being 50 for every one) Note: this list is used later on npcs or mechanics that use item weighted selection
 
-			allItems.AddRange(Resources.FindObjectsOfTypeAll<ItemObject>().ToList().ConvertAll(x => new WeightedSelection<ItemObject>()
+			allItems.AddRange(Resources.FindObjectsOfTypeAll<ItemObject>().ToList().ConvertAll(x => new WeightedItemObject()
 			{
 				weight = 50,
 				selection = x
@@ -218,9 +234,62 @@ namespace BB_MOD
 		}
 
 
+		// ---------------------------------------------- ITEM CREATION ----------------------------------------------
+
+		// Parameters of CreateItem():
+		// itemNameKey > key for the name of the item, itemDescKey > Item's Description (for store), large/small sprite file > name of the file for large/small sprite, shopPrice > price for shop, spawnWeight > chance to spawn (in many situations, such as fieldtrips, faculties, etc.)
+
+		public void SetupItemWeights()
+		{
+			if (addedItems)
+				return;
+
+			addedItems = true;
+
+			allNewItems.Add(CreateItem<ITM_BSODA>("PRS_Name", "PRS_Desc", "present.png", "present.png", "Present", 50, 70));
+		}
+
+
+		private WeightedItemObject CreateItem<I>(string itemNameKey, string itemDescKey, string largeSpriteFile, string smallSpriteFile, string itemName, int shopPrice, int spawnWeight) where I : Item
+		{
+			Items cEnum = EnumExtensions.ExtendEnum<Items>(itemName);
+			customEnums.Add(cEnum);
+			var item = ObjectCreatorHandlers.CreateItemObject(itemNameKey, itemDescKey, AssetManager.SpriteFromTexture2D(AssetManager.TextureFromFile(Path.Combine(modPath, "Textures", "item", smallSpriteFile))), AssetManager.SpriteFromTexture2D(AssetManager.TextureFromFile(Path.Combine(modPath, "Textures", "item", largeSpriteFile))), cEnum, shopPrice, spawnWeight);
+			var itemInstance = new GameObject(itemName + "_ItemInstance").AddComponent<I>(); // Creates Item Component from a new game object
+			DontDestroyOnLoad(itemInstance.gameObject); // Assure that it won't despawn so it doesn't break the item
+			item.item = itemInstance;
+			itemInstance.gameObject.SetActive(false); // No null exceptions
+			var weightedItem = new WeightedItemObject()
+			{
+				selection = item,
+				weight = spawnWeight
+			};
+			allItems.Add(weightedItem);
+			itemPair.Add(new Floors[] { Floors.F1, Floors.F2, Floors.F3, Floors.END });
+
+			return weightedItem;
+		}
+
+		private WeightedItemObject CreateItem<I>(string itemNameKey, string itemDescKey, string largeSpriteFile, string smallSpriteFile, string itemName, int shopPrice, int spawnWeight, Floors[] spawnFloors) where I : Item
+		{
+			var item = CreateItem<I>(itemNameKey, itemDescKey, largeSpriteFile, smallSpriteFile, itemName, shopPrice, spawnWeight);
+			itemPair.Replace(itemPair.Count - 1, spawnFloors);
+			return item;
+		}
+
+
+
 		public GameObject beans;
 
-		private readonly Dictionary<Floors, bool> accessedNPCs = new Dictionary<Floors, bool>() // Prevents the weights from being added again
+		private readonly Dictionary<Floors, bool> accessedNPCs = new Dictionary<Floors, bool>() // Prevents the weights from being added again (npcs)
+		{
+			{ Floors.F1, false },
+			{ Floors.F2, false },
+			{ Floors.F3, false },
+			{ Floors.END, false }
+		};
+
+		private readonly Dictionary<Floors, bool> accessedItems = new Dictionary<Floors, bool>() // Prevents the weights from being added again (items)
 		{
 			{ Floors.F1, false },
 			{ Floors.F2, false },
@@ -230,7 +299,11 @@ namespace BB_MOD
 
 		private readonly List<WeightedNPC> allNpcs = new List<WeightedNPC>();
 
+		private readonly List<WeightedItemObject> allNewItems = new List<WeightedItemObject>();
+
 		private readonly List<Floors[]> npcPair = new List<Floors[]>();
+
+		private readonly List<Floors[]> itemPair = new List<Floors[]>();
 
 		public List<WeightedNPC> GetNPCs(Floors floor, bool onlyReplacementNPCs = false)
 		{
@@ -249,30 +322,57 @@ namespace BB_MOD
 			return npcs;
 		}
 
+		public List<WeightedItemObject> GetItems(Floors floor)
+		{
+			if (accessedItems[floor])
+				return new List<WeightedItemObject>();
+
+			accessedItems[floor] = true;
+			var npcs = new List<WeightedItemObject>();
+			for (int i = 0; i < allNewItems.Count; i++)
+			{
+				if (itemPair[i].Contains(floor)) // Check whether the item is from said floor
+				{
+					Debug.Log(allNewItems[i].selection.item);
+					npcs.Add(allNewItems[i]);
+				}
+			}
+			return npcs;
+		}
+
 		public List<WeightedNPC> AllNpcs 
 			{
 				get => allNpcs;
 			}
 
-		public ItemObject RandomItem
+		public List<WeightedItemObject> AllNewItems
 		{
-			get => WeightedSelection<ItemObject>.RandomSelection(allItems.ToArray());
+			get => allNewItems;
 		}
 
-		public List<WeightedSelection<ItemObject>> GlobalItems 
+		public ItemObject RandomItem
+		{
+			get => WeightedItemObject.RandomSelection(allItems.ToArray());
+		}
+
+		public List<WeightedItemObject> GlobalItems 
 		{
 			get => allItems;
 		}
 
-		private readonly List<WeightedSelection<ItemObject>> allItems = new List<WeightedSelection<ItemObject>>();
+		private readonly List<WeightedItemObject> allItems = new List<WeightedItemObject>();
 
 		private bool addedNPCs = false;
+
+		private bool addedItems = false;
 
 		public static ContentManager instance;
 
 		public static string modPath;
 
 		public static EnvironmentController currentEc;
+
+		public List<Items> customEnums = new List<Items>();
 
 	}
 }
