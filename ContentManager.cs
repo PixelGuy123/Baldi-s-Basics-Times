@@ -3,22 +3,49 @@ using HarmonyLib;
 using MTM101BaldAPI;
 using MTM101BaldAPI.AssetManager;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEngine;
-using static UnityEngine.GraphicsBuffer;
+
+// -------------------- PRO TIP ----------------------
+// Recommended using UnityExplorer to debug your item, event or npc. It's a very useful tool
+// I also recommend using Github Desktop to update the files when needed, it's much faster than having to replace everything manually
+// Every note on the code is pretty much only useful for collaborators (those that are allowed to modify the code)
 
 namespace BB_MOD
 {
 
-	enum Floors
+	public enum Floors
 	{
+		None,
 		F1,
 		F2,
 		F3,
 		END
+	}
+
+	public static class FloorExtensions
+	{
+		public static Floors ToFloorIdentifier(this string name)
+		{
+			switch (name.ToLower()) // Converts Floor name to Floors Enum
+			{
+				case "f1":
+					return Floors.F1;
+
+				case "f2":
+					return Floors.F2;
+
+				case "f3":
+					return Floors.F3;
+
+				case "end":
+					return Floors.END;
+				default:
+					return Floors.None;
+			}
+		}
 	}
 
 	public class ContentManager : MonoBehaviour
@@ -28,6 +55,14 @@ namespace BB_MOD
 		{
 			DontDestroyOnLoad(this);
 			instance = this;
+
+			// Add every single BB+ item into the list (default weight being 50 for every one) Note: this list is used later on npcs or mechanics that use item weighted selection
+
+			allItems.AddRange(Resources.FindObjectsOfTypeAll<ItemObject>().ToList().ConvertAll(x => new WeightedSelection<ItemObject>()
+			{
+				weight = 50,
+				selection = x
+			}));
 		}
 
 		// ------------------------------------------------------ NPC CREATION STUFF ------------------------------------------------------
@@ -44,9 +79,14 @@ namespace BB_MOD
 			// PixelsPerUnit for the sprite (Resuming: Size of it, if a higher integer, smaller it'll be), spriteYOffset (as the name suggests, changes the Y offset of the sprite, leave 0f to not change it), PosterFileName (Put the name of the png used for the poster), keyForPosterName > the key for the poster's title (Languages/English/npcCaps.json)
 			// KeyForPoster > Key for NPC's Description, Floors (enum) set the floor your npc will spawn (can be an array; multiple floors), (optional) Rooms it can spawn
 			// (Optional) enable looker on npc (enabled by default), (optional) can enter rooms (enabled by default)
-			// (Optional) Aggroed > basically if the npc DOESN'T go to the party event (disabled by default), (Optional) IgnoreBelts > if it ignores conveyor belts (disabled by default), (Optional) capsuleRadius > basically the size of the collider of the NPC (Default is what beans uses)
+			// (Optional) Aggroed > basically if the npc DOESN'T go to the party event or can have the navigator overrided by something else (disabled by default), (Optional) IgnoreBelts > if it ignores conveyor belts (disabled by default), (Optional) capsuleRadius > basically the size of the collider of the NPC (Default is what beans uses)
 
-			allNpcs.Add(CreateNPC<OfficeChair>("Office Chair", 50, new string[] { "officechair.png", "officechair_disabled.png" }, false, 18f, -0.8f, "pri_ofc.png", "PST_OFC_Name", "PST_OFC_Desc", Floors.F1, RoomCategory.Faculty, hasLooker: false, aggored: true, capsuleRadius: 4f));
+
+			allNpcs.Add(CreateNPC<OfficeChair>("Office Chair", 35, new string[] { "officechair.png", "officechair_disabled.png" }, false, 18f, -0.8f, "pri_ofc.png", "PST_OFC_Name", "PST_OFC_Desc", new Floors[] { Floors.F1 }, new RoomCategory[] { RoomCategory.Faculty }, hasLooker: false, aggored: true, capsuleRadius: 4f));
+			allNpcs.Add(CreateNPC<HappyHolidays>("Happy Holidays", 15, new string[] { "happyholidays.png" }, false, 70f, -1.5f, "pri_hapho.png", "PST_HapH_Name", "PST_HapH_Desc", new Floors[] { Floors.F1 }, enterRooms: false, capsuleRadius: 3f));
+
+			// allNpcs.Add(CreateReplacementNPC<PlaceholderClass>) << NOT DONE YET, I'll make a comment soon explaining it's function
+
 
 			// End of Character Spawns
 
@@ -135,35 +175,21 @@ namespace BB_MOD
 
 		}
 
-		private WeightedNPC CreateNPC<C>(string name, int weight, string[] spriteFileName, bool includeAnimator, float pixelsPerUnit, float spriteYOffset, string posterFileName, string keyForPosterName, string keyForPoster, Floors floor, List<RoomCategory> roomsAllowedToSpawn, bool hasLooker = true, bool enterRooms = true, bool aggored = true, bool ignoreBelts = false, float capsuleRadius = 0f) where C : NPC
-		{
-			var npc = CreateNPC<C>(name, weight, spriteFileName, includeAnimator, pixelsPerUnit, spriteYOffset, posterFileName, keyForPosterName, keyForPoster, new Floors[] { floor }, hasLooker, enterRooms, aggored, ignoreBelts, capsuleRadius);
-			npc.selection.spawnableRooms = roomsAllowedToSpawn;
-			return npc;
-		}
-
-		private WeightedNPC CreateNPC<C>(string name, int weight, string[] spriteFileName, bool includeAnimator, float pixelsPerUnit, float spriteYOffset, string posterFileName, string keyForPosterName, string keyForPoster, Floors[] floor, List<RoomCategory> roomsAllowedToSpawn, bool hasLooker = true, bool enterRooms = true, bool aggored = true, bool ignoreBelts = false, float capsuleRadius = 0f) where C : NPC
+		private WeightedNPC CreateNPC<C>(string name, int weight, string[] spriteFileName, bool includeAnimator, float pixelsPerUnit, float spriteYOffset, string posterFileName, string keyForPosterName, string keyForPoster, Floors[] floor, RoomCategory[] roomsAllowedToSpawn, bool hasLooker = true, bool enterRooms = true, bool aggored = false, bool ignoreBelts = false, float capsuleRadius = 0f) where C : NPC
 		{
 			var npc = CreateNPC<C>(name, weight, spriteFileName, includeAnimator, pixelsPerUnit, spriteYOffset, posterFileName, keyForPosterName, keyForPoster, floor, hasLooker, enterRooms, aggored, ignoreBelts, capsuleRadius);
-			npc.selection.spawnableRooms = roomsAllowedToSpawn;
+			npc.selection.spawnableRooms = roomsAllowedToSpawn.ToList();
 			return npc;
 		}
 
-		private WeightedNPC CreateNPC<C>(string name, int weight, string[] spriteFileName, bool includeAnimator, float pixelsPerUnit, float spriteYOffset, string posterFileName, string keyForPosterName, string keyForPoster, Floors floor, RoomCategory roomsAllowedToSpawn, bool hasLooker = true, bool enterRooms = true, bool aggored = true, bool ignoreBelts = false, float capsuleRadius = 0f) where C : NPC
-		{
-			var npc = CreateNPC<C>(name, weight, spriteFileName, includeAnimator, pixelsPerUnit, spriteYOffset, posterFileName, keyForPosterName, keyForPoster, new Floors[] { floor }, hasLooker, enterRooms, aggored, ignoreBelts, capsuleRadius);
-			npc.selection.spawnableRooms = new List<RoomCategory>() { roomsAllowedToSpawn };
-			return npc;
-		}
-
-		private WeightedNPC CreateNPC<C>(string name, int weight, string[] spriteFileName, bool includeAnimator, float pixelsPerUnit, float spriteYOffset, string posterFileName, string keyForPosterName, string keyForPoster, Floors[] floor, RoomCategory roomsAllowedToSpawn, bool hasLooker = true, bool enterRooms = true, bool aggored = true, bool ignoreBelts = false, float capsuleRadius = 0f) where C : NPC
+		private WeightedNPC CreateReplacementNPC<C>(string name, int weight, string[] spriteFileName, bool includeAnimator, float pixelsPerUnit, float spriteYOffset, string posterFileName, string keyForPosterName, string keyForPoster, Floors[] floor, Character[] charactersToReplace, bool hasLooker = true, bool enterRooms = true, bool aggored = false, bool ignoreBelts = false, float capsuleRadius = 0f) where C : NPC
 		{
 			var npc = CreateNPC<C>(name, weight, spriteFileName, includeAnimator, pixelsPerUnit, spriteYOffset, posterFileName, keyForPosterName, keyForPoster, floor, hasLooker, enterRooms, aggored, ignoreBelts, capsuleRadius);
-			npc.selection.spawnableRooms = new List<RoomCategory>() { roomsAllowedToSpawn };
+			npc.selection.gameObject.GetComponent<CustomNPCData>().replacementCharacters = charactersToReplace;
 			return npc;
 		}
 
-		private PosterTextData[] ConvertPosterTextData(PosterTextData[] source, string keyForPosterName, string keyForPoster) // Gets the Poster Text Data and converts it to a new one, so it doesn't get by reference (I hate this)
+		private PosterTextData[] ConvertPosterTextData(PosterTextData[] source, string keyForPosterName, string keyForPoster, int fontSize = 0) // Gets the Poster Text Data[] and converts it to a new one, so it doesn't get by reference (I hate this)
 		{
 			var newPosterTextData = new PosterTextData[source.Length];
 			for (int i = 0; i < source.Length; i++)
@@ -182,102 +208,53 @@ namespace BB_MOD
 			}
 			newPosterTextData[0].textKey = keyForPosterName;
 			newPosterTextData[1].textKey = keyForPoster;
+
 			return newPosterTextData;
 		}
 
 
 		public GameObject beans;
 
-		private readonly bool[] accessedNPCs = new bool[] // Prevents the weights from being added again
+		private readonly Dictionary<Floors, bool> accessedNPCs = new Dictionary<Floors, bool>() // Prevents the weights from being added again
 		{
-			false,
-			false,
-			false,
-			false
+			{ Floors.F1, false },
+			{ Floors.F2, false },
+			{ Floors.F3, false },
+			{ Floors.END, false }
 		};
 
 		private readonly List<WeightedNPC> allNpcs = new List<WeightedNPC>();
 
 		private readonly List<Floors[]> npcPair = new List<Floors[]>();
 
-		public List<WeightedNPC> F1_Npcs
+		public List<WeightedNPC> GetNPCs(Floors floor, bool onlyReplacementNPCs = false)
 		{
-			get
+			if (accessedNPCs[floor])
+				return new List<WeightedNPC>();
+
+			accessedNPCs[floor] = true;
+			var npcs = new List<WeightedNPC>();
+			for (int i = 0; i < allNpcs.Count; i++)
 			{
-				if (accessedNPCs[0])
-					return new List<WeightedNPC>();
-
-				accessedNPCs[0] = true;
-				var npcs = new List<WeightedNPC>();
-				for (int i = 0; i < allNpcs.Count; i++)
+				if (npcPair[i].Contains(floor) && (!onlyReplacementNPCs || allNpcs[i].selection.gameObject.GetComponent<CustomNPCData>().replacementCharacters.Length > 0)) // Checkc whether the npc is from said floor and if it is a replacement NPC or not
 				{
-					if (npcPair[i].Contains(Floors.F1))
-					{
-						npcs.Add(allNpcs[i]);
-					}
+					npcs.Add(allNpcs[i]);
 				}
-				return npcs;
 			}
+			return npcs;
 		}
 
-		public List<WeightedNPC> F2_Npcs
+		public ItemObject RandomItem
 		{
-			get
-			{
-				if (accessedNPCs[1])
-					return new List<WeightedNPC>();
-				accessedNPCs[1] = true;
-				var npcs = new List<WeightedNPC>();
-				for (int i = 0; i < allNpcs.Count; i++)
-				{
-					if (npcPair[i].Contains(Floors.F2))
-						npcs.Add(allNpcs[i]);
-				}
-				return npcs;
-			}
+			get => WeightedSelection<ItemObject>.RandomSelection(allItems.ToArray());
 		}
 
-		public List<WeightedNPC> F3_Npcs
+		public List<WeightedSelection<ItemObject>> GlobalItems 
 		{
-			get
-			{
-				if (accessedNPCs[2])
-					return new List<WeightedNPC>();
-
-				accessedNPCs[2] = true;
-				var npcs = new List<WeightedNPC>();
-				for (int i = 0; i < allNpcs.Count; i++)
-				{
-					if (npcPair[i].Contains(Floors.F3))
-						npcs.Add(allNpcs[i]);
-				}
-				return npcs;
-			}
+			get => allItems;
 		}
 
-		public List<WeightedNPC> END_Npcs
-		{
-			get
-			{
-				if (accessedNPCs[3])
-					return new List<WeightedNPC>();
-
-				accessedNPCs[3] = true;
-				var npcs = new List<WeightedNPC>();
-				for (int i = 0; i < allNpcs.Count; i++)
-				{
-					if (npcPair[i].Contains(Floors.END))
-						npcs.Add(allNpcs[i]);
-				}
-				return npcs;
-			}
-		}
-
-		public List<WeightedNPC> AllNpcs
-		{
-			get => allNpcs;
-		}
-
+		private readonly List<WeightedSelection<ItemObject>> allItems = new List<WeightedSelection<ItemObject>>();
 
 		private bool addedNPCs = false;
 

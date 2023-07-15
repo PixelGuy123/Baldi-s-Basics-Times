@@ -18,22 +18,22 @@ namespace BB_MOD.NPCs
 	// It is a force drag, which means you can't leave it unless if you enter a blue locker or use teleporter
 	// Pros: while in the chair, you're basically invicible
 	// Cons: The cooldown for use it is REALLY long (around 5 minutes or something)
-	
-    public class OfficeChair : NPC
-    {
 
-		
+	public class OfficeChair : NPC
+	{
 
-        private void Start() 
-        {
-            navigator.maxSpeed = runSpeed;
-            navigator.SetSpeed(runSpeed);
+
+
+		private void Start()
+		{
+			navigator.maxSpeed = runSpeed;
+			navigator.SetSpeed(runSpeed);
 
 			// Audio Setup
 
 			audMan = GetComponent<AudioManager>();
 			audMan.volumeModifier = 70f;
-			
+
 			aud_ChairRoll = ObjectCreatorHandlers.CreateSoundObject(AssetManager.AudioClipFromFile(Path.Combine(ContentManager.modPath, "Audio", "npc", "ChairRolling.wav")), "Vfx_OFC_Walk", SoundType.Voice, Color.blue); // Creates audioClip
 
 			spriteMan = GetComponent<CustomNPCData>().spriteObject;
@@ -51,7 +51,7 @@ namespace BB_MOD.NPCs
 		public override void Initialize()
 		{
 			base.Initialize();
-			AvailableFacultyTiles.AddRange(ec.AllTilesNoGarbage(false, false).Where(t => (t.room.category == RoomCategory.Faculty || t.room.category == RoomCategory.Office) && t.wallDirections.Length >= 2)); 
+			AvailableFacultyTiles.AddRange(ec.AllTilesNoGarbage(false, false).Where(t => (t.room.category == RoomCategory.Faculty || t.room.category == RoomCategory.Office) && t.wallDirections.Length >= 2));
 			// Get all corners of every single faculty room
 		}
 
@@ -102,14 +102,14 @@ namespace BB_MOD.NPCs
 				audMan.FlushQueue(true);
 			}
 		}
-		
 
-        private void Update()
-        {
-			
+
+		private void Update()
+		{
+
 			if (isMovingToRoom)
 			{
-				
+
 				if (!Navigator.HasDestination)
 					TargetPosition(targetRoomTile.gameObject.transform.position);
 				if (movingPlayer)
@@ -121,10 +121,10 @@ namespace BB_MOD.NPCs
 					}
 					movingPlayer.transform.position = gameObject.transform.position;
 				}
-				
+
 			}
-			
-        }
+
+		}
 
 		public override void DestinationEmpty()
 		{
@@ -134,27 +134,27 @@ namespace BB_MOD.NPCs
 				ResetPlayer();
 			}
 		}
-		
+
 
 		private void OnTriggerEnter(Collider other)
 		{
 			if (other.tag == "Player" && !isMovingToRoom && !movingPlayer && moveCooldown <= 0f)
 			{
 				PlayerManager player = other.GetComponent<PlayerManager>();
-				if (!player.tagged) // An optional IF
-				{
-					movingPlayer = player; // Basically makes player invicible until gets into another faculty
-					player.invincible = true;
-					playerHeight = player.plm.height; // Saves height for later too
-					playerLayer = player.gameObject.layer; // Saves last layer, to guarantee nothing goes wrong
-					player.gameObject.layer = hideLayer;
-					player.plm.height = 8f;
-					isMovingToRoom = true;
-					audMan.SetLoop(true);
-					audMan.QueueAudio(aud_ChairRoll);
-					var tiles = CollectFacultyTilesExcept(currentRoomController);
-					targetRoomTile = tiles.ElementAt(Random.Range(0, tiles.Count()));
-				}
+
+
+				movingPlayer = player; // Basically makes player invicible until gets into another faculty
+				player.invincible = true;
+				playerHeight = player.plm.height; // Saves height for later too
+				playerLayer = player.gameObject.layer; // Saves last layer, to guarantee nothing goes wrong
+				player.gameObject.layer = hideLayer;
+				player.plm.height = 8f;
+				isMovingToRoom = true;
+				audMan.SetLoop(true);
+				audMan.QueueAudio(aud_ChairRoll);
+				var tiles = CollectFacultyTilesExcept(currentRoomController);
+				targetRoomTile = tiles.ElementAt(Random.Range(0, tiles.Count()));
+
 			}
 		}
 
@@ -190,22 +190,22 @@ namespace BB_MOD.NPCs
 
 		private Sprite[] sprites;
 
-        public AudioManager audMan;
+		public AudioManager audMan;
 
-        public SoundObject aud_ChairRoll;
+		public SoundObject aud_ChairRoll;
 
-		private int playerLayer = 12;
+		private int playerLayer = 16;
 
 		private float playerHeight;
 
 		[SerializeField]
-        private const float runSpeed = 75f;
+		private const float runSpeed = 75f;
 
 		[SerializeField]
-		private const int hideLayer = 16;
+		private const int hideLayer = 12;
 
-		
-    }
+
+	}
 
 }
 
