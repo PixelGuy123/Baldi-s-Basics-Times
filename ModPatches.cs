@@ -4,7 +4,6 @@ using MTM101BaldAPI.AssetManager;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using UnityEngine;
 
 namespace BB_MOD
@@ -40,8 +39,6 @@ namespace BB_MOD
 		items:
 
 			Debug.Log("Items stuff here"); // Don't actually put anything in here, it's just a placeholder lol
-
-
 		}
 	}
 

@@ -1,5 +1,11 @@
 {"items":[
 	{"key":"Vfx_OFC_Walk","value":"*Office Chair Noises*"},
 	{"key":"PST_OFC_Name","value":"Office Chair"},
-	{"key":"PST_OFC_Desc","value":"A strange office chair, but useful for offices! Just get into one and it'll bring much joy for who rides it!"}
+	{"key":"PST_OFC_Desc","value":"A strange office chair, but useful for offices! Always bringing a lot of joy for those who attempt to ride it!"},
+	{"key":"Vfx_HapH_MerryChristmas","value":"Happy Christmas, here's a free item!"},
+	{"key":"PST_HapH_Name","value":"Happy Holidays"},
+	{"key":"PST_HapH_Desc","value":"Nothing's more celebratory than Happy Holidays itself! Always celebrating holidays and coming with surprises!"},
+	{"key":"Vfx_SI_BaldiHere","value":"Hey Baldi (Hey Baldi)! Over Here (Here)!"},
+	{"key":"PST_SI_Name","value":"Super Intendent"},
+	{"key":"PST_SI_Desc","value":"Any students sneaking out of their classes? No problem! He will always alert the professors about class-cheaters!"}
 ]}
