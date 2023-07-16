@@ -28,7 +28,7 @@ namespace BB_MOD.NPCs
 			audMan.audioDevice.maxDistance = 500; // Sets the max distance the audio of the NPC can reach, that's a very important thing to note, use the audioDevice, not the manager to control volumes!
 			
 			aud_BaldiComeHere = ObjectCreatorHandlers.CreateSoundObject(AssetManager.AudioClipFromFile(Path.Combine(ContentManager.modPath, "Audio", "npc", "Superintendent.wav")), "Vfx_SI_BaldiHere", SoundType.Voice, new Color(0,0,124)); // Creates audioClip
-			aud_BaldiComeHere.subDuration -= 2f;
+			aud_BaldiComeHere.subDuration -= 4f;
 		}
 
 		

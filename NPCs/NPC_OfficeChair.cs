@@ -83,7 +83,7 @@ namespace BB_MOD.NPCs
 			if (fullReset)
 			{
 				if (!beginningPhase)
-					StartCoroutine(Cooldown(400f));
+					StartCoroutine(Cooldown(200f));
 				beginningPhase = false;
 				currentRoomController = targetRoomTile.room;
 				targetRoomTile = null;

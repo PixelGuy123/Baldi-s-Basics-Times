@@ -1,4 +1,5 @@
 ﻿using BB_MOD.NPCs;
+using BB_MOD.ExtraItems;
 using HarmonyLib;
 using MTM101BaldAPI;
 using MTM101BaldAPI.AssetManager;
@@ -18,7 +19,7 @@ namespace BB_MOD
 
 	public enum Floors
 	{
-		None,
+		None, // This value is reserved and should never be used in an object!
 		F1,
 		F2,
 		F3,
@@ -51,7 +52,7 @@ namespace BB_MOD
 		{
 			foreach (var item in items)
 			{
-				if (item.GetName().ToLower() == name.ToLower())
+				if (EnumExtensions.GetExtendedName<Items>((int)item).ToLower() == name.ToLower())
 					return item;
 			}
 			return Items.None;
@@ -59,8 +60,14 @@ namespace BB_MOD
 
 		public static void Replace<T>(this List<T> values, int index, T value)
 		{
+			if (index < 0 || index >= values.Count)
+				return;
+
 			values.RemoveAt(index);
-			values.Insert(index - 1, value);
+			if (values.Count > 1)
+				values.Insert(index - 1, value);
+			else
+				values.Add(value);
 		}
 	}
 
@@ -104,9 +111,9 @@ namespace BB_MOD
 			// This is useful for example: if you want to add a character that functions like Gotta Sweep, you can make it spawn but replacing Gotta Sweep since it has a closet
 
 
-			allNpcs.Add(CreateNPC<OfficeChair>("Office Chair", 35, new string[] { "officechair.png", "officechair_disabled.png" }, false, 18f, -0.8f, "pri_ofc.png", "PST_OFC_Name", "PST_OFC_Desc", new Floors[] { Floors.F1 }, new RoomCategory[] { RoomCategory.Faculty }, hasLooker: false, aggored: true, capsuleRadius: 4f));
+			allNpcs.Add(CreateNPC<OfficeChair>("Office Chair", 35, new string[] { "officechair.png", "officechair_disabled.png" }, false, 18f, -0.8f, "pri_ofc.png", "PST_OFC_Name", "PST_OFC_Desc", new Floors[] { Floors.F1, Floors.END }, new RoomCategory[] { RoomCategory.Faculty }, hasLooker: false, aggored: true, capsuleRadius: 4f));
 			allNpcs.Add(CreateNPC<HappyHolidays>("Happy Holidays", 15, new string[] { "happyholidays.png" }, false, 70f, -1.5f, "pri_hapho.png", "PST_HapH_Name", "PST_HapH_Desc", new Floors[] { Floors.F1 }, enterRooms: false, capsuleRadius: 3f));
-			allNpcs.Add(CreateNPC<SuperIntendent>("Super Intendent", 65, new string[] { "Superintendent.png" }, false, 50f, -1f, "pri_SI.png", "PST_SI_Name", "PST_SI_Desc", new Floors[] { Floors.F1 }, usingWanderRounds:true));
+			allNpcs.Add(CreateNPC<SuperIntendent>("Super Intendent", 65, new string[] { "Superintendent.png" }, false, 50f, -1f, "pri_SI.png", "PST_SI_Name", "PST_SI_Desc", new Floors[] { Floors.F2 }, usingWanderRounds:true));
 
 
 
@@ -237,7 +244,14 @@ namespace BB_MOD
 		// ---------------------------------------------- ITEM CREATION ----------------------------------------------
 
 		// Parameters of CreateItem():
-		// itemNameKey > key for the name of the item, itemDescKey > Item's Description (for store), large/small sprite file > name of the file for large/small sprite, shopPrice > price for shop, spawnWeight > chance to spawn (in many situations, such as fieldtrips, faculties, etc.)
+		// itemNameKey > key for the name of the item, itemDescKey > Item's Description (for store), large/small sprite file > name of the file for large/small sprite, shopPrice > price for shop
+		// itemCost > Another value for spawn chance, small values means higher chances of spawning (choose values between 1 and 70, values higher than 70 are almost impossible to get), spawnWeight > chance to spawn (in many situations, such as fieldtrips, faculties, etc.)
+		// SpawnFloors (Optional) set the floors the item will be able to spawn (default is all floors, including endless)
+		// largerPixelsPerUnit > same as npcs, the pixels for the larger sprite (higher values = smaller sizes); smallPixelsPerUnit > same as the previous one, but for the smaller sprite
+		// shoppingFloors > floors that the shop will accept the item (if you don't want to, you can always use Array.Empty<Floors>() ); shoppingWeight > chance to appear on shop
+		// activeObject (Optional, and unsafe if enabled) > Enables the original gameObject that handles the item class, this is only useful in case you use IEnumerator methods (Just make sure to handle any NullExceptions anyways)
+		// includeOnMysteryRoom (Optional, disabled by default) > if item should be included on mystery room (uses the same weight used for world spawn), doesn't matter the floor, if there's mystery room, it'll spawn
+		// includeOnFieldTrip (Optional, disabled by default) > if item should be included on Field Trip (uses the same weight used for world spawn), ^^ same applies for field trips
 
 		public void SetupItemWeights()
 		{
@@ -246,19 +260,20 @@ namespace BB_MOD
 
 			addedItems = true;
 
-			allNewItems.Add(CreateItem<ITM_BSODA>("PRS_Name", "PRS_Desc", "present.png", "present.png", "Present", 50, 70));
+			allNewItems.Add(CreateItem<ITM_Present>("PRS_Name", "PRS_Desc", "present.png", "present.png", "Present", 120, 40, 30, new Floors[] { Floors.F3 }, 55, new Floors[] { Floors.F3 }, 60, includeOnMysteryRoom:true));
 		}
 
 
-		private WeightedItemObject CreateItem<I>(string itemNameKey, string itemDescKey, string largeSpriteFile, string smallSpriteFile, string itemName, int shopPrice, int spawnWeight) where I : Item
+		private WeightedItemObject CreateItem<I>(string itemNameKey, string itemDescKey, string largeSpriteFile, string smallSpriteFile, string itemName, int shopPrice, int itemCost, int spawnWeight, int largerPixelsPerUnit, Floors[] shoppingFloors, int shoppingWeight, bool includeOnMysteryRoom = false, bool includeOnFieldTrip = false, bool activeObject = false) where I : Item
 		{
 			Items cEnum = EnumExtensions.ExtendEnum<Items>(itemName);
 			customEnums.Add(cEnum);
-			var item = ObjectCreatorHandlers.CreateItemObject(itemNameKey, itemDescKey, AssetManager.SpriteFromTexture2D(AssetManager.TextureFromFile(Path.Combine(modPath, "Textures", "item", smallSpriteFile))), AssetManager.SpriteFromTexture2D(AssetManager.TextureFromFile(Path.Combine(modPath, "Textures", "item", largeSpriteFile))), cEnum, shopPrice, spawnWeight);
+			var item = ObjectCreatorHandlers.CreateItemObject(itemNameKey, itemDescKey, AssetManager.SpriteFromTexture2D(AssetManager.TextureFromFile(Path.Combine(modPath, "Textures", "item", smallSpriteFile))), AssetManager.SpriteFromTexture2D(AssetManager.TextureFromFile(Path.Combine(modPath, "Textures", "item", largeSpriteFile)), new Vector2(0.5f, 0.5f), largerPixelsPerUnit), cEnum, shopPrice, itemCost);
 			var itemInstance = new GameObject(itemName + "_ItemInstance").AddComponent<I>(); // Creates Item Component from a new game object
 			DontDestroyOnLoad(itemInstance.gameObject); // Assure that it won't despawn so it doesn't break the item
 			item.item = itemInstance;
-			itemInstance.gameObject.SetActive(false); // No null exceptions
+			item.name = itemName;
+			itemInstance.gameObject.SetActive(activeObject); // No null exceptions (Only if it contains Update() or similar )
 			var weightedItem = new WeightedItemObject()
 			{
 				selection = item,
@@ -267,12 +282,26 @@ namespace BB_MOD
 			allItems.Add(weightedItem);
 			itemPair.Add(new Floors[] { Floors.F1, Floors.F2, Floors.F3, Floors.END });
 
+			if (shoppingFloors.Length > 0 && (shoppingFloors[0] != Floors.None || shoppingFloors.Length > 1))
+			{
+				allShoppingItems.Add(new WeightedItemObject() { selection = item, weight = shoppingWeight}, shoppingFloors);
+			}
+
+			if (includeOnMysteryRoom)
+				mysteryItems.Add(weightedItem);
+
+			if (includeOnFieldTrip)
+				fieldTripItems.Add(new WeightedItem() {
+					selection = item, 
+					weight = spawnWeight 
+				});
+
 			return weightedItem;
 		}
 
-		private WeightedItemObject CreateItem<I>(string itemNameKey, string itemDescKey, string largeSpriteFile, string smallSpriteFile, string itemName, int shopPrice, int spawnWeight, Floors[] spawnFloors) where I : Item
+		private WeightedItemObject CreateItem<I>(string itemNameKey, string itemDescKey, string largeSpriteFile, string smallSpriteFile, string itemName, int shopPrice, int itemCost, int spawnWeight, Floors[] spawnFloors, int largerPixelsPerUnit, Floors[] shoppingFloors, int shoppingWeight, bool includeOnMysteryRoom = false, bool includeOnFieldTrip = false, bool activeObject = false) where I : Item
 		{
-			var item = CreateItem<I>(itemNameKey, itemDescKey, largeSpriteFile, smallSpriteFile, itemName, shopPrice, spawnWeight);
+			var item = CreateItem<I>(itemNameKey, itemDescKey, largeSpriteFile, smallSpriteFile, itemName, shopPrice, itemCost, spawnWeight, largerPixelsPerUnit, shoppingFloors, shoppingWeight, includeOnMysteryRoom, includeOnFieldTrip, activeObject);
 			itemPair.Replace(itemPair.Count - 1, spawnFloors);
 			return item;
 		}
@@ -297,9 +326,19 @@ namespace BB_MOD
 			{ Floors.END, false }
 		};
 
+		private readonly Dictionary<Floors, bool> accessedShopItems = new Dictionary<Floors, bool>() // Prevents the weights from being added again (items)
+		{
+			{ Floors.F1, false },
+			{ Floors.F2, false },
+			{ Floors.F3, false },
+			{ Floors.END, false }
+		};
+
 		private readonly List<WeightedNPC> allNpcs = new List<WeightedNPC>();
 
 		private readonly List<WeightedItemObject> allNewItems = new List<WeightedItemObject>();
+
+		private readonly Dictionary<WeightedItemObject, Floors[]> allShoppingItems = new Dictionary<WeightedItemObject, Floors[]>();
 
 		private readonly List<Floors[]> npcPair = new List<Floors[]>();
 
@@ -333,8 +372,24 @@ namespace BB_MOD
 			{
 				if (itemPair[i].Contains(floor)) // Check whether the item is from said floor
 				{
-					Debug.Log(allNewItems[i].selection.item);
 					npcs.Add(allNewItems[i]);
+				}
+			}
+			return npcs;
+		}
+
+		public List<WeightedItemObject> GetShoppingItems(Floors floor)
+		{
+			if (accessedShopItems[floor])
+				return new List<WeightedItemObject>();
+
+			accessedShopItems[floor] = true;
+			var npcs = new List<WeightedItemObject>();
+			foreach (var item in allShoppingItems)
+			{
+				if (item.Value.Contains(floor)) // Check whether the item is from said floor
+				{
+					npcs.Add(item.Key);
 				}
 			}
 			return npcs;
@@ -359,6 +414,29 @@ namespace BB_MOD
 		{
 			get => allItems;
 		}
+
+		public List<WeightedItemObject> MysteryItems
+		{
+			get => mysteryItems;
+		}
+
+		public List<WeightedItem> FieldTripItems
+		{
+			get
+			{
+				if (usedFieldTrip)
+					return new List<WeightedItem>();
+				usedFieldTrip = true;
+				return fieldTripItems;
+
+			}
+		}
+
+		private readonly List<WeightedItemObject> mysteryItems = new List<WeightedItemObject>();
+
+		private readonly List<WeightedItem> fieldTripItems = new List<WeightedItem>();
+
+		private bool usedFieldTrip = false;
 
 		private readonly List<WeightedItemObject> allItems = new List<WeightedItemObject>();
 

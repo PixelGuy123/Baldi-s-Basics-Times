@@ -15,6 +15,7 @@ namespace BB_MOD
 		private static void Prefix(LevelGenerator __instance)
 		{
 			var sceneObject = Singleton<CoreGameManager>.Instance.sceneObject;
+			Floors currentFloor = sceneObject.levelTitle.ToFloorIdentifier();
 			ContentManager.currentEc = __instance.Ec;
 			if (!ContentManager.instance.beans)
 			{
@@ -24,7 +25,7 @@ namespace BB_MOD
 				}
 				catch
 				{
-					Debug.LogError("Beans somehow doesn\'t exist on the npc list, the mod won\'t spawn new npcs");
+					Debug.LogWarning("Beans somehow doesn\'t exist on the npc list, the mod won\'t spawn new npcs");
 					goto items;
 				}
 			}
@@ -32,25 +33,34 @@ namespace BB_MOD
 			ContentManager.instance.SetupWeightNPCValues();
 
 			
-			__instance.ld.potentialNPCs.AddRange(ContentManager.instance.GetNPCs(sceneObject.levelTitle.ToFloorIdentifier()));
+			__instance.ld.potentialNPCs.AddRange(ContentManager.instance.GetNPCs(currentFloor));
 
 		items:
 
 			ContentManager.instance.SetupItemWeights();
 
-			__instance.ld.items.AddRangeToArray(ContentManager.instance.GetItems(sceneObject.levelTitle.ToFloorIdentifier()).ToArray());
+			List<WeightedItemObject> itemList = new List<WeightedItemObject>(__instance.ld.items);
 
-			foreach (var item in __instance.ld.items)
-			{
-				Debug.Log(item.selection.name);
-			}
+			itemList.AddRange(ContentManager.instance.GetItems(currentFloor)); // Workaround to get new items
+
+			__instance.ld.items = itemList.ToArray();
+
+			itemList = new List<WeightedItemObject>(__instance.ld.shopItems); // Items for Jhonny's Store
+
+			itemList.AddRange(ContentManager.instance.GetShoppingItems(currentFloor));
+
+			__instance.ld.shopItems = itemList.ToArray();
+
+
+			if (__instance.ld.fieldTrip)
+				__instance.ld.fieldTripItems.AddRange(ContentManager.instance.FieldTripItems); // Add field trip items
 		}
 	}
 
 	[HarmonyPatch(typeof(OfficeBuilderStandard), "Build")]
 	internal class InitializeReplacementNPCs
 	{
-		private static void Prefix() // Basically iterates by randomly choosing a replacement NPC, then gets the array of the NPC and searches for the npc it replaces
+		private static void Prefix() // Basically iterates by randomly choosing a replacement NPC, then gets the array of the NPC and searches for the npc it replaces (random npc from array)
 		{
 
 
@@ -147,6 +157,20 @@ namespace BB_MOD
 
 		}
 	}
+
+	[HarmonyPatch(typeof(MysteryRoom), "SpawnItem")] // Get the custom items and adds them to the event array
+	internal class IncludeExtraMysteryItems
+	{
+		private static void Prefix(ref WeightedSelection<ItemObject>[] ___items)
+		{
+			var newItems = new List<WeightedSelection<ItemObject>>(___items);
+			newItems.AddRange(ContentManager.instance.MysteryItems);
+			___items = newItems.ToArray();
+		}
+	}
+
+
+	// ---- Basic NPC Startup ----
 
 	[HarmonyPatch(typeof(NPC), "Awake")]
 
