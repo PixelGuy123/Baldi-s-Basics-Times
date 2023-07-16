@@ -17,16 +17,16 @@ namespace BB_MOD.ExtraItems
 
 		public override bool Use(PlayerManager pm)
 		{
-			var itemEnum = ContentManager.instance.customEnums.GetItemByName("present");
+			var itemEnum = ContentManager.instance.customEnums.GetItemByName("present"); // Get the Items enum of the item by the name, very useful!
 
 
 
 
-			ItemSoundHolder.CreateSoundHolder(pm.transform, ObjectCreatorHandlers.CreateSoundObject(AssetManager.AudioClipFromFile(Path.Combine(ContentManager.modPath, "Audio", "item", "prs_unbox.wav")), "Vfx_PRS_Unbox", SoundType.Voice, new Color(77, 77, 255)));
+			ItemSoundHolder.CreateSoundHolder(pm.transform, ObjectCreatorHandlers.CreateSoundObject(AssetManager.AudioClipFromFile(Path.Combine(ContentManager.modPath, "Audio", "item", "prs_unbox.wav")), "Vfx_PRS_Unbox", SoundType.Voice, new Color(77, 77, 255))); // Unused caption
 
-			pm.itm.AddItem(WeightedItemObject.RandomSelection(ContentManager.instance.GlobalItems.Where(x => x.selection.itemType != itemEnum && x.selection.itemType != Items.None).ToArray()));
+			pm.itm.SetItem(WeightedItemObject.RandomSelection(ContentManager.instance.GlobalItems.Where(x => x.selection.itemType != itemEnum && x.selection.itemType != Items.None).ToArray()), pm.itm.selectedItem);
 
-			return true;
+			return false;
 		}
 	}
 }

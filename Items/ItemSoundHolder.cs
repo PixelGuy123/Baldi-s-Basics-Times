@@ -19,6 +19,8 @@ namespace BB_MOD.ExtraItems
 			obj.transform.SetParent(position);
 			obj.AddComponent<ItemSoundHolder>();
 			obj.GetComponent<AudioManager>().audioDevice = obj.GetComponent<AudioSource>();
+			obj.GetComponent<ItemSoundHolder>().enabled = true;
+			obj.SetActive(true);
 			return obj;
 		}
 
@@ -31,8 +33,6 @@ namespace BB_MOD.ExtraItems
 		public static void CreateSoundHolder(Transform position, SoundObject sound, float maxDistance = 30f)
 		{
 			var obj = CreateSoundHolder(position);
-			obj.SetActive(true);
-			obj.GetComponent<ItemSoundHolder>().enabled = true;
 			obj.GetComponent<ItemSoundHolder>().StartCoroutine(obj.GetComponent<ItemSoundHolder>().PlaySoundAndDespawn(sound, obj.GetComponent<AudioManager>(), maxDistance));
 		}
 		private IEnumerator PlaySoundAndDespawn(SoundObject sound, AudioManager audMan, float maxDistance)
