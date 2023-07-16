@@ -58,6 +58,16 @@ namespace BB_MOD
 			return Items.None;
 		}
 
+		public static Character GetCharacterByName(this List<Character> npcs, string name)
+		{
+			foreach (var item in npcs)
+			{
+				if (EnumExtensions.GetExtendedName<Character>((int)item).ToLower() == name.ToLower())
+					return item;
+			}
+			return Character.Null;
+		}
+
 		public static void Replace<T>(this List<T> values, int index, T value)
 		{
 			if (index < 0 || index >= values.Count)
@@ -98,23 +108,40 @@ namespace BB_MOD
 			// THIS IS THE PART WHERE YOU PUT YOUR CUSTOM CHARACTER
 			// Add the custom npc to the list using the CreateNPC<C> method as seen below (C stands for Character Class, which is the class the NPC will use)
 
-			// Parameters explained in order: name of game object, weight (chance to spawn), name of all png files used (string array; support for multiple sprites, all saved on CustomNPCData component, first sprite is the default one), includeAnimator (include the Animator component, do whatever you want with it)
-			// PixelsPerUnit for the sprite (Resuming: Size of it, if a higher integer, smaller it'll be), spriteYOffset (as the name suggests, changes the Y offset of the sprite, leave 0f to not change it), PosterFileName (Put the name of the png used for the poster), keyForPosterName > the key for the poster's title (Languages/English/npcCaps.json)
-			// KeyForPoster > Key for NPC's Description, Floors (enum) set the floor your npc will spawn (can be an array; multiple floors), (optional) Rooms it can spawn
-			// (Optional) enable looker on npc (enabled by default), (optional) can enter rooms (enabled by default)
-			// (Optional) Aggroed > basically if the npc DOESN'T go to the party event or can have the navigator overrided by something else (disabled by default), (Optional) IgnoreBelts > if it ignores conveyor belts (disabled by default), (Optional) capsuleRadius > basically the size of the collider of the NPC (Default is what beans uses)
-			// (Optional) usingWanderRounds > if your npc uses WanderRound method, set this variable to true, there are some parameters that differs WanderRandom from this one (Disabled by Default)
-
+			// Parameters explained in order:
+			// name > Name of character (will also be the Character enum name)
+			// weight > Spawn Weight/Chance of character
+			// spriteFileName > All File Names of Textures that should be added to the npc (should be png), the first filename on the array will be the default texture
+			// includeAnimator > Include the animator component (Do whatever you want with it lol)
+			// pixelsPerUnit > Basically if this value is larger, the NPC's sprite is smaller
+			// spriteYOffset > the offset of the sprite being rendered (if it passes the ground or goes too above, you can regulate by using this variable)
+			// posterFileName > file name of the character's detention poster (should also be png), use the placeholder poster from the textures folder to make your own poster
+			// keyForPosterName > The json key that is used for the name of the character (basically where the captions come from), go to Language/English/npcCaps and include your own there
+			// keyForPOster > The json key that is used for the description of the character, same as above ^^
+			// floor > array of floors that the npc can spawn
+			// roomsAllowedToSpawn (Optional) > sets the rooms the npc will be able to spawn on (Use default values of Beans)
+			// hasLooker (Optional, On by default) > If the npc includes a looker component (if it doesn't use the component, you can always disable to not waste resources)
+			// enterRooms (Optional, On by default) > If the npc is able of getting inside rooms
+			// Aggored (Optional, off by default) > Basically if the Npc's navigator can be overrided (used by Party Event for instance, to bring every npc to the office)
+			// ignoreBelts (Optional, off by default) > If the npc ignores conveyor belts
+			// capsuleRadius (Optional, default value of 2f) > Set a "size" to the collider of the npc, values higher than 4 causes doors to be opened without even entering the room
+			// usingWanderRounds (Optional, off by default) > If the npc uses the method WanderRounds() instead of WanderRandom() on it's navigator, the reason is because WanderRounds uses a heat map, which is disabled by default
+			// forceSpawn (optional, off by default) > If the npc ignores the Player's presence and spawn directly (like Gotta Sweep does)
 
 			// What is CreateReplacementNPC<C>?
 			// In case you're wondering, it has the exact same function as CreateNPC, the only main difference is: it does not spawn directly from the generator, instead, you can choose in an array of characters for it to replace)
-			// This is useful for example: if you want to add a character that functions like Gotta Sweep, you can make it spawn but replacing Gotta Sweep since it has a closet
+			// This is useful for example: if you want to add a character that functions like Gotta Sweep, you can make it spawn but replacing Gotta Sweep since sweep has a closet anyways
+
+			// CharactersToReplace > As the name suggests, an array of characters that the npc can replace
 
 
-			allNpcs.Add(CreateNPC<OfficeChair>("Office Chair", 35, new string[] { "officechair.png", "officechair_disabled.png" }, false, 18f, -0.8f, "pri_ofc.png", "PST_OFC_Name", "PST_OFC_Desc", new Floors[] { Floors.F1, Floors.END }, new RoomCategory[] { RoomCategory.Faculty }, hasLooker: false, aggored: true, capsuleRadius: 4f));
+			// CreateNPC methods should be put here:
+
+			allNpcs.Add(CreateNPC<OfficeChair>("Office Chair", 35, new string[] { "officechair.png", "officechair_disabled.png" }, false, 18f, -0.8f, "pri_ofc.png", "PST_OFC_Name", "PST_OFC_Desc", new Floors[] { Floors.F1, Floors.END }, new RoomCategory[] { RoomCategory.Faculty }, hasLooker: false, aggored: true, capsuleRadius: 4f, forceSpawn: true));
 			allNpcs.Add(CreateNPC<HappyHolidays>("Happy Holidays", 15, new string[] { "happyholidays.png" }, false, 70f, -1.5f, "pri_hapho.png", "PST_HapH_Name", "PST_HapH_Desc", new Floors[] { Floors.F1 }, enterRooms: false, capsuleRadius: 3f));
 			allNpcs.Add(CreateNPC<SuperIntendent>("Super Intendent", 65, new string[] { "Superintendent.png" }, false, 50f, -1f, "pri_SI.png", "PST_SI_Name", "PST_SI_Desc", new Floors[] { Floors.F2, Floors.END }, usingWanderRounds:true));
 
+			// CreateReplacementNPC methods should be put here:
 
 
 			// End of Character Spawns
@@ -123,7 +150,7 @@ namespace BB_MOD
 		}
 
 
-		private WeightedNPC CreateNPC<C>(string name, int weight, string[] spritesFileName, bool includeAnimator, float pixelsPerUnit, float spriteYOffset, string posterFileName, string keyForPosterName, string keyForPoster, Floors[] floor, bool hasLooker = true, bool enterRooms = true, bool aggored = false, bool ignoreBelts = false, float capsuleRadius = 0f, bool usingWanderRounds = false) where C : NPC // The order of everything here must be IN THE ORDER I PUT, or else it'll log annoying null exceptions
+		private WeightedNPC CreateNPC<C>(string name, int weight, string[] spritesFileName, bool includeAnimator, float pixelsPerUnit, float spriteYOffset, string posterFileName, string keyForPosterName, string keyForPoster, Floors[] floor, bool hasLooker = true, bool enterRooms = true, bool aggored = false, bool ignoreBelts = false, float capsuleRadius = 0f, bool usingWanderRounds = false, bool forceSpawn = false) where C : NPC // The order of everything here must be IN THE ORDER I PUT, or else it'll log annoying null exceptions
 		{
 			try
 			{
@@ -136,12 +163,14 @@ namespace BB_MOD
 
 
 				var customData = cBean.AddComponent<CustomNPCData>();
-
-				customData.MyCharacter = EnumExtensions.ExtendEnum<Character>(name);
+				Character cEnum = EnumExtensions.ExtendEnum<Character>(name);
+				customNPCEnums.Add(cEnum);
+				customData.MyCharacter = cEnum;
 				customData.EnterRooms = enterRooms;
 				customData.Aggroed = aggored;
 				customData.IgnoreBelts = ignoreBelts;
 				customData.useHeatMap = usingWanderRounds;
+				customData.forceSpawn = forceSpawn;
 				List<Sprite> sprites = new List<Sprite>();
 				spritesFileName.Do(x => sprites.Add(AssetManager.SpriteFromTexture2D(AssetManager.TextureFromFile(Path.Combine(modPath, "Textures", "npc", x)), new Vector2(0.5f, 0.5f), pixelsPerUnit)));
 
@@ -203,16 +232,16 @@ namespace BB_MOD
 
 		}
 
-		private WeightedNPC CreateNPC<C>(string name, int weight, string[] spriteFileName, bool includeAnimator, float pixelsPerUnit, float spriteYOffset, string posterFileName, string keyForPosterName, string keyForPoster, Floors[] floor, RoomCategory[] roomsAllowedToSpawn, bool hasLooker = true, bool enterRooms = true, bool aggored = false, bool ignoreBelts = false, float capsuleRadius = 0f, bool usingWanderRounds = false) where C : NPC
+		private WeightedNPC CreateNPC<C>(string name, int weight, string[] spriteFileName, bool includeAnimator, float pixelsPerUnit, float spriteYOffset, string posterFileName, string keyForPosterName, string keyForPoster, Floors[] floor, RoomCategory[] roomsAllowedToSpawn, bool hasLooker = true, bool enterRooms = true, bool aggored = false, bool ignoreBelts = false, float capsuleRadius = 0f, bool usingWanderRounds = false, bool forceSpawn = false) where C : NPC
 		{
-			var npc = CreateNPC<C>(name, weight, spriteFileName, includeAnimator, pixelsPerUnit, spriteYOffset, posterFileName, keyForPosterName, keyForPoster, floor, hasLooker, enterRooms, aggored, ignoreBelts, capsuleRadius, usingWanderRounds);
+			var npc = CreateNPC<C>(name, weight, spriteFileName, includeAnimator, pixelsPerUnit, spriteYOffset, posterFileName, keyForPosterName, keyForPoster, floor, hasLooker, enterRooms, aggored, ignoreBelts, capsuleRadius, usingWanderRounds, forceSpawn);
 			npc.selection.spawnableRooms = roomsAllowedToSpawn.ToList();
 			return npc;
 		}
 
-		private WeightedNPC CreateReplacementNPC<C>(string name, int weight, string[] spriteFileName, bool includeAnimator, float pixelsPerUnit, float spriteYOffset, string posterFileName, string keyForPosterName, string keyForPoster, Floors[] floor, Character[] charactersToReplace, bool hasLooker = true, bool enterRooms = true, bool aggored = false, bool ignoreBelts = false, float capsuleRadius = 0f, bool usingWanderRounds = false) where C : NPC
+		private WeightedNPC CreateReplacementNPC<C>(string name, int weight, string[] spriteFileName, bool includeAnimator, float pixelsPerUnit, float spriteYOffset, string posterFileName, string keyForPosterName, string keyForPoster, Floors[] floor, Character[] charactersToReplace, bool hasLooker = true, bool enterRooms = true, bool aggored = false, bool ignoreBelts = false, float capsuleRadius = 0f, bool usingWanderRounds = false, bool forceSpawn = false) where C : NPC
 		{
-			var npc = CreateNPC<C>(name, weight, spriteFileName, includeAnimator, pixelsPerUnit, spriteYOffset, posterFileName, keyForPosterName, keyForPoster, floor, hasLooker, enterRooms, aggored, ignoreBelts, capsuleRadius, usingWanderRounds);
+			var npc = CreateNPC<C>(name, weight, spriteFileName, includeAnimator, pixelsPerUnit, spriteYOffset, posterFileName, keyForPosterName, keyForPoster, floor, hasLooker, enterRooms, aggored, ignoreBelts, capsuleRadius, usingWanderRounds, forceSpawn);
 			npc.selection.gameObject.GetComponent<CustomNPCData>().replacementCharacters = charactersToReplace;
 			return npc;
 		}
@@ -243,15 +272,22 @@ namespace BB_MOD
 
 		// ---------------------------------------------- ITEM CREATION ----------------------------------------------
 
-		// Parameters of CreateItem():
-		// itemNameKey > key for the name of the item, itemDescKey > Item's Description (for store), large/small sprite file > name of the file for large/small sprite, shopPrice > price for shop
-		// itemCost > Another value for spawn chance, small values means higher chances of spawning (choose values between 1 and 70, values higher than 70 are almost impossible to get), spawnWeight > chance to spawn (in many situations, such as fieldtrips, faculties, etc.)
+		// Parameters of CreateItem() in order:
+
+		// itemNameKey > key for the name of the item
+		// itemDescKey > Item's Description (for store)
+		// large/small sprite file > name of the file for large/small sprite, shopPrice > price for shop
+		// itemCost > Another value for spawn chance, small values means higher chances of spawning (choose values between 1 and 70, values higher than 70 are almost impossible to get)
+		// spawnWeight > chance to spawn (in many situations, such as fieldtrips, faculties, etc.)
 		// SpawnFloors (Optional) set the floors the item will be able to spawn (default is all floors, including endless)
-		// largerPixelsPerUnit > same as npcs, the pixels for the larger sprite (higher values = smaller sizes); smallPixelsPerUnit > same as the previous one, but for the smaller sprite
-		// shoppingFloors > floors that the shop will accept the item (if you don't want to, you can always use Array.Empty<Floors>() ); shoppingWeight > chance to appear on shop
-		// activeObject (Optional, and unsafe if enabled) > Enables the original gameObject that handles the item class, this is only useful in case you use IEnumerator methods (Just make sure to handle any NullExceptions anyways)
+		// largerPixelsPerUnit > same as npcs, the pixels for the larger sprite (higher values = smaller sizes)
+		// smallPixelsPerUnit > same as the previous one, but for the smaller sprite
+		// shoppingFloors > floors that the shop will accept the item (if you don't want to, you can always use Array.Empty<Floors>() )
+		// shoppingWeight > chance to appear on shop
+		// activeObject (Optional; unsafe) > Enables the original gameObject that handles the item class, this is only useful in case you use IEnumerator methods (Just make sure to handle any NullExceptions anyways)
 		// includeOnMysteryRoom (Optional, disabled by default) > if item should be included on mystery room (uses the same weight used for world spawn), doesn't matter the floor, if there's mystery room, it'll spawn
 		// includeOnFieldTrip (Optional, disabled by default) > if item should be included on Field Trip (uses the same weight used for world spawn), ^^ same applies for field trips
+		// includeOnParty (Optional, disabled by default) > If item is also included on Party Event (uses the same weight used for world spawn), ^^ same applies
 
 		public void SetupItemWeights()
 		{
@@ -264,10 +300,10 @@ namespace BB_MOD
 		}
 
 
-		private WeightedItemObject CreateItem<I>(string itemNameKey, string itemDescKey, string largeSpriteFile, string smallSpriteFile, string itemName, int shopPrice, int itemCost, int spawnWeight, int largerPixelsPerUnit, Floors[] shoppingFloors, int shoppingWeight, bool includeOnMysteryRoom = false, bool includeOnFieldTrip = false, bool activeObject = false) where I : Item
+		private WeightedItemObject CreateItem<I>(string itemNameKey, string itemDescKey, string largeSpriteFile, string smallSpriteFile, string itemName, int shopPrice, int itemCost, int spawnWeight, int largerPixelsPerUnit, Floors[] shoppingFloors, int shoppingWeight, bool activeObject = false, bool includeOnMysteryRoom = false, bool includeOnFieldTrip = false, bool includeOnPartyEvent = false) where I : Item
 		{
 			Items cEnum = EnumExtensions.ExtendEnum<Items>(itemName);
-			customEnums.Add(cEnum);
+			customItemEnums.Add(cEnum);
 			var item = ObjectCreatorHandlers.CreateItemObject(itemNameKey, itemDescKey, AssetManager.SpriteFromTexture2D(AssetManager.TextureFromFile(Path.Combine(modPath, "Textures", "item", smallSpriteFile))), AssetManager.SpriteFromTexture2D(AssetManager.TextureFromFile(Path.Combine(modPath, "Textures", "item", largeSpriteFile)), new Vector2(0.5f, 0.5f), largerPixelsPerUnit), cEnum, shopPrice, itemCost);
 			var itemInstance = new GameObject(itemName + "_ItemInstance").AddComponent<I>(); // Creates Item Component from a new game object
 			DontDestroyOnLoad(itemInstance.gameObject); // Assure that it won't despawn so it doesn't break the item
@@ -290,6 +326,9 @@ namespace BB_MOD
 			if (includeOnMysteryRoom)
 				mysteryItems.Add(weightedItem);
 
+			if (includeOnPartyEvent)
+				partyItems.Add(weightedItem);
+
 			if (includeOnFieldTrip)
 				fieldTripItems.Add(new WeightedItem() {
 					selection = item, 
@@ -299,9 +338,9 @@ namespace BB_MOD
 			return weightedItem;
 		}
 
-		private WeightedItemObject CreateItem<I>(string itemNameKey, string itemDescKey, string largeSpriteFile, string smallSpriteFile, string itemName, int shopPrice, int itemCost, int spawnWeight, Floors[] spawnFloors, int largerPixelsPerUnit, Floors[] shoppingFloors, int shoppingWeight, bool includeOnMysteryRoom = false, bool includeOnFieldTrip = false, bool activeObject = false) where I : Item
+		private WeightedItemObject CreateItem<I>(string itemNameKey, string itemDescKey, string largeSpriteFile, string smallSpriteFile, string itemName, int shopPrice, int itemCost, int spawnWeight, Floors[] spawnFloors, int largerPixelsPerUnit, Floors[] shoppingFloors, int shoppingWeight, bool activeObject = false, bool includeOnMysteryRoom = false, bool includeOnFieldTrip = false, bool includeOnPartyEvent = false) where I : Item
 		{
-			var item = CreateItem<I>(itemNameKey, itemDescKey, largeSpriteFile, smallSpriteFile, itemName, shopPrice, itemCost, spawnWeight, largerPixelsPerUnit, shoppingFloors, shoppingWeight, includeOnMysteryRoom, includeOnFieldTrip, activeObject);
+			var item = CreateItem<I>(itemNameKey, itemDescKey, largeSpriteFile, smallSpriteFile, itemName, shopPrice, itemCost, spawnWeight, largerPixelsPerUnit, shoppingFloors, shoppingWeight, activeObject, includeOnMysteryRoom, includeOnFieldTrip, includeOnPartyEvent);
 			itemPair.Replace(itemPair.Count - 1, spawnFloors);
 			return item;
 		}
@@ -420,6 +459,11 @@ namespace BB_MOD
 			get => mysteryItems;
 		}
 
+		public List<WeightedItemObject> PartyItems
+		{
+			get => partyItems;
+		}
+
 		public List<WeightedItem> FieldTripItems
 		{
 			get
@@ -433,6 +477,8 @@ namespace BB_MOD
 		}
 
 		private readonly List<WeightedItemObject> mysteryItems = new List<WeightedItemObject>();
+
+		private readonly List<WeightedItemObject> partyItems = new List<WeightedItemObject>();
 
 		private readonly List<WeightedItem> fieldTripItems = new List<WeightedItem>();
 
@@ -450,7 +496,9 @@ namespace BB_MOD
 
 		public static EnvironmentController currentEc;
 
-		public List<Items> customEnums = new List<Items>();
+		public List<Items> customItemEnums = new List<Items>();
+
+		public List<Character> customNPCEnums = new List<Character>();
 
 	}
 }

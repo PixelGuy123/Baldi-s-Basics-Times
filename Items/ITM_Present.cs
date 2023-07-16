@@ -17,7 +17,7 @@ namespace BB_MOD.ExtraItems
 
 		public override bool Use(PlayerManager pm)
 		{
-			var itemEnum = ContentManager.instance.customEnums.GetItemByName("present"); // Get the Items enum of the item by the name, very useful!
+			var itemEnum = ContentManager.instance.customItemEnums.GetItemByName("present"); // Get the Items enum of the item by the name, very useful!
 
 
 

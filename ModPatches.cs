@@ -170,6 +170,17 @@ namespace BB_MOD
 		}
 	}
 
+	[HarmonyPatch(typeof(PartyEvent), "Begin")]
+	internal class IncludeExtraPartyItems
+	{
+		private static void Prefix(ref WeightedItemObject[] ___potentialItems)
+		{
+			var newItems = new List<WeightedItemObject>(___potentialItems);
+			newItems.AddRange(ContentManager.instance.PartyItems);
+			___potentialItems = newItems.ToArray();
+		}
+	}
+
 	// ---- Main Menu Changes ----
 
 	[HarmonyPatch(typeof(MainMenu), "Start")]
@@ -188,7 +199,7 @@ namespace BB_MOD
 
 	internal class SetupCustomNPCs
 	{
-		private static void Postfix(NPC __instance, ref Character ___character, ref Navigator ___navigator, ref EnvironmentController ___ec, ref bool ___ignoreBelts, ref bool ___aggroed, ref PosterObject ___poster, ref Looker ___looker)
+		private static void Postfix(NPC __instance, ref Character ___character, ref Navigator ___navigator, ref EnvironmentController ___ec, ref bool ___ignoreBelts, ref bool ___aggroed, ref PosterObject ___poster, ref Looker ___looker, ref bool ___ignorePlayerOnSpawn)
 		{
 			if (__instance.gameObject.name.StartsWith("CustomNPC_")) // setups NPC data here (for marked as customNpcs)
 			{
@@ -206,6 +217,7 @@ namespace BB_MOD
 				___ignoreBelts = data.IgnoreBelts;
 				___aggroed = data.Aggroed;
 				___poster = data.poster;
+				___ignorePlayerOnSpawn = data.forceSpawn;
 			}
 		}
 	}

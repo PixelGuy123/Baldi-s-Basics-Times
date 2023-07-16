@@ -91,5 +91,7 @@ namespace BB_MOD.NPCs
 		public bool useHeatMap;
 
 		public Character[] replacementCharacters = Array.Empty<Character>();
+
+		public bool forceSpawn;
 	}
 }
