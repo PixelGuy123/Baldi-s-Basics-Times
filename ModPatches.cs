@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace BB_MOD
 {
@@ -166,6 +167,17 @@ namespace BB_MOD
 			var newItems = new List<WeightedSelection<ItemObject>>(___items);
 			newItems.AddRange(ContentManager.instance.MysteryItems);
 			___items = newItems.ToArray();
+		}
+	}
+
+	// ---- Main Menu Changes ----
+
+	[HarmonyPatch(typeof(MainMenu), "Start")]
+	internal class ChangeToBeautifulImage
+	{
+		private static void Prefix(MainMenu __instance)
+		{
+			__instance.gameObject.transform.Find("Image").GetComponent<Image>().sprite = AssetManager.SpriteFromTexture2D(AssetManager.TextureFromFile(Path.Combine(ContentManager.modPath, "Textures", "otherMainMenu.png"))); // Changes main menu texture to my beautiful one lol
 		}
 	}
 

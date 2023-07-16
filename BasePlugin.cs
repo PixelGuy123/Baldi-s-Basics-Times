@@ -16,6 +16,7 @@ namespace BB_MOD
 			new GameObject("ModManager").AddComponent<ContentManager>();
 			ContentManager.modPath = AssetManager.GetModPath(this);
 
+			Logger.LogInfo($"{ModInfo.name} {ModInfo.version} has been initialized! Made by PixelGuy");
 
 			harmony.PatchAll();
 
