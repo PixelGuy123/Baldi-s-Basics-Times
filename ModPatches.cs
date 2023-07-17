@@ -2,6 +2,7 @@
 using BB_MOD.NPCs;
 using HarmonyLib;
 using MTM101BaldAPI.AssetManager;
+using Steamworks;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -65,9 +66,60 @@ namespace BB_MOD
 
 			__instance.ld.randomEvents.AddRange(ContentManager.instance.GetEvents(currentFloor)); // Add queued events for the floor
 
+
+
+			// Literally anything else
+
+			
+			// Reviving vent builder
+
+			var ventBuilder = new GameObject("ventBuilder", typeof(VentBuilder));
+
+			Object.DontDestroyOnLoad(ventBuilder);
+			
+			ventBuilder.SetActive(false);
+
+			List<ObjectBuilder> builders = new List<ObjectBuilder>(__instance.ld.forcedSpecialHallBuilders)
+			{
+				ventBuilder.GetComponent<VentBuilder>()
+			};
+
+			__instance.ld.forcedSpecialHallBuilders = builders.ToArray();
+
+
 		}
 	}
 
+	[HarmonyPatch(typeof(VentBuilder), "Build")]
+	internal class SetupVentBuilder
+	{
+		private static void Prefix(ref Transform ___ventCornerPre, ref Transform ___ventStriaghtPre, ref Transform ___ventTPre) // Setting Vent Builder Transforms (Apparently, they don't exist on main game)
+		{
+			var vent = GameObject.Find("Vent");
+			if (!vent)
+			{
+				var obj = GameObject.CreatePrimitive(PrimitiveType.Cube);
+				obj.name = "Vent";
+				Object.DontDestroyOnLoad(obj);
+				Material ventMat = new Material(Shader.Find("Shader Graphs/Standard"))
+				{
+					mainTexture = Resources.FindObjectsOfTypeAll<Texture2D>().First(x => x.name.ToLower() == "vent")
+				};
+				obj.transform.localScale = new Vector3(4f, 2f, 4f);
+				obj.transform.localPosition = new Vector3(0f, 9f, 3f);
+				obj.GetComponent<MeshRenderer>().material = ventMat;
+				vent = obj;
+			}
+			
+
+			
+
+			___ventCornerPre = vent.transform;
+			___ventStriaghtPre = vent.transform;
+			___ventTPre = vent.transform;
+
+		}
+	}
 	[HarmonyPatch(typeof(OfficeBuilderStandard), "Build")]
 	internal class InitializeReplacementNPCs
 	{

@@ -7,6 +7,11 @@ using UnityEngine;
 namespace BB_MOD.Events
 {
 
+
+	// ---- EVENT SUMMARY ----
+	// It'll put Principal on his office basically
+	// If he is distracted and gets out of the office, he'll comeback afterwards
+
 	public class PrincipalOut : RandomEvent
 	{
 		public override void Begin()
