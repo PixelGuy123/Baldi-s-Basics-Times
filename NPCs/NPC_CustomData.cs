@@ -93,5 +93,7 @@ namespace BB_MOD.NPCs
 		public Character[] replacementCharacters = Array.Empty<Character>();
 
 		public bool forceSpawn;
+
+		public Character isReplacing;
 	}
 }

@@ -1,4 +1,5 @@
-﻿using BB_MOD.NPCs;
+﻿using BB_MOD.Events;
+using BB_MOD.NPCs;
 using HarmonyLib;
 using MTM101BaldAPI.AssetManager;
 using System.Collections.Generic;
@@ -6,6 +7,7 @@ using System.IO;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
+using static UnityEngine.GraphicsBuffer;
 
 namespace BB_MOD
 {
@@ -36,7 +38,7 @@ namespace BB_MOD
 			
 			__instance.ld.potentialNPCs.AddRange(ContentManager.instance.GetNPCs(currentFloor));
 
-		items:
+		items: // Item Stuff
 
 			ContentManager.instance.SetupItemWeights();
 
@@ -55,6 +57,14 @@ namespace BB_MOD
 
 			if (__instance.ld.fieldTrip)
 				__instance.ld.fieldTripItems.AddRange(ContentManager.instance.FieldTripItems); // Add field trip items
+
+
+			// Event Stuff
+
+			ContentManager.instance.SetupEventWeights();
+
+			__instance.ld.randomEvents.AddRange(ContentManager.instance.GetEvents(currentFloor)); // Add queued events for the floor
+
 		}
 	}
 
@@ -118,6 +128,7 @@ namespace BB_MOD
 						NPC target = WeightedNPC.ControlledRandomSelectionList(npcsToChoose, rng);
 
 						rNpc.spawnableRooms = ContentManager.currentEc.npcsToSpawn[ContentManager.currentEc.npcsToSpawn.IndexOf(target)].spawnableRooms;
+						rNpc.GetComponent<CustomNPCData>().isReplacing = target.Character;
 
 
 						success = true;
@@ -132,6 +143,7 @@ namespace BB_MOD
 					{ 
 
 						rNpc.spawnableRooms = ContentManager.currentEc.npcsToSpawn[index].spawnableRooms;
+						rNpc.GetComponent<CustomNPCData>().isReplacing = ContentManager.currentEc.npcsToSpawn[index].Character;
 
 						success = true;
 
@@ -248,6 +260,24 @@ namespace BB_MOD
 
 				___npc = __instance.gameObject.GetComponent<NPC>(); // Sets npc to the looker
 
+			}
+		}
+	}
+
+	// Setupping Event Data
+	[HarmonyPatch(typeof(RandomEvent), "Initialize")]
+	internal class SetupRandomEventData
+	{
+		private static void Prefix(RandomEvent __instance, ref string ___eventDescKey, ref RandomEventType ___eventType, ref float ___minEventTime, ref float ___maxEventTime)
+		{
+			if (__instance.gameObject.name.StartsWith("CustomEv_")) // Finds out what is a custom event
+			{
+				var data = __instance.gameObject.GetComponent<CustomEventData>();
+				___eventDescKey = data.eventDescKey;
+				___eventType = data.myEvent;
+				___minEventTime = data.minEventTime;
+				___maxEventTime = data.maxEventTime;
+				__instance.gameObject.SetActive(true); // Set active the clone of the gameobject to not cause IEnumerator issues
 			}
 		}
 	}

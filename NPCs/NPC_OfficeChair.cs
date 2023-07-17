@@ -1,4 +1,5 @@
-﻿using MTM101BaldAPI;
+﻿using HarmonyLib;
+using MTM101BaldAPI;
 using MTM101BaldAPI.AssetManager;
 using System.Collections;
 using System.Collections.Generic;
@@ -50,8 +51,9 @@ namespace BB_MOD.NPCs
 		public override void Initialize()
 		{
 			base.Initialize();
-			AvailableFacultyTiles.AddRange(ec.AllTilesNoGarbage(false, false).Where(t => (t.room.category == RoomCategory.Faculty || t.room.category == RoomCategory.Office) && t.wallDirections.Length >= 2));
 			// Get all corners of every single faculty room
+			ec.rooms.Where(x => x.category == RoomCategory.Office || x.category == RoomCategory.Faculty).Do(x => AvailableFacultyTiles.AddRange(x.GetNewTileList().Where(s => s.wallDirections.Length >= 2)));
+			
 		}
 
 		private IEnumerable<TileController> CollectFacultyTilesExcept(RoomController currentRoom)

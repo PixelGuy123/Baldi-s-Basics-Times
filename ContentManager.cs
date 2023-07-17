@@ -1,5 +1,6 @@
 ﻿using BB_MOD.NPCs;
 using BB_MOD.ExtraItems;
+using BB_MOD.Events;
 using HarmonyLib;
 using MTM101BaldAPI;
 using MTM101BaldAPI.AssetManager;
@@ -66,6 +67,16 @@ namespace BB_MOD
 					return item;
 			}
 			return Character.Null;
+		}
+
+		public static RandomEventType GetEventByName(this List<RandomEventType> events, string name)
+		{
+			foreach (var item in events)
+			{
+				if (EnumExtensions.GetExtendedName<RandomEventType>((int)item).ToLower() == name.ToLower())
+					return item;
+			}
+			return RandomEventType.Fog; // There's no null value, so returns Fog by default
 		}
 
 		public static void Replace<T>(this List<T> values, int index, T value)
@@ -296,53 +307,124 @@ namespace BB_MOD
 
 			addedItems = true;
 
+			// Item Creation Here
+
 			allNewItems.Add(CreateItem<ITM_Present>("PRS_Name", "PRS_Desc", "present.png", "present.png", "Present", 120, 40, 30, new Floors[] { Floors.F3 }, 55, new Floors[] { Floors.F3 }, 60, includeOnMysteryRoom:true));
 		}
 
 
 		private WeightedItemObject CreateItem<I>(string itemNameKey, string itemDescKey, string largeSpriteFile, string smallSpriteFile, string itemName, int shopPrice, int itemCost, int spawnWeight, int largerPixelsPerUnit, Floors[] shoppingFloors, int shoppingWeight, bool activeObject = false, bool includeOnMysteryRoom = false, bool includeOnFieldTrip = false, bool includeOnPartyEvent = false) where I : Item
 		{
-			Items cEnum = EnumExtensions.ExtendEnum<Items>(itemName);
-			customItemEnums.Add(cEnum);
-			var item = ObjectCreatorHandlers.CreateItemObject(itemNameKey, itemDescKey, AssetManager.SpriteFromTexture2D(AssetManager.TextureFromFile(Path.Combine(modPath, "Textures", "item", smallSpriteFile))), AssetManager.SpriteFromTexture2D(AssetManager.TextureFromFile(Path.Combine(modPath, "Textures", "item", largeSpriteFile)), new Vector2(0.5f, 0.5f), largerPixelsPerUnit), cEnum, shopPrice, itemCost);
-			var itemInstance = new GameObject(itemName + "_ItemInstance").AddComponent<I>(); // Creates Item Component from a new game object
-			DontDestroyOnLoad(itemInstance.gameObject); // Assure that it won't despawn so it doesn't break the item
-			item.item = itemInstance;
-			item.name = itemName;
-			itemInstance.gameObject.SetActive(activeObject); // No null exceptions (Only if it contains Update() or similar )
-			var weightedItem = new WeightedItemObject()
+			try
 			{
-				selection = item,
-				weight = spawnWeight
-			};
-			allItems.Add(weightedItem);
-			itemPair.Add(new Floors[] { Floors.F1, Floors.F2, Floors.F3, Floors.END });
+				Items cEnum = EnumExtensions.ExtendEnum<Items>(itemName);
+				customItemEnums.Add(cEnum);
+				var item = ObjectCreatorHandlers.CreateItemObject(itemNameKey, itemDescKey, AssetManager.SpriteFromTexture2D(AssetManager.TextureFromFile(Path.Combine(modPath, "Textures", "item", smallSpriteFile))), AssetManager.SpriteFromTexture2D(AssetManager.TextureFromFile(Path.Combine(modPath, "Textures", "item", largeSpriteFile)), new Vector2(0.5f, 0.5f), largerPixelsPerUnit), cEnum, shopPrice, itemCost);
+				var itemInstance = new GameObject(itemName + "_ItemInstance").AddComponent<I>(); // Creates Item Component from a new game object
+				DontDestroyOnLoad(itemInstance.gameObject); // Assure that it won't despawn so it doesn't break the item
+				item.item = itemInstance;
+				item.name = itemName;
+				itemInstance.gameObject.SetActive(activeObject); // No null exceptions (Only if it contains Update() or similar )
+				var weightedItem = new WeightedItemObject()
+				{
+					selection = item,
+					weight = spawnWeight
+				};
+				allItems.Add(weightedItem);
+				itemPair.Add(new Floors[] { Floors.F1, Floors.F2, Floors.F3, Floors.END });
 
-			if (shoppingFloors.Length > 0 && (shoppingFloors[0] != Floors.None || shoppingFloors.Length > 1))
-			{
-				allShoppingItems.Add(new WeightedItemObject() { selection = item, weight = shoppingWeight}, shoppingFloors);
+				if (shoppingFloors.Length > 0 && (shoppingFloors[0] != Floors.None || shoppingFloors.Length > 1))
+				{
+					allShoppingItems.Add(new WeightedItemObject() { selection = item, weight = shoppingWeight }, shoppingFloors);
+				}
+
+				if (includeOnMysteryRoom)
+					mysteryItems.Add(weightedItem);
+
+				if (includeOnPartyEvent)
+					partyItems.Add(weightedItem);
+
+				if (includeOnFieldTrip)
+					fieldTripItems.Add(new WeightedItem()
+					{
+						selection = item,
+						weight = spawnWeight
+					});
+
+				return weightedItem;
 			}
-
-			if (includeOnMysteryRoom)
-				mysteryItems.Add(weightedItem);
-
-			if (includeOnPartyEvent)
-				partyItems.Add(weightedItem);
-
-			if (includeOnFieldTrip)
-				fieldTripItems.Add(new WeightedItem() {
-					selection = item, 
-					weight = spawnWeight 
-				});
-
-			return weightedItem;
+			catch (Exception e)
+			{
+				Debug.LogException(e);
+				Debug.LogWarning($"Looks like a parameter is wrong on the Item: {itemName}, please go back to your method and make sure every file path/name is correct!");
+				Debug.LogWarning("Your Item will be created, but will never be used on the game");
+			}
+			itemPair.Add(Array.Empty<Floors>());
+			return new WeightedItemObject()
+			{
+				weight = 50,
+				selection = null
+			};
 		}
+
 
 		private WeightedItemObject CreateItem<I>(string itemNameKey, string itemDescKey, string largeSpriteFile, string smallSpriteFile, string itemName, int shopPrice, int itemCost, int spawnWeight, Floors[] spawnFloors, int largerPixelsPerUnit, Floors[] shoppingFloors, int shoppingWeight, bool activeObject = false, bool includeOnMysteryRoom = false, bool includeOnFieldTrip = false, bool includeOnPartyEvent = false) where I : Item
 		{
 			var item = CreateItem<I>(itemNameKey, itemDescKey, largeSpriteFile, smallSpriteFile, itemName, shopPrice, itemCost, spawnWeight, largerPixelsPerUnit, shoppingFloors, shoppingWeight, activeObject, includeOnMysteryRoom, includeOnFieldTrip, includeOnPartyEvent);
 			itemPair.Replace(itemPair.Count - 1, spawnFloors);
 			return item;
+		}
+
+		// ---------------------------------------------- EVENT CREATION ----------------------------------------------
+
+
+		// Parameters of CreateEvent<E>() in order:
+		// eventName > name of event (also used to the event enum)
+		// eventDescKey > Json key from Language/English/eventCaps.json with the description of the event
+		// minEventTime > Minimum time the event will last (a rng chooses a value between the min and max time)
+		// maxEventTime > Maximum time the event will last (a rng chooses a value between the min and max time)
+		// availableFloors > Floors that the event will be enabled
+		// weight > weight/chance for the event to be queued into the floor
+
+		public void SetupEventWeights()
+		{
+			if (addedEvents)
+				return;
+
+			addedEvents = true;
+
+			// Event Creation Here
+
+			allEvents.Add(CreateEvent<PrincipalOut>("PrincipalOut", "Event_PriOut", 40f, 60f, new Floors[] { Floors.F2 }, 35));
+
+		}
+
+
+
+		private WeightedRandomEvent CreateEvent<E>(string eventName, string eventDescKey, float minEventTime, float maxEventTime, Floors[] availableFloors, int weight) where E : RandomEvent
+		{
+			var obj = new GameObject("CustomEv_" + eventName, typeof(E), typeof(CustomEventData));
+			var data = obj.GetComponent<CustomEventData>();
+			data.eventName = eventName;
+			var cEnum = EnumExtensions.ExtendEnum<RandomEventType>(eventName);
+			data.myEvent = cEnum;
+			customEventEnums.Add(cEnum);
+			data.eventDescKey = eventDescKey;
+			data.minEventTime = minEventTime;
+			data.maxEventTime = maxEventTime;
+
+			eventPair.Add(availableFloors);
+
+			DontDestroyOnLoad(obj);
+			obj.SetActive(false);
+
+			var weightedItem = new WeightedRandomEvent()
+			{
+				selection = obj.GetComponent<E>(),
+				weight = weight
+			};
+
+			return weightedItem;
 		}
 
 
@@ -373,15 +455,27 @@ namespace BB_MOD
 			{ Floors.END, false }
 		};
 
+		private readonly Dictionary<Floors, bool> accessedEvents = new Dictionary<Floors, bool>() // Prevents the weights from being added again (items)
+		{
+			{ Floors.F1, false },
+			{ Floors.F2, false },
+			{ Floors.F3, false },
+			{ Floors.END, false }
+		};
+
 		private readonly List<WeightedNPC> allNpcs = new List<WeightedNPC>();
 
 		private readonly List<WeightedItemObject> allNewItems = new List<WeightedItemObject>();
 
 		private readonly Dictionary<WeightedItemObject, Floors[]> allShoppingItems = new Dictionary<WeightedItemObject, Floors[]>();
 
+		private readonly List<WeightedRandomEvent> allEvents = new List<WeightedRandomEvent>();
+
 		private readonly List<Floors[]> npcPair = new List<Floors[]>();
 
 		private readonly List<Floors[]> itemPair = new List<Floors[]>();
+
+		private readonly List<Floors[]> eventPair = new List<Floors[]>();
 
 		public List<WeightedNPC> GetNPCs(Floors floor, bool onlyReplacementNPCs = false)
 		{
@@ -395,6 +489,23 @@ namespace BB_MOD
 				if (npcPair[i].Contains(floor) && ((!onlyReplacementNPCs && allNpcs[i].selection.gameObject.GetComponent<CustomNPCData>().replacementCharacters.Length == 0) || (allNpcs[i].selection.gameObject.GetComponent<CustomNPCData>().replacementCharacters.Length > 0 && onlyReplacementNPCs))) // Check whether the npc is from said floor and if it is a replacement NPC or not
 				{
 					npcs.Add(allNpcs[i]);
+				}
+			}
+			return npcs;
+		}
+
+		public List<WeightedRandomEvent> GetEvents(Floors floor)
+		{
+			if (accessedEvents[floor])
+				return new List<WeightedRandomEvent>();
+
+			accessedEvents[floor] = true;
+			var npcs = new List<WeightedRandomEvent>();
+			for (int i = 0; i < allEvents.Count; i++)
+			{
+				if (eventPair[i].Contains(floor)) // Check whether the item is from said floor
+				{
+					npcs.Add(allEvents[i]);
 				}
 			}
 			return npcs;
@@ -438,6 +549,11 @@ namespace BB_MOD
 			{
 				get => allNpcs;
 			}
+
+		public List<WeightedRandomEvent> AllEvents
+		{
+			get => allEvents;
+		}
 
 		public List<WeightedItemObject> AllNewItems
 		{
@@ -490,6 +606,8 @@ namespace BB_MOD
 
 		private bool addedItems = false;
 
+		private bool addedEvents = false;
+
 		public static ContentManager instance;
 
 		public static string modPath;
@@ -499,6 +617,8 @@ namespace BB_MOD
 		public List<Items> customItemEnums = new List<Items>();
 
 		public List<Character> customNPCEnums = new List<Character>();
+
+		public List<RandomEventType> customEventEnums = new List<RandomEventType>();
 
 	}
 }
