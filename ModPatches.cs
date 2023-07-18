@@ -1,14 +1,13 @@
 ﻿using BB_MOD.Events;
 using BB_MOD.NPCs;
+using BB_MOD.Extra;
 using HarmonyLib;
 using MTM101BaldAPI.AssetManager;
-using Steamworks;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
-using static UnityEngine.GraphicsBuffer;
 
 namespace BB_MOD
 {
@@ -86,6 +85,8 @@ namespace BB_MOD
 
 			__instance.ld.forcedSpecialHallBuilders = builders.ToArray();
 
+			
+
 
 		}
 	}
@@ -93,7 +94,8 @@ namespace BB_MOD
 	[HarmonyPatch(typeof(VentBuilder), "Build")]
 	internal class SetupVentBuilder
 	{
-		private static void Prefix(ref Transform ___ventCornerPre, ref Transform ___ventStriaghtPre, ref Transform ___ventTPre) // Setting Vent Builder Transforms (Apparently, they don't exist on main game)
+		[HarmonyPrefix]
+		private static void MakeVents(ref Transform ___ventCornerPre, ref Transform ___ventStriaghtPre, ref Transform ___ventTPre) // Setting Vent Builder Transforms (Apparently, they don't exist on main game)
 		{
 			var vent = GameObject.Find("Vent");
 			if (!vent)
@@ -101,13 +103,44 @@ namespace BB_MOD
 				var obj = GameObject.CreatePrimitive(PrimitiveType.Cube);
 				obj.name = "Vent";
 				Object.DontDestroyOnLoad(obj);
-				Material ventMat = new Material(Shader.Find("Shader Graphs/Standard"))
-				{
-					mainTexture = Resources.FindObjectsOfTypeAll<Texture2D>().First(x => x.name.ToLower() == "vent")
-				};
+
+				Material ventMat = Resources.FindObjectsOfTypeAll<Material>().First(x => x.name.ToLower() == "vent");
+				ventMat.mainTexture = AssetManager.TextureFromFile(Path.Combine(ContentManager.modPath, "Textures", "ventAtlas.png"));
+				
 				obj.transform.localScale = new Vector3(4f, 2f, 4f);
-				obj.transform.localPosition = new Vector3(0f, 9f, 3f);
+
+				Vector2[] mesh = obj.GetComponent<MeshFilter>().mesh.uv;
+				mesh = ContentUtilities.ConvertSideToTexture(0, 0, 256, 256, 512, 256, 0, mesh); // Took me a long time to figure out this lol (Pro Tip: CodeMonkey tutorials are useful)
+				mesh = ContentUtilities.ConvertSideToTexture(0, 0, 256, 256, 512, 256, 4, mesh);
+				mesh = ContentUtilities.ConvertSideToTexture(-256, 0, 256, 256, 512, 256, 8, mesh);
+				mesh = ContentUtilities.ConvertSideToTexture(256, 0, 256, 251, 512, 256, 12, mesh);
+				mesh = ContentUtilities.ConvertSideToTexture(0, 0, 256, 256, 512, 256, 16, mesh);
+				mesh = ContentUtilities.ConvertSideToTexture(0, 0, 256, 256, 512, 256, 20, mesh);
+
+				obj.GetComponent<MeshFilter>().mesh.uv = mesh;
+
+
 				obj.GetComponent<MeshRenderer>().material = ventMat;
+
+				obj.layer = 2;
+
+
+
+				// Setup Audio Stuff
+				var src = obj.AddComponent<AudioSource>();
+				var aud = obj.AddComponent<AudioManager>();
+				aud.audioDevice = src;
+				src.maxDistance = 15f;
+				src.minDistance = 0f;
+				src.rolloffMode = AudioRolloffMode.Custom;
+				src.spatialBlend = 1f;
+				src.dopplerLevel = 0f;
+;
+				// Done with Audio Stuff
+
+				obj.AddComponent<Vent>();
+				obj.SetActive(false);
+
 				vent = obj;
 			}
 			
@@ -119,7 +152,15 @@ namespace BB_MOD
 			___ventTPre = vent.transform;
 
 		}
+		[HarmonyPostfix]
+		private static void MakeVentsPositionsALittleBetter(System.Random cRng) // as the method name suggests
+		{
+			var vents = Object.FindObjectsOfType<Vent>(true).Where(x => x.gameObject.name.ToLower().Contains("clone"));
+			vents.Do(x => x.gameObject.SetActive(true));
+			vents.Do(x => x.transform.localPosition = new Vector3(cRng.Next(2) == 0 ? (float)cRng.NextDouble() * 2f : (float)cRng.NextDouble() * -2f, 9f, cRng.Next(2) == 0 ? (float)cRng.NextDouble() * 2f : (float)cRng.NextDouble() * -2f)); // Random value between -5 and 5 as x and z offset
+		}
 	}
+
 	[HarmonyPatch(typeof(OfficeBuilderStandard), "Build")]
 	internal class InitializeReplacementNPCs
 	{

@@ -92,6 +92,30 @@ namespace BB_MOD
 		}
 	}
 
+	public static class ContentUtilities
+	{
+		public static Vector2[] ConvertSideToTexture(int x, int y, int width, int height, int texWidth, int texHeight, int index, Vector2[] oldUv)
+		{
+			Vector2[] uv = oldUv;
+			Vector2[] newUvs = GetUVRectangles(x, y, width, height, texWidth, texHeight);
+			int setIdx = index;
+			for (int i = 0; i < 4; i++)
+			{
+				uv[setIdx] = newUvs[i];
+				setIdx++;
+			}
+			return uv;
+		}
+		private static Vector2 ConvertToUVCoords(int x, int y, int width, int height) => new Vector2((float)x / width, (float)y / height);
+
+		private static Vector2[] GetUVRectangles(int x, int y, int width, int height, int textWidth, int textHeight) => new Vector2[] {
+			ConvertToUVCoords(x, y + height, textWidth, textHeight),
+			ConvertToUVCoords(x, y, textWidth, textHeight),
+			ConvertToUVCoords(x + width, y, textWidth, textHeight),
+			ConvertToUVCoords(x + width, y + height, textWidth, textHeight)
+		};
+	}
+
 	public class ContentManager : MonoBehaviour
 	{
 
