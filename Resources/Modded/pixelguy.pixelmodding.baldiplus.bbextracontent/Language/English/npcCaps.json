@@ -7,5 +7,8 @@
 	{"key":"PST_HapH_Desc","value":"Nothing's more celebratory than Happy Holidays itself! Always celebrating holidays and coming with surprises!"},
 	{"key":"Vfx_SI_BaldiHere","value":"Hey Baldi (Hey Baldi)! Over Here (Here)!"},
 	{"key":"PST_SI_Name","value":"Super Intendent"},
-	{"key":"PST_SI_Desc","value":"If <b>they</b> see any student sneaking out of their classes, <b>They</b> will always alert Professor Baldi about the unfortunate student!"}
+	{"key":"PST_SI_Desc","value":"If <b>they</b> see any student sneaking out of their classes, <b>They</b> will always alert Professor Baldi about the unfortunate student!"},
+	{"key":"Vfx_Forgotten_Warning","value":"*Weird bell-like sound*"},
+	{"key":"PST_Forgotten_Name","value":"Forgotten"},
+	{"key":"PST_Forgotten_Name_Desc","value":"If it sees you, try not to get grabbed if it' is going in your direction."}
 ]}
