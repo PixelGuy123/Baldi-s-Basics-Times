@@ -175,6 +175,7 @@ namespace BB_MOD
 			allNpcs.Add(CreateNPC<OfficeChair>("Office Chair", 35, new string[] { "officechair.png", "officechair_disabled.png" }, false, 18f, -0.8f, "pri_ofc.png", "PST_OFC_Name", "PST_OFC_Desc", new Floors[] { Floors.F1, Floors.END }, new RoomCategory[] { RoomCategory.Faculty }, hasLooker: false, aggored: true, capsuleRadius: 4f, forceSpawn: true)); // PixelGuy
 			allNpcs.Add(CreateNPC<HappyHolidays>("Happy Holidays", 15, new string[] { "happyholidays.png" }, false, 70f, -1.5f, "pri_hapho.png", "PST_HapH_Name", "PST_HapH_Desc", new Floors[] { Floors.F1 }, enterRooms: false, capsuleRadius: 3f)); // PixelGuy
 			allNpcs.Add(CreateNPC<SuperIntendent>("Super Intendent", 65, new string[] { "Superintendent.png" }, false, 50f, -1f, "pri_SI.png", "PST_SI_Name", "PST_SI_Desc", new Floors[] { Floors.F2, Floors.END }, usingWanderRounds:true)); // PixelGuy
+			allNpcs.Add(CreateNPC<Forgotten>("Forgotten", 40, new string[] { "forgotten.png" }, false, 25f, 0f, "pri_forgotten.png", "PST_Forgotten_Name", "PST_Forgotten_Name_Desc", new Floors[] {Floors.F2, Floors.F3, Floors.END }, enterRooms: true, capsuleRadius: 4f)); // JDvideosPR
 
 			// CreateReplacementNPC methods should be put here:
 
