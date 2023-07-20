@@ -7,7 +7,7 @@ using UnityEngine;
 namespace BB_MOD.NPCs
 {
 	// ------ NPC SUMMARY ------
-	// If the player gets in the sight of Forgotten, it will play a Loud Noise and it will run 5 seconds to a random destination. If it touches the player, it will alert Baldi with a loud noise and move the player to a random destination with it. After it moves the player, it cannot move the player again until you lose or beat the Floor.
+	// If the player gets in sight of Forgotten, it will run for 5 seconds to a random destination. If it touches the player, it will alert Baldi with a loud noise and move the player to a random destination for 5 seconds with it. After it moves the player, it cannot move the player again until you lose or beat the Floor, but it will still play the sound and alert Baldi.
 	// Pros: Can move the player out of a dangerous situation if needed.
 	// Cons: It will alert Baldi anyways.
 	
