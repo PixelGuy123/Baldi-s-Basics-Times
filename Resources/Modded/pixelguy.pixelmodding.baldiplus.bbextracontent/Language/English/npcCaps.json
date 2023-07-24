@@ -10,5 +10,17 @@
 	{"key":"PST_SI_Desc","value":"If <b>they</b> see any student sneaking out of their classes, <b>They</b> will always alert Professor Baldi about the unfortunate student!"},
 	{"key":"Vfx_Forgotten_Warning","value":"*Weird bell-like sound*"},
 	{"key":"PST_Forgotten_Name","value":"Forgotten"},
-	{"key":"PST_Forgotten_Name_Desc","value":"If it sees you, try not to get grabbed if it' is going in your direction."}
+	{"key":"PST_Forgotten_Name_Desc","value":"If it sees you, try not to get grabbed if it' is going in your direction."},
+	{"key":"PST_SI_Name","value":"Crazy Clock"},
+	{"key":"PST_SI_Desc","value":"A shy clock that likes to hang around on walls, he definitely won't like someone to interrupt his <color=red><b>Tick-a-Tocks</b></color>"},
+	{"key":"Vfx_CC_Scream","value":"*Annoying Scream*"},
+	{"key":"Vfx_CC_Tick","value":"*Tick*"},
+	{"key":"Vfx_CC_Tack","value":"*Tack*"},
+	{"key":"Vfx_CC_Frown","value":"*Frowning Noises*"},
+	{"key":"Vfx_DRUM_Music","value":"*Music*"},
+	{"key":"Vfx_DRUM_LetsDrum","value":"TIME TO DRUM! (Let's Drum!)"},
+	{"key":"Vfx_DRUM_Annoyence","value":"I LOVE TO DRUM!"},
+	{"key":"PST_DRUM_Name","value":"Let's Drum"},
+	{"key":"PST_DRUM_Desc","value":"He looks for a mate to show his talents on drums, despite them being incredibly <b>loud!</b>"}
+	
 ]}

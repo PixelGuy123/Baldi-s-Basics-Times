@@ -33,7 +33,7 @@ namespace BB_MOD.NPCs
 				WanderRandom();
 			}
 
-			if (isMoving == true)
+			if (isMoving)
 			{
 				movingPlayer.transform.position = gameObject.transform.position;
 			}
@@ -67,11 +67,12 @@ namespace BB_MOD.NPCs
 					audMan.PlaySingle(aud_ForgottenWarning);
 					ec.MakeNoise(transform.position, 70); // Alert Baldi
 					movingPlayer = player;
-					if (canMoveAgain == true)
+					if (canMoveAgain)
 					{
 						isMoving = true;
 					}
 					canMoveAgain = false;
+					StopAllCoroutines();
 					StartCoroutine(MovingCooldown(5f));
 				}
 			}
@@ -83,6 +84,10 @@ namespace BB_MOD.NPCs
 			while (cooldown > 0f)
 			{
 				cooldown -= Time.deltaTime * ec.NpcTimeScale;
+				yield return null;
+			}
+			while (looker.IsVisible)
+			{
 				yield return null;
 			}
 			navigator.maxSpeed = normalSpeed;
@@ -97,17 +102,24 @@ namespace BB_MOD.NPCs
 				cooldown -= Time.deltaTime * ec.NpcTimeScale;
 				yield return null;
 			}
+			while (looker.IsVisible)
+			{
+				yield return null;
+			}
+			navigator.maxSpeed = normalSpeed;
 			isMoving = false;
 			yield break;
 		}
 
-		public AudioManager audMan;
+		private AudioManager audMan;
 
-        public SoundObject aud_ForgottenWarning;
+		private SoundObject aud_ForgottenWarning;
 
 		private PlayerManager movingPlayer = null;
-		public bool isMoving = false;
-		public bool canMoveAgain = true;
+
+		private bool isMoving = false;
+
+		private bool canMoveAgain = true;
 
 		[SerializeField]
         private const float normalSpeed = 1f;

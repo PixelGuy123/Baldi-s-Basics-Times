@@ -1,11 +1,8 @@
 ﻿using HarmonyLib;
-using MTM101BaldAPI.AssetManager;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Reflection.Emit;
 using UnityEngine;
-using UnityEngine.U2D;
 
 namespace BB_MOD.NPCs
 {
@@ -95,5 +92,23 @@ namespace BB_MOD.NPCs
 		public bool forceSpawn;
 
 		public Character isReplacing;
+
+		public Material[] materials = new Material[2]; // 0 - Billboard sprite, 1 - Flat sprite
+
+		private int currentMat = 0;
+
+		public void SwitchMaterials(bool flatMat)
+		{
+			spriteObject.GetComponent<SpriteRenderer>().material = flatMat ? materials[1] : materials[0];
+			spriteObject.GetComponent<Billboard>().enabled = !flatMat;
+			currentMat = flatMat ? 1 : 0;
+		}
+
+		public void SwitchMaterials()
+		{
+			currentMat = currentMat + 1 >= materials.Length ? 0 : currentMat + 1;
+			spriteObject.GetComponent<Billboard>().enabled = currentMat == 0;
+			spriteObject.GetComponent<SpriteRenderer>().material = materials[currentMat];
+		}
 	}
 }

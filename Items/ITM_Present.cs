@@ -22,9 +22,11 @@ namespace BB_MOD.ExtraItems
 
 
 
-			ItemSoundHolder.CreateSoundHolder(pm.transform, ObjectCreatorHandlers.CreateSoundObject(AssetManager.AudioClipFromFile(Path.Combine(ContentManager.modPath, "Audio", "item", "prs_unbox.wav")), "Vfx_PRS_Unbox", SoundType.Voice, new Color(77, 77, 255))); // Unused caption
+			ItemSoundHolder.CreateSoundHolder(pm.transform, ObjectCreatorHandlers.CreateSoundObject(AssetManager.AudioClipFromFile(Path.Combine(ContentManager.modPath, "Audio", "item", "prs_unbox.wav")), "Vfx_PRS_Unbox", SoundType.Voice, new Color(77, 77, 255)), false); // Unused caption
 
 			pm.itm.SetItem(WeightedItemObject.RandomSelection(ContentManager.instance.GlobalItems.Where(x => x.selection.itemType != itemEnum && x.selection.itemType != Items.None).ToArray()), pm.itm.selectedItem);
+
+			Destroy(gameObject);
 
 			return false;
 		}

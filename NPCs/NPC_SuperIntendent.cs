@@ -80,9 +80,9 @@ namespace BB_MOD.NPCs
 		}
 
 
-        public AudioManager audMan;
+		private AudioManager audMan;
 
-		public SoundObject aud_BaldiComeHere;
+		private SoundObject aud_BaldiComeHere;
 
 		private bool called = false;
 

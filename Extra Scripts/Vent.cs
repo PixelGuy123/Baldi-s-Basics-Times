@@ -1,8 +1,6 @@
-﻿using MTM101BaldAPI.AssetManager;
-using MTM101BaldAPI;
+﻿using MTM101BaldAPI;
 using System.IO;
 using UnityEngine;
-using HarmonyLib;
 
 namespace BB_MOD.Extra
 {
@@ -12,7 +10,7 @@ namespace BB_MOD.Extra
 		{
 			audMan = GetComponent<AudioManager>();
 			Destroy(GetComponent<BoxCollider>());
-			aud_ventNoise = ObjectCreatorHandlers.CreateSoundObject(AssetManager.AudioClipFromFile(Path.Combine(ContentManager.modPath, "Audio", "ventNoise.wav")), "Vfx_VentNoise", SoundType.Effect, Color.white);
+			aud_ventNoise = ObjectCreatorHandlers.CreateSoundObject(ContentUtilities.GetAudioClip(Path.Combine(ContentManager.modPath, "Audio", "ventNoise.wav")), "Vfx_VentNoise", SoundType.Effect, Color.white);
 
 			audMan.QueueAudio(aud_ventNoise);
 			audMan.SetLoop(true);

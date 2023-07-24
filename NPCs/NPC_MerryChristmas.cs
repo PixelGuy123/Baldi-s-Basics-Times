@@ -70,6 +70,7 @@ namespace BB_MOD.NPCs
 
 		private IEnumerator Cooldown(float val)
 		{
+			navigator.enabled = false;
 			spriteBase.transform.position -= new Vector3(0f, 10f, 0f);
 			disabled = true;
 			float cooldown = val;
@@ -84,6 +85,7 @@ namespace BB_MOD.NPCs
 				yield return null;
 			}
 
+			navigator.enabled = true;
 			navigator.maxSpeed = normalSpeed;
 			disabled = false;
 			spriteBase.transform.position += new Vector3(0f, 10f, 0f);
@@ -91,9 +93,9 @@ namespace BB_MOD.NPCs
 		}
 
 
-        public AudioManager audMan;
+        private AudioManager audMan;
 
-        public SoundObject aud_MerryChristmas;
+        private SoundObject aud_MerryChristmas;
 
 		private bool disabled = false;
 
