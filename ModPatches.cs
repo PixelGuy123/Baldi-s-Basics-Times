@@ -128,7 +128,7 @@ namespace BB_MOD
 						__instance.ld.minFacultyRooms += 1;
 						__instance.ld.maxFacultyRooms += 2;
 						__instance.ld.additionalNPCs += 2;
-						__instance.ld.maxLightDistance -= 10;
+						__instance.ld.maxLightDistance = 6;
 						break;
 					case Floors.END:
 						__instance.ld.minClassRooms = 6;
@@ -141,7 +141,7 @@ namespace BB_MOD
 						__instance.ld.maxReplacementHalls += 2;
 						__instance.ld.maxFacultyRooms += 3;
 						__instance.ld.additionalNPCs += 3;
-						__instance.ld.maxLightDistance -= 5;
+						__instance.ld.maxLightDistance = 5;
 						break;
 					case Floors.F3:
 						__instance.ld.maxClassRooms = 12;
