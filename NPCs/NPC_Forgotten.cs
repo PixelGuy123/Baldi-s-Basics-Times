@@ -102,7 +102,7 @@ namespace BB_MOD.NPCs
 				cooldown -= Time.deltaTime * ec.NpcTimeScale;
 				yield return null;
 			}
-			while (looker.IsVisible)
+			while (looker.IsVisible && !isMoving)
 			{
 				yield return null;
 			}

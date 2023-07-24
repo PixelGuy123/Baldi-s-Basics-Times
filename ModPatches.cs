@@ -25,6 +25,14 @@ namespace BB_MOD
 			bool accessedFloor = ContentManager.instance.HasAccessedFloor(currentFloor);
 			EnvironmentExtraVariables.currentFloor = currentFloor;
 			EnvironmentExtraVariables.ec = __instance.Ec;
+
+			if (currentFloor != Floors.END && !ContentManager.instance.HasAccessedFloor(currentFloor))
+			{
+				ContentManager.instance.AddLevelObject(Object.Instantiate(__instance.ld));
+			}
+
+			__instance.ld.previousLevels = ContentManager.instance.GetLevelObjectCopy(__instance.ld);
+
 			if (!ContentManager.instance.beans)
 			{
 				try
@@ -118,6 +126,7 @@ namespace BB_MOD
 						__instance.ld.minFacultyRooms += 1;
 						__instance.ld.maxFacultyRooms += 2;
 						__instance.ld.additionalNPCs += 2;
+						__instance.ld.maxLightDistance -= 10;
 						break;
 					case Floors.END:
 						__instance.ld.minClassRooms = 6;
@@ -130,6 +139,7 @@ namespace BB_MOD
 						__instance.ld.maxReplacementHalls += 2;
 						__instance.ld.maxFacultyRooms += 3;
 						__instance.ld.additionalNPCs += 3;
+						__instance.ld.maxLightDistance -= 5;
 						break;
 					case Floors.F3:
 						__instance.ld.maxClassRooms = 12;

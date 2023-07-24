@@ -7,12 +7,12 @@ using UnityEngine;
 namespace BB_MOD.NPCs
 {
 	[HarmonyPatch(typeof(Baldi))]
-	[HarmonyPatch("OnTriggerEnter")] // Remember myself to remove this lol
+	[HarmonyPatch("OnTriggerEnter")]
 	class Baldistop
 	{
 		static bool Prefix()
 		{
-			return false;
+			return !ContentManager.instance.DebugMode;
 		}
 	}
 
@@ -23,7 +23,7 @@ namespace BB_MOD.NPCs
 	{
 		static void Postfix(PlayerManager __instance)
 		{
-			if (Input.GetKeyDown(KeyCode.H))
+			if (ContentManager.instance.DebugMode && Input.GetKeyDown(KeyCode.H))
 			{
 				IntVector2 pos = IntVector2.GetGridPosition(__instance.transform.position);
 				Debug.Log("My player position is: " + pos.x + "," + pos.z);
@@ -37,9 +37,12 @@ namespace BB_MOD.NPCs
 	{
 		static void Prefix(RoomController room, WeightedTransform[] ___decorations)
 		{
-			Debug.Log("Builder Room Category: " + room.category + " at index: " + room.position.x + "," + room.position.z);
-			Debug.Log("Builder Decorations:");
-			___decorations.Do(x => Debug.Log("Selection: " + x.selection.name + " | Weight: " + x.weight));
+			if (ContentManager.instance.DebugMode)
+			{
+				Debug.Log("Builder Room Category: " + room.category + " at index: " + room.position.x + "," + room.position.z);
+				Debug.Log("Builder Decorations:");
+				___decorations.Do(x => Debug.Log("Selection: " + x.selection.name + " | Weight: " + x.weight));
+			}
 		}
 	}
 
@@ -48,7 +51,7 @@ namespace BB_MOD.NPCs
 	{
 		private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
 		{
-			bool changedCount = false;
+			bool changedCount = !ContentManager.instance.DebugMode;
 			using (var enumerator = instructions.GetEnumerator())
 			{
 				while (enumerator.MoveNext())

@@ -1,5 +1,5 @@
-﻿using BB_MOD.Events;
-using BB_MOD.ExtraItems;
+﻿using BB_MOD.ExtraItems;
+using BB_MOD.Events;
 using BB_MOD.NPCs;
 using HarmonyLib;
 using MTM101BaldAPI;
@@ -20,7 +20,7 @@ using UnityEngine.Networking;
 namespace BB_MOD
 {
 
-	public enum Floors
+    public enum Floors
 	{
 		None, // This value is reserved and should never be used in an object!
 		F1,
@@ -1138,6 +1138,39 @@ namespace BB_MOD
 			}
 		}
 
+		public LevelObject[] GetLevelObjectCopy(LevelObject ld)
+		{
+			LevelObject[] array = Array.Empty<LevelObject>();
+			var copyArray = copyOfLevelObjects.Where(x => x).OrderBy(x => x.name).ToArray();
+
+			for (int i = 0; i < copyArray.Length; i++)
+			{
+				if (copyArray[i].name.Contains(ld.name))
+				{  // Found, stop
+					break;
+				}
+
+				array = array.AddToArray(copyArray[i]);
+			}
+
+			return array;
+		}
+
+		public void AddLevelObject(LevelObject ld)
+		{
+			if (!copyOfLevelObjects.Contains(ld))
+			{
+				for (int i = 0; i < copyOfLevelObjects.Length; i++)
+				{
+					if (!copyOfLevelObjects[i])
+					{
+						copyOfLevelObjects[i] = ld;
+						break;
+					}
+				}
+			}
+		}
+
 
 
 
@@ -1174,9 +1207,19 @@ namespace BB_MOD
 
 		private readonly List<WeightedItemObject> allItems = new List<WeightedItemObject>();
 
+		private bool debugMode = false;
+
+		public bool DebugMode
+		{
+			get => debugMode;
+			set => debugMode = value;
+		}
+
 		public Texture2D sweepPoster; // This variable is used SPECIFICALLY for a patch that changes gotta sweep parameters, so when switching back, I use this variable
 
 		public Sprite sweepSprite; // Same applies here
+
+		private LevelObject[] copyOfLevelObjects = new LevelObject[3]; // A copy of each level object to replace the current one (so custom characters aren't added to the next level)
 
 	}
 }
