@@ -1,5 +1,5 @@
-﻿using BB_MOD.ExtraItems;
-using BB_MOD.Events;
+﻿using BB_MOD.Events;
+using BB_MOD.ExtraItems;
 using BB_MOD.NPCs;
 using HarmonyLib;
 using MTM101BaldAPI;
@@ -20,7 +20,7 @@ using UnityEngine.Networking;
 namespace BB_MOD
 {
 
-    public enum Floors
+	public enum Floors
 	{
 		None, // This value is reserved and should never be used in an object!
 		F1,
@@ -1158,17 +1158,20 @@ namespace BB_MOD
 
 		public void AddLevelObject(LevelObject ld)
 		{
-			if (!copyOfLevelObjects.Contains(ld))
+			foreach (var item in copyOfLevelObjects)
 			{
-				for (int i = 0; i < copyOfLevelObjects.Length; i++)
+				if (item && item.name.Contains(ld.name)) return;
+			}
+
+			for (int i = 0; i < copyOfLevelObjects.Length; i++)
+			{
+				if (!copyOfLevelObjects[i])
 				{
-					if (!copyOfLevelObjects[i])
-					{
-						copyOfLevelObjects[i] = ld;
-						break;
-					}
+					copyOfLevelObjects[i] = ld;
+					break;
 				}
 			}
+
 		}
 
 

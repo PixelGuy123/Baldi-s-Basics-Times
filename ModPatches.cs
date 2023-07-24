@@ -26,12 +26,14 @@ namespace BB_MOD
 			EnvironmentExtraVariables.currentFloor = currentFloor;
 			EnvironmentExtraVariables.ec = __instance.Ec;
 
-			if (currentFloor != Floors.END && !ContentManager.instance.HasAccessedFloor(currentFloor))
+			if (currentFloor != Floors.END)
 			{
-				ContentManager.instance.AddLevelObject(Object.Instantiate(__instance.ld));
+				if (!ContentManager.instance.HasAccessedFloor(currentFloor))
+					ContentManager.instance.AddLevelObject(Object.Instantiate(__instance.ld));
+				__instance.ld.previousLevels = ContentManager.instance.GetLevelObjectCopy(__instance.ld);
 			}
 
-			__instance.ld.previousLevels = ContentManager.instance.GetLevelObjectCopy(__instance.ld);
+			
 
 			if (!ContentManager.instance.beans)
 			{
