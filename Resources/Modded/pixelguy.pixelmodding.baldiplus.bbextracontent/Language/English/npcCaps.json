@@ -21,6 +21,8 @@
 	{"key":"Vfx_DRUM_LetsDrum","value":"TIME TO DRUM! (Let's Drum!)"},
 	{"key":"Vfx_DRUM_Annoyence","value":"I LOVE TO DRUM!"},
 	{"key":"PST_DRUM_Name","value":"Let's Drum"},
-	{"key":"PST_DRUM_Desc","value":"He looks for a mate to show his talents on drums, despite them being incredibly <b>loud!</b>"}
+	{"key":"PST_DRUM_Desc","value":"He looks for a mate to show his talents on drums, despite them being incredibly <b>loud!</b>"},
+	{"key":"PST_Robocam_Name","value":"Robocam"},
+	{"key":"PST_Robocam_Name_Desc","value":"While you look it, you will see the world in it's eyes."}
 	
 ]}
