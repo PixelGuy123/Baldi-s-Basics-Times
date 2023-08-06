@@ -359,6 +359,7 @@ namespace BB_MOD
 			, true, false, 30f, 0f, "pri_crazyclock.png", "PST_CC_Name", "PST_CC_Desc", new Floors[] { Floors.F3 }, new RoomCategory[] { RoomCategory.FieldTrip, RoomCategory.Test }, forceSpawn: true, aggored: true, ignoreBelts: true)); // Poolgametm (Coded by PixelGuy)
 			allNpcs.Add(CreateNPC<Forgotten>("Forgotten", 40, new string[] { "forgotten.png" }, false, false, 25f, 0f, "pri_forgotten.png", "PST_Forgotten_Name", "PST_Forgotten_Name_Desc", new Floors[] { Floors.F2, Floors.F3, Floors.END }, enterRooms: true, capsuleRadius: 4f)); // JDvideosPR
 			allNpcs.Add(CreateNPC<LetsDrum>("Let's Drum", 45, new string[] { "Lets_Drum.png" }, false, false, 51f, -1f, "pri_letsdrum.png", "PST_DRUM_Name", "PST_DRUM_Desc", new Floors[] { Floors.F2, Floors.F3 }, enterRooms: false)); // PixelGuy
+			allNpcs.Add(CreateNPC<Robocam>("Robocam", 30, new string[] { "robocam.png" }, false, false, 10f, 0f, "pri_robocam.png", "PST_Robocam_Name", "PST_Robocam_Name_Desc", new Floors[] { Floors.F3, Floors.END }, enterRooms: false)); // JDvideosPR
 
 
 			// End of Character Spawns
