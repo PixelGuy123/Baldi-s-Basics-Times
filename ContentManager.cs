@@ -913,6 +913,8 @@ namespace BB_MOD
 		public static GameObject DefaultRenderer => UnityEngine.Object.Instantiate(FindResourceObjectContainingName<SpriteRenderer>("BSODA").gameObject);
 
 		public const float PlayerDefaultWalkSpeed = 16f, PlayerDefaultRunSpeed = 24f;
+
+		public const float LightHeight = 9f;
 	}
 
 	/// <summary>
@@ -1380,6 +1382,10 @@ namespace BB_MOD
 
 			addedItems = true;
 
+			allShoppingItems.Add(new WeightedItemObject() { 
+				selection = ContentUtilities.FindResourceObjectContainingName<ItemObject>("principalwhistle"), 
+				weight = 50 }, ContentUtilities.AllFloorsExcept(Floors.F1)); // Adds principal's whistle back into the johnny's store
+
 			// Item Creation Here
 
 			allNewItems.Add(CreateItem<ITM_Present>("PRS_Name", "PRS_Desc", "present.png", "present.png", "Present", 120, 40, 30, ContentUtilities.Array(Floors.F3), 55, ContentUtilities.Array(Floors.F3), 60, includeOnMysteryRoom: true)); // PixelGuy
@@ -1810,14 +1816,14 @@ namespace BB_MOD
 			 CreateRoomBuilder<BathBuilder>("BathroomBuilder", 50, "bathroom", ContentUtilities.Array(Floors.F1), false, ContentUtilities.Array(CreateRawSchoolTexture("bathroomCeiling.png")),
 				ContentUtilities.Array(CreateRawSchoolTexture("bathroomWall.png")),
 				ContentUtilities.Array(CreateRawSchoolTexture("bathroomFloor.png")), "bathDoorOpened.png", "bathDoorClosed.png", Color.white, 
-				ContentUtilities.Array(ContentUtilities.LightPrefab, CreateExtraDecoration_Raw("long_hanginglamp.png", 200, 30, ContentUtilities.AllCategories, true, true, Vector3.up * 8.2f)), 0, 1); // PixelGuy >> Bathroom for F1
+				ContentUtilities.Array(ContentUtilities.LightPrefab, CreateExtraDecoration_Raw("long_hanginglamp.png", 200, 30, ContentUtilities.AllCategories, true, true, Vector3.up * (ContentUtilities.LightHeight - 0.7f))), 0, 1); // PixelGuy >> Bathroom for F1
 			DuplicateRoomBuilder("bathroom", ContentUtilities.Array(Floors.F2, Floors.END), 1, 2); //PixelGuy > Bathroom for F2 & END
 			DuplicateRoomBuilder("bathroom", Floors.F3, 2, 4); // PixelGuy >> Bathroom for F3
 
 			CreateRoomBuilder<AbandonedBuilder>("AbandonedRoomBuilder", 64, "abandoned", ContentUtilities.Array(Floors.F3), false, ContentUtilities.Array(CreateRawSchoolTexture("GraniteCeiling.png")),
 			ContentUtilities.Array(CreateRawSchoolTexture("moldWall.png")),
-			ContentUtilities.Array(CreateRawSchoolTexture("woodFloor.png")), "oldDoorOpen.png", "oldDoorClosed.png", Color.white, 
-			ContentUtilities.Array(ContentUtilities.LightPrefab, CreateExtraDecoration_Raw("long_hanginglamp.png", 200, 30, ContentUtilities.AllCategories, true, true, Vector3.up * 8.2f)), 0, 1, true); // JDvideosPR >> Abandoned locked room for F3
+			ContentUtilities.Array(CreateRawSchoolTexture("woodFloor.png")), "oldDoorOpen.png", "oldDoorClosed.png", new Color(128f, 43f, 0f), 
+			ContentUtilities.Array(ContentUtilities.LightPrefab, CreateExtraDecoration_Raw("long_hanginglamp.png", 200, 30, ContentUtilities.AllCategories, true, true, Vector3.up * (ContentUtilities.LightHeight - 0.7f))), 0, 1, true); // JDvideosPR >> Abandoned locked room for F3
 
 			// Note: if you want to create custom lights for the room, you can always use CreateExtraDecoration_Raw, and if you want to keep the original, you include ContentUtilities.LightPrefab on the array
 

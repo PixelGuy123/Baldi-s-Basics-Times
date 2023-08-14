@@ -307,7 +307,33 @@ namespace BB_MOD.Extra
 
 			if (list.Count == 0) goto endBuilder;
 
-			room.AddItemSpawn(corners.ElementAt(cRNG.Next(corners.Count())).transform.position);
+			var amounts = new WeightedSelection<int>[4];
+			int chance = 100;
+			for (int i = 0; i < 4; i++)
+			{
+				amounts[i] = new WeightedSelection<int>() { selection = i + 1, weight = chance };
+				chance -= 25;
+			}
+
+			int amount = WeightedSelection<int>.ControlledRandomSelection(amounts, cRNG);
+
+			for (int i = 0; i < amount; i++)
+			{
+				int count = corners.Count();
+				int index = cRNG.Next(count);
+				room.AddItemSpawn(corners.ElementAt(index).transform.position);
+				corners = corners.RemoveInAt(index);
+
+				if (count - 1 <= 0) break;
+
+				yield return null;
+			}
+
+			foreach (var door in room.doors)
+			{
+				door.Lock(true); // Locks those doors
+				yield return null;
+			}
 
 			endBuilder:
 				building = false;
