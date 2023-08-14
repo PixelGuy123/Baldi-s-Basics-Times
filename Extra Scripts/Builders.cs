@@ -313,8 +313,6 @@ namespace BB_MOD.Extra
 				building = false;
 				yield break;
 		}
-
-		const float sinkOffset = 3.2f;
 	}
 
 
