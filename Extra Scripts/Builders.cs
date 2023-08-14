@@ -270,5 +270,52 @@ namespace BB_MOD.Extra
 		const float sinkOffset = 3.2f;
 	}
 
+	public class AbandonedBuilder : RoomBuilder
+	{
+		public override void Setup(LevelBuilder lg, RoomController room, System.Random rng)
+		{
+			base.Setup(lg, room, rng);
+		}
+
+		public override void Build()
+		{
+			base.Build();
+			builder = Builder();
+			StartCoroutine(builder);
+		}
+
+		private IEnumerator Builder()
+		{
+			while (!lg.DoorsFinished) { yield return null; }
+			List<Direction> list = Directions.All();
+			Direction dir = list[cRNG.Next(list.Count)];
+
+			var tiles = room.GetTilesOfShape(new List<TileShape>() { TileShape.Corner, TileShape.Single }, true).Where(x => x.wallDirections.Contains(dir));
+
+			var corners = tiles.Where(x => x.shape == TileShape.Corner);
+
+			if (room.size.x < 4)
+			{
+				list.Remove(Direction.East);
+				list.Remove(Direction.West);
+			}
+			if (room.size.z < 4)
+			{
+				list.Remove(Direction.North);
+				list.Remove(Direction.South);
+			}
+
+			if (list.Count == 0) goto endBuilder;
+
+			room.AddItemSpawn(corners.ElementAt(cRNG.Next(corners.Count())).transform.position);
+
+			endBuilder:
+				building = false;
+				yield break;
+		}
+
+		const float sinkOffset = 3.2f;
+	}
+
 
 }
