@@ -29,10 +29,10 @@ namespace BB_MOD.NPCs
 			audMan.audioDevice.maxDistance = 135f;
 			audMan.audioDevice.minDistance = 15f;
 
-			ContentUtilities.CreateMusicManager(gameObject, 15f, 100f, ObjectCreatorHandlers.CreateSoundObject(ContentUtilities.GetAudioClip(Path.Combine(ContentManager.modPath, "Audio", "npc", "drum_music.wav")), "Vfx_DRUM_Music", SoundType.Voice, new Color(64, 0, 128)));
+			ContentUtilities.CreateMusicManager(gameObject, 15f, 100f, ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("letsdrum_music"), "Vfx_DRUM_Music", SoundType.Voice, new Color(64, 0, 128)));
 
-			aud_LetsDrum = ObjectCreatorHandlers.CreateSoundObject(AssetManager.AudioClipFromFile(Path.Combine(ContentManager.modPath, "Audio", "npc", "drum_wannadrum.wav")), "Vfx_DRUM_LetsDrum", SoundType.Voice, new Color(64, 0, 128));
-			aud_Drumming = ObjectCreatorHandlers.CreateSoundObject(ContentUtilities.GetAudioClip(Path.Combine(ContentManager.modPath, "Audio", "npc", "drum_lovetodrum.wav")), "Vfx_DRUM_Annoyence", SoundType.Voice, new Color(64, 0, 128));
+			aud_LetsDrum = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("letsdrum_wannadrum"), "Vfx_DRUM_LetsDrum", SoundType.Voice, new Color(64, 0, 128));
+			aud_Drumming = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("letsdrum_DRUM"), "Vfx_DRUM_Annoyence", SoundType.Voice, new Color(64, 0, 128));
 
 			looker.distance = 35f;
 
@@ -134,7 +134,7 @@ namespace BB_MOD.NPCs
 		private bool isDrumming = false, hasWantedToDrum = true;
 
 		[SerializeField]
-		private const float normalSpeed = 16f, minDrumCooldown = 30f, maxDrumCooldown = 60f;
+		private const float normalSpeed = ContentUtilities.PlayerDefaultWalkSpeed, minDrumCooldown = 30f, maxDrumCooldown = 60f;
 
 
 	}

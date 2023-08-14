@@ -1,5 +1,16 @@
 {"items":[
 	{"key":"PRS_Name","value":"Party Present"},
 	{"key":"PRS_Desc","value":"Party Present\nIt's a mystery box, what could be inside of it? Nobody knows! It's definitely gonna give you a surprise!"},
-	{"key":"Vfx_PRS_Unbox","value":"*Unboxing*"}
+	{"key":"Vfx_PRS_Unbox","value":"*Unboxing*"},
+	{"key":"HAM_Name","value":"Hammer"},
+	{"key":"HAM_Desc","value":"Hammer\nUse it in your responsability, it's just way more dangerous than it looks! Be careful to not break any weak school property objects with it!"},
+	{"key":"BEL_Name","value":"Bell"},
+	{"key":"BEL_Desc","value":"Bell\nAn interesting bell, someone took it out of the alarm clock and it sounds really different! Might call Baldi's attention aswell!"},
+	{"key":"Vfx_BEL_Ring","value":"*Ringing*"},
+	{"key":"GPS_Name","value":"Global Position Displayer"},
+	{"key":"GPS_Desc","value":"Global Position Displayer\nUseful item to find out your position... Although you have a map... probably the position of someone else..."},
+	{"key":"Vfx_GPS_Beep","value":"*Beep*"},
+	{"key":"PC_Name","value":"Pencil"},
+	{"key":"PC_Desc","value":"Pencil\nA normal pencil for normal uses, it is still prohibited to stab people in the halls."},
+	{"key":"Vfx_PC_stab","value":"*Stab*"}
 ]}

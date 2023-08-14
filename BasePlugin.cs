@@ -12,14 +12,14 @@ namespace BB_MOD
 		ConfigEntry<bool> debug;
         void Awake()
         {
-            Harmony harmony = new Harmony(ModInfo.id);
+
+			Harmony harmony = new Harmony(ModInfo.id);
+			
 
 			var man = new GameObject("ModManager").AddComponent<ContentManager>();
 			ContentManager.modPath = AssetManager.GetModPath(this);
 
 			Logger.LogInfo($"{ModInfo.name} {ModInfo.version} has been initialized! Made by PixelGuy");
-
-			harmony.PatchAll();
 
 			debug = Config.Bind(
 				"General",
@@ -29,6 +29,10 @@ namespace BB_MOD
 				);
 
 			man.DebugMode = debug.Value;
+
+			ContentManager.instance.SetupAssetData();
+
+			harmony.PatchAll();
 
 
 		}

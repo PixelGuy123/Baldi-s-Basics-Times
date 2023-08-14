@@ -1,3 +1,6 @@
 {"items":[
-	{"key":"Event_PriOut","value":"Principal's tired of walking, time for a little rest in the office!"}
+	{"key":"Event_PriOut","value":"The one in charge of the thing is tired of walking, time for a little rest in the office!"},
+	{"key":"Event_BlackOut","value":"The Baldi's Eletrical Generator has failed again! Seems like everything won't work for some time..."},
+	{"key":"Vfx_EvBO_turnOn","value":"*Power Coming Back*"},
+	{"key":"Vfx_EvBO_turnOff","value":"*Power Down*"}
 ]}

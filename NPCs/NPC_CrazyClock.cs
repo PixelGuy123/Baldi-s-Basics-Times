@@ -22,18 +22,19 @@ namespace BB_MOD.NPCs
 
 		private void Start()
 		{
-			Navigator.maxSpeed = 0f; // He doesn't need a navigator, like chalkles
-			Navigator.SetSpeed(0f);
+			navigator.maxSpeed = 0f; // He doesn't need a navigator, like chalkles
+			navigator.SetSpeed(0f);
+			navigator.accel = 0f; // Important variable, if there's no acceleration, nothing can push it
 
 			// Audio Setup
 
 			audMan = GetComponent<AudioManager>();
 
-			aud_Scream = ObjectCreatorHandlers.CreateSoundObject(AssetManager.AudioClipFromFile(Path.Combine(ContentManager.modPath, "Audio", "npc", "clock_Scream.wav")), "Vfx_CC_Scream", SoundType.Voice, new Color(230, 46, 0)); // Not so cool scream
+			aud_Scream = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("clock_scream"), "Vfx_CC_Scream", SoundType.Voice, new Color(230, 46, 0)); // Not so cool scream
 			aud_Scream.subDuration -= 3f;
-			aud_tick = ObjectCreatorHandlers.CreateSoundObject(AssetManager.AudioClipFromFile(Path.Combine(ContentManager.modPath, "Audio", "npc", "clock_tick.wav")), "Vfx_CC_Tick", SoundType.Voice, new Color(230, 46, 0), 5f);
-			aud_tock = ObjectCreatorHandlers.CreateSoundObject(AssetManager.AudioClipFromFile(Path.Combine(ContentManager.modPath, "Audio", "npc", "clock_tack.wav")), "Vfx_CC_Tack", SoundType.Voice, new Color(230, 46, 0), 5f);
-			aud_frown = ObjectCreatorHandlers.CreateSoundObject(AssetManager.AudioClipFromFile(Path.Combine(ContentManager.modPath, "Audio", "npc", "clock_frown.wav")), "Vfx_CC_Frown", SoundType.Voice, new Color(230, 46, 0), 7f);
+			aud_tick = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("clock_tick"), "Vfx_CC_Tick", SoundType.Voice, new Color(230, 46, 0), 5f);
+			aud_tock = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("clock_tock"), "Vfx_CC_Tack", SoundType.Voice, new Color(230, 46, 0), 5f);
+			aud_frown = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("clock_frown"), "Vfx_CC_Frown", SoundType.Voice, new Color(230, 46, 0), 7f);
 
 			renderer = GetComponent<CustomNPCData>().spriteObject.GetComponent<SpriteRenderer>();
 
@@ -65,7 +66,7 @@ namespace BB_MOD.NPCs
 		private List<WeightedSelection<TileController>> FindSpawnTiles()
 		{
 			List<WeightedSelection<TileController>> weightedTiles = new List<WeightedSelection<TileController>>();
-			var tiles = ec.AllTilesNoGarbage(false, false).Where(x => !x.containsObject && !x.containsWallObject && (x.shape == TileShape.Corner || x.shape == TileShape.Single || x.shape == TileShape.End) && (x.room.category == RoomCategory.Hall || x.room.category == RoomCategory.Test || x.room.category == RoomCategory.FieldTrip)
+			var tiles = ec.AllTilesNoGarbage(false, false).Where(x => !x.containsObject && !x.containsWallObject && (x.shape == TileShape.Corner || x.shape == TileShape.Single || x.shape == TileShape.End) && (x.room.category == RoomCategory.Hall || (x.room.category == RoomCategory.Test && !x.room.name.Contains("Library")) || x.room.category == RoomCategory.FieldTrip)
 		&& !ec.GetTileNeighbors(x.position).Any(z => z.containsObject || z.containsWallObject));
 			foreach (var tile in tiles)
 			{
@@ -206,7 +207,7 @@ namespace BB_MOD.NPCs
 			yield break;
 		}
 		// End
-		private void PushNPCsToMySpot() => ec.Npcs.Where(x => x != this).Do(x => x.transform.position = myTile.transform.position + Vector3.up * 5f);
+		private void PushNPCsToMySpot() => ec.Npcs.Where(x => x != this && !ContentManager.instance.IsNpcStatic(x.Character)).Do(x => x.transform.position = myTile.transform.position + Vector3.up * 5f);
 
 		private void ChangeState(int state, bool force = false)
 		{

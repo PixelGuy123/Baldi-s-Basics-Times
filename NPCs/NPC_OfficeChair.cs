@@ -34,7 +34,7 @@ namespace BB_MOD.NPCs
 
 			audMan = GetComponent<AudioManager>();
 
-			aud_ChairRoll = ObjectCreatorHandlers.CreateSoundObject(ContentUtilities.GetAudioClip(Path.Combine(ContentManager.modPath, "Audio", "npc", "ChairRolling.wav")), "Vfx_OFC_Walk", SoundType.Voice, Color.blue); // Creates audioClip
+			aud_ChairRoll = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("chair_rolling"), "Vfx_OFC_Walk", SoundType.Voice, Color.blue); // Creates audioClip
 
 			spriteMan = GetComponent<CustomNPCData>().spriteObject;
 			sprites = GetComponent<CustomNPCData>().sprites;
@@ -116,7 +116,7 @@ namespace BB_MOD.NPCs
 					TargetPosition(targetRoomTile.gameObject.transform.position);
 				if (movingPlayer)
 				{
-					if (movingPlayer.hidden)
+					if (movingPlayer.hidden || movingPlayer.plm.addendImmune)
 					{
 						ResetPlayer(false);
 						return;

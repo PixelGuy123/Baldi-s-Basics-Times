@@ -39,9 +39,11 @@ namespace BB_MOD.NPCs
 		{
 			if (ContentManager.instance.DebugMode)
 			{
-				Debug.Log("Builder Room Category: " + room.category + " at index: " + room.position.x + "," + room.position.z);
-				Debug.Log("Builder Decorations:");
-				___decorations.Do(x => Debug.Log("Selection: " + x.selection.name + " | Weight: " + x.weight));
+
+					Debug.Log("Builder Room Category: " + room.category + " at index: " + room.position.x + "," + room.position.z);
+					Debug.Log("Builder Decorations:");
+					___decorations.Do(x => Debug.Log("Selection: " + x.selection.name + " | Weight: " + x.weight));
+				
 			}
 		}
 	}

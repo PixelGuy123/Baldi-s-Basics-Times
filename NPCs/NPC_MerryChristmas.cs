@@ -26,7 +26,7 @@ namespace BB_MOD.NPCs
 
 			audMan = GetComponent<AudioManager>();
 			
-			aud_MerryChristmas = ObjectCreatorHandlers.CreateSoundObject(AssetManager.AudioClipFromFile(Path.Combine(ContentManager.modPath, "Audio", "npc", "HappyHolidays.wav")), "Vfx_HapH_MerryChristmas", SoundType.Voice, new Color(153,0,0)); // Creates audioClip
+			aud_MerryChristmas = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("HPH_holiday"), "Vfx_HapH_MerryChristmas", SoundType.Voice, new Color(153,0,0)); // Creates audioClip
 
 		}
 
@@ -72,6 +72,7 @@ namespace BB_MOD.NPCs
 		{
 			navigator.enabled = false;
 			spriteBase.transform.position -= new Vector3(0f, 10f, 0f);
+			DisableCollision(true);
 			disabled = true;
 			float cooldown = val;
 			while (cooldown > 0f)
@@ -87,6 +88,7 @@ namespace BB_MOD.NPCs
 
 			navigator.enabled = true;
 			navigator.maxSpeed = normalSpeed;
+			DisableCollision(false);
 			disabled = false;
 			spriteBase.transform.position += new Vector3(0f, 10f, 0f);
 			yield break;
@@ -100,7 +102,7 @@ namespace BB_MOD.NPCs
 		private bool disabled = false;
 
 		[SerializeField]
-        private const float normalSpeed = 15f;
+        private const float normalSpeed = ContentUtilities.PlayerDefaultWalkSpeed + 1f;
 
 		
     }
