@@ -220,7 +220,7 @@ namespace BB_MOD.Extra
 				if (!tile.wallDirections.Contains(fixatedDir.GetOpposite()) && !lg.Ec.TileFromPos(tile.position + fixatedDir.GetOpposite().ToIntVector2()).containsWallObject)
 					ContentUtilities.PlaceObject_RawPos(obj, this, spot + (fixatedDir.GetOpposite().ToVector3() * 5f), dir.GetOpposite().ToRotation());
 
-				ContentUtilities.PlaceObject_RawPos(doorObj, this, spot + ((dir.GetOpposite().ToVector3() * 4f)), fixatedDir.ToRotation(), true, true); // Door
+				ContentUtilities.PlaceObject_RawPos(doorObj, this, spot + (dir.GetOpposite().ToVector3() * 4f), fixatedDir.ToRotation(), true, true); // Door
 
 				tile.CoverAllWalls();
 
@@ -307,27 +307,7 @@ namespace BB_MOD.Extra
 
 			if (list.Count == 0) goto endBuilder;
 
-			var amounts = new WeightedSelection<int>[4];
-			int chance = 100;
-			for (int i = 0; i < 4; i++)
-			{
-				amounts[i] = new WeightedSelection<int>() { selection = i + 1, weight = chance };
-				chance -= 25;
-			}
-
-			int amount = WeightedSelection<int>.ControlledRandomSelection(amounts, cRNG);
-
-			for (int i = 0; i < amount; i++)
-			{
-				int count = corners.Count();
-				int index = cRNG.Next(count);
-				room.AddItemSpawn(corners.ElementAt(index).transform.position);
-				corners = corners.RemoveInAt(index);
-
-				if (count - 1 <= 0) break;
-
-				yield return null;
-			}
+			room.AddItemSpawn(corners.ElementAt(cRNG.Next(corners.Count())).transform.position);
 
 			foreach (var door in room.doors)
 			{
@@ -335,9 +315,9 @@ namespace BB_MOD.Extra
 				yield return null;
 			}
 
-			endBuilder:
-				building = false;
-				yield break;
+		endBuilder:
+			building = false;
+			yield break;
 		}
 	}
 

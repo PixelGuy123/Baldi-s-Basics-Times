@@ -4,6 +4,7 @@ using BB_MOD.NPCs;
 using HarmonyLib;
 using MonoMod.Utils;
 using MTM101BaldAPI;
+using Rewired.Libraries.SharpDX.RawInput;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -311,6 +312,16 @@ namespace BB_MOD
 				}
 			}));
 
+			// Random Chance to be sticking to halls
+
+			var stickToHalls = AccessTools.PropertyGetter(typeof(SpecialRoomCreator), "StickToHalls");
+
+			i = codeInstructions.IndexAt(x => x.opcode == OpCodes.Callvirt && (MethodInfo)x.operand == stickToHalls); // Gets the line that calls the stickToHalls method
+			codeInstructions.Replace(i + 1, new CodeInstruction(OpCodes.Nop)); // Literally disables that update spots thing to use the one from the delegate
+
+			codeInstructions.Replace(i, Transpilers.EmitDelegate<Action>(() =>
+			EnvironmentExtraVariables.lb.UpdatePotentialRoomSpawns(EnvironmentExtraVariables.currentFloor == Floors.F1 || EnvironmentExtraVariables.lb.controlledRNG.NextDouble() >= 0.85d))); // If F1, just leave default which is true, otherwise, randomly choose between sticking or not to halls)
+			// Really hard work here ^^
 
 
 			return codeInstructions.AsEnumerable();
