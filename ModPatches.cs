@@ -485,6 +485,55 @@ namespace BB_MOD
 		}
 	}
 
+	[HarmonyPatch(typeof(StandardDoor), "OpenTimed")] // Fixes the bug where the door open sound plays 2 times
+
+	internal class FixDoorOpenSound
+	{
+		private static void Postfix(StandardDoor __instance)
+		{
+			if (!__instance.locked)
+			{
+				for (int i = 0; i < __instance.doors.Length; i++)
+				{
+					__instance.colliders[i].enabled = false;
+					MaterialModifier.ChangeOverlay(__instance.doors[i], __instance.overlayOpen[i]);
+					MeshRenderer[] array = __instance.doors;
+					for (int j = 0; j < array.Length; j++)
+					{
+						array[j].gameObject.layer = 2;
+					}
+				}
+				if (!__instance.open && __instance.makesNoise)
+				{
+					__instance.audMan.PlaySingle(__instance.audDoorOpen);
+				}
+			}
+		}
+	}
+
+	[HarmonyPatch(typeof(StandardDoor), "Shut")] // Fixes the bug where the door close sound plays 2 times
+
+	internal class FixDoorCloseSound
+	{
+		private static void Postfix(StandardDoor __instance)
+		{
+			for (int i = 0; i < __instance.doors.Length; i++)
+			{
+				__instance.colliders[i].enabled = __instance;
+				MaterialModifier.ChangeOverlay(__instance.doors[i], __instance.overlayShut[i]);
+				MeshRenderer[] array = __instance.doors;
+				for (int j = 0; j < array.Length; j++)
+				{
+					array[j].gameObject.layer = __instance.doors[0].gameObject.layer;
+				}
+			}
+			if (__instance.open && __instance.makesNoise)
+			{
+				__instance.audMan.PlaySingle(__instance.audDoorShut);
+			}
+		}
+	}
+
 
 	[HarmonyPatch(typeof(PlayerFileManager), "Find")] // Fixes an error that causes a crash because of the new NPCs
 
