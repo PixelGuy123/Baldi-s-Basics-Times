@@ -554,20 +554,6 @@ namespace BB_MOD
 		}
 	}
 
-	[HarmonyPatch(typeof(StandardDoor), "Shut")] // Fixes the bug where the swinging door close sound plays 2 times
-
-	internal class FixSwingDoorCloseSound
-	{
-		private static void Postfix(SwingDoor __instance)
-		{
-			for (int i = 0; i < __instance.doors.Length; i++)
-			{
-				MaterialModifier.ChangeOverlay(__instance.doors[i], __instance.overlayShut[i]);
-				bool open = __instance.open;
-			}
-		}
-	}
-
 
 	[HarmonyPatch(typeof(PlayerFileManager), "Find")] // Fixes an error that causes a crash because of the new NPCs
 
