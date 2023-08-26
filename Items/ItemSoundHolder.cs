@@ -37,9 +37,11 @@ namespace BB_MOD.ExtraItems
 				ContentUtilities.CreatePositionalAudio(obj, 1f, maxDistance, supportDuppler);
 			else
 				obj.AddComponent<AudioSource>();
+			
 
 			obj.AddComponent<ItemSoundHolder>();
 			obj.GetComponent<AudioManager>().audioDevice = obj.GetComponent<AudioSource>();
+			obj.GetComponent<AudioManager>().positional = positionalAudio;
 			obj.GetComponent<ItemSoundHolder>().enabled = true;
 			obj.SetActive(true);
 			return obj;

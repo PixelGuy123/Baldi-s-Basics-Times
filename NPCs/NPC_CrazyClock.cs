@@ -66,7 +66,7 @@ namespace BB_MOD.NPCs
 		private List<WeightedSelection<TileController>> FindSpawnTiles()
 		{
 			List<WeightedSelection<TileController>> weightedTiles = new List<WeightedSelection<TileController>>();
-			var tiles = ec.AllTilesNoGarbage(false, false).Where(x => !x.containsObject && !x.containsWallObject && (x.shape == TileShape.Corner || x.shape == TileShape.Single || x.shape == TileShape.End) && (x.room.category == RoomCategory.Hall || (x.room.category == RoomCategory.Test && !x.room.name.Contains("Library")) || x.room.category == RoomCategory.FieldTrip)
+			var tiles = ec.AllTilesNoGarbage(false, false).Where(x => !x.containsObject && !x.containsWallObject && (x.shape == TileShape.Corner || x.shape == TileShape.Single || x.shape == TileShape.End) && (x.room.category == RoomCategory.Hall || (x.room.category == ContentUtilities.SpecialRoomEnum && !x.room.name.Contains("Library")) || x.room.category == RoomCategory.FieldTrip)
 		&& !ec.GetTileNeighbors(x.position).Any(z => z.containsObject || z.containsWallObject));
 			foreach (var tile in tiles)
 			{

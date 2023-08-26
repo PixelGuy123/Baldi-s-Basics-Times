@@ -1,5 +1,6 @@
 ﻿using BB_MOD.Events;
 using BB_MOD.Extra;
+using BB_MOD.ExtraComponents;
 using BB_MOD.ExtraItems;
 using BB_MOD.NPCs;
 using HarmonyLib;
@@ -13,9 +14,11 @@ using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.Audio;
 using UnityEngine.Networking;
-using static BB_MOD.ContentManager;
 using static BB_MOD.ContentAssets;
+using static BB_MOD.ContentManager;
+using static Mono.Security.X509.X520;
 
 // -------------------- PRO TIP ----------------------
 // Recommended using UnityExplorer to debug your item, event or npc. It's a very useful tool
@@ -182,7 +185,20 @@ namespace BB_MOD
 			return eventType;
 		}
 
-		public static Vector2 ToVector2(this Direction dir) => new Vector2[] { new Vector2(0, 1), new Vector2(1, 0), new Vector2(0, -1), new Vector2(-1, 0) }[(int)dir];
+		/// <summary>
+		/// Compare both values like an Equal sign
+		/// </summary>
+		/// <param name="f"></param>
+		/// <param name="f2"></param>
+		/// <returns>True if both values are "equal" and false if they aren't</returns>
+		public static bool Compare(this float f, float f2) => Math.Abs(f - f2) <= Mathf.Epsilon;
+		/// <summary>
+		/// Compare both values like an Equal sign
+		/// </summary>
+		/// <param name="f"></param>
+		/// <param name="f2"></param>
+		/// <returns>True if both values are "equal" and false if they aren't</returns>
+		public static bool Compare(this double f, double f2) => Math.Abs(f - f2) <= Mathf.Epsilon;
 
 
 
@@ -368,7 +384,7 @@ namespace BB_MOD
 			return transforms;
 		}
 		/// <summary>
-		/// Gets all childs of the transform converted in an array, if no child is found, an empty array is returned
+		/// Gets all childs of the transform converted in an list, if no child is found, an empty list is returned
 		/// </summary>
 		/// <param name="transform"></param>
 		/// <returns>A Transform[] Array</returns>
@@ -397,7 +413,10 @@ namespace BB_MOD
 			tilesForLighting.Clear();
 			belts.Clear();
 			completedMachines.Clear();
+			elevatorTilePositions.Clear();
 			allowHangingLights = true;
+			isEndGame = false;
+			playerFOV = 0f;
 		}
 
 		/// <summary>
@@ -408,6 +427,8 @@ namespace BB_MOD
 		{
 			forceDisableSubtitles = !turn;
 		}
+
+		public static void EndGamePhase() => isEndGame = true;
 
 		public static bool IsPlayerOnLibrary
 		{
@@ -426,12 +447,48 @@ namespace BB_MOD
 
 		public static List<MathMachine> completedMachines = new List<MathMachine>();
 
+		public static List<IntVector2> elevatorTilePositions = new List<IntVector2>();
+
 		private static bool forceDisableSubtitles = false;
 
-		public static bool AreSubtitlesForceDisabled
+		private static bool isEndGame = false;
+		public static bool AreSubtitlesForceDisabled => forceDisableSubtitles;
+		public static bool IsEndGame => isEndGame;
+
+		public static float PlayerAdditionalFOV
 		{
-			get => forceDisableSubtitles;
+			get => playerFOV;
+			set
+			{
+				if (value < -60f)
+				{
+					playerFOV = -59f;
+					return;
+				}
+				if (value > 200f)
+				{
+					playerFOV = 200f;
+					return;
+				}
+				playerFOV = value;
+			}
 		}
+
+		public static IEnumerator SmoothFOVSequence(float offset, float divider, float endingFOV = 0f)
+		{
+			float fovOffset = endingFOV + offset;
+			PlayerAdditionalFOV = fovOffset;
+			while (fovOffset > 0.1f)
+			{
+				fovOffset += (endingFOV - fovOffset) / divider;
+				PlayerAdditionalFOV = fovOffset;
+				yield return null;
+			}
+			PlayerAdditionalFOV = endingFOV;
+			yield break;
+		}
+
+		private static float playerFOV = 0f;
 
 		// Internal Generator Custom Variables >> Should not be touched in any means
 
@@ -462,10 +519,33 @@ namespace BB_MOD
 
 			public TileController Tile { get; }
 		}
+
+		public const float PlayerDefaultFOV = 60f;
 	}
 
 	public static class ContentUtilities
 	{
+		/// <summary>
+		/// Creates a looping sound object, useful for creating custom music/songs
+		/// </summary>
+		/// <param name="clip"></param>
+		/// <param name="group"></param>
+		/// <returns>The looping sound object</returns>
+		public static LoopingSoundObject CreateLoopingSoundObject(AudioClip[] clip, AudioMixerGroup group)
+		{
+			var loop = ScriptableObject.CreateInstance<LoopingSoundObject>();
+			loop.clips = clip;
+			loop.mixer = group;
+			return loop;
+		}
+		/// <summary>
+		/// Creates a looping sound object, useful for creating custom music/songs
+		/// </summary>
+		/// <param name="clip"></param>
+		/// <param name="group"></param>
+		/// <returns>The looping sound object</returns>
+		public static LoopingSoundObject CreateLoopingSoundObject(AudioClip clip, AudioMixerGroup group) => CreateLoopingSoundObject(Array(clip), group);
+
 		public static Vector2[] ConvertSideToTexture(int x, int y, int width, int height, int texWidth, int texHeight, int index, Vector2[] oldUv)
 		{
 			Vector2[] uv = oldUv;
@@ -490,8 +570,8 @@ namespace BB_MOD
 		/// Creates a non positional audio for set <paramref name="obj"/>
 		/// </summary>
 		/// <param name="obj"></param>
-		public static void CreateNonPositionalAudio(GameObject obj) 
-		{ 
+		public static void CreateNonPositionalAudio(GameObject obj)
+		{
 			CreatePositionalAudio(obj, 20, 30, out AudioSource source, out _);
 			source.spatialBlend = 0f;
 		}
@@ -619,6 +699,17 @@ namespace BB_MOD
 		public static Transform CreateBasicCube_WithObstacle(Vector3 scale, string textureFile) => CreateBasicCube_WithObstacle(scale, scale, textureFile);
 
 		/// <summary>
+		/// Find the last object in-game from type <typeparamref name="T"/>
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="name"></param>
+		/// <returns>The target object</returns>
+		public static T FindLastObjectOfType<T>(bool includeDisabled = false) where T : UnityEngine.Object
+		{
+			var collection = UnityEngine.Object.FindObjectsOfType<T>(includeDisabled);
+			return collection[collection.Length - 1];
+		}
+		/// <summary>
 		/// Find an object in-game that contains the following <paramref name="name"/>
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
@@ -650,6 +741,16 @@ namespace BB_MOD
 			return Resources.FindObjectsOfTypeAll<T>().First(x => x.name.ToLower().Contains(name.ToLower()));
 		}
 		/// <summary>
+		/// Find an object from the Resources by the exact <paramref name="name"/>
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="name"></param>
+		/// <returns>An <typeparamref name="T"/> object from resources</returns>
+		public static T FindResourceObjectWithName<T>(string name) where T : UnityEngine.Object
+		{
+			return Resources.FindObjectsOfTypeAll<T>().First(x => x.name.ToLower() == name.ToLower());
+		}
+		/// <summary>
 		/// Find an array of objects from the Resources by the <paramref name="name"/>
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
@@ -666,7 +767,7 @@ namespace BB_MOD
 		/// <returns>Desired <typeparamref name="T"/> Object</returns>
 		public static T FindResourceObject<T>() where T : UnityEngine.Object
 		{
-			return Resources.FindObjectsOfTypeAll<T>().First();
+			return Resources.FindObjectsOfTypeAll<T>()[0];
 		}
 
 		/// <summary>
@@ -687,11 +788,12 @@ namespace BB_MOD
 		/// <param name="maxAmount"></param>
 		/// <param name="rotateIncrement"></param>
 		/// <param name="center"></param>
-		/// <param name="room"></param>
-		/// <param name="ec"></param>
 		/// <returns>The object spawner</returns>
-		public static RandomObjectSpawner CreateSpawner(WeightedTransform[] array, int minAmount, int maxAmount, float rotateIncrement, bool center, RoomController room, EnvironmentController ec)
+		public static RandomObjectSpawner CreateSpawner(this RoomBuilder bld, WeightedTransform[] array, int minAmount, int maxAmount, bool center, float rotateIncrement = 90f)
 		{
+			var room = bld.Room;
+			var ec = bld.Room.ec;
+
 			var coolSpawner = new GameObject("CustomObjectSpawner");
 			var spawner = coolSpawner.AddComponent<RandomObjectSpawner>();
 			spawner.SetRange(ec.RealRoomMin(room), ec.RealRoomMax(room));
@@ -710,58 +812,31 @@ namespace BB_MOD
 		/// <summary>
 		/// Creates a Random Object Spawner (Example: tables from faculties)
 		/// </summary>
-		/// <param name="array"></param>
-		/// <param name="minAmount"></param>
-		/// <param name="maxAmount"></param>
-		/// <param name="center"></param>
-		/// <param name="room"></param>
-		/// <param name="ec"></param>
-		/// <returns>The object spawner</returns>
-
-		public static RandomObjectSpawner CreateSpawner(WeightedTransform[] array, int minAmount, int maxAmount, bool center, RoomController room, EnvironmentController ec)
-		{
-			var coolSpawner = new GameObject("CustomObjectSpawner");
-			var spawner = coolSpawner.AddComponent<RandomObjectSpawner>();
-			spawner.SetRange(ec.RealRoomMin(room), ec.RealRoomMax(room));
-			spawner.transform.SetParent(room.transform);
-			AccessTools.Field(typeof(RandomObjectSpawner), "prefab").SetValue(spawner, array);
-			AccessTools.Field(typeof(RandomObjectSpawner), "center").SetValue(spawner, center);
-			AccessTools.Field(typeof(RandomObjectSpawner), "minCount").SetValue(spawner, minAmount);
-			AccessTools.Field(typeof(RandomObjectSpawner), "maxCount").SetValue(spawner, maxAmount);
-			return spawner;
-		}
-
-		/// <summary>
-		/// Creates a Random Object Spawner (Example: tables from faculties)
-		/// </summary>
 		/// <param name="transform"></param>
 		/// <param name="minAmount"></param>
 		/// <param name="maxAmount"></param>
 		/// <param name="center"></param>
-		/// <param name="room"></param>
-		/// <param name="ec"></param>
 		/// <returns>The object spawner</returns>
 
-		public static RandomObjectSpawner CreateSpawner(WeightedTransform transform, int minAmount, int maxAmount, bool center, RoomController room, EnvironmentController ec)
+		public static RandomObjectSpawner CreateSpawner(this RoomBuilder bld, WeightedTransform transform, int minAmount, int maxAmount, bool center, float rotateIncrement = 90f)
 		{
-			return CreateSpawner(Array(transform), minAmount, maxAmount, center, room, ec);
+			return bld.CreateSpawner(Array(transform), minAmount, maxAmount, center, rotateIncrement);
 		}
 
-		/// <summary>
-		/// Creates a Random Object Spawner (Example: tables from faculties)
-		/// </summary>
-		/// <param name="transform"></param>
-		/// <param name="minAmount"></param>
-		/// <param name="maxAmount"></param>
-		/// <param name="rotateIncrement"
-		/// <param name="center"></param>
-		/// <param name="room"></param>
-		/// <param name="ec"></param>
-		/// <returns>The object spawner</returns>
-
-		public static RandomObjectSpawner CreateSpawner(WeightedTransform transform, int minAmount, int maxAmount, float rotateIncrement, bool center, RoomController room, EnvironmentController ec)
+		public static T CreateRoomFunction<T>(this RoomController room, bool autoStart = false) where T : RoomFunction
 		{
-			return CreateSpawner(new WeightedTransform[] { transform }, minAmount, maxAmount, rotateIncrement, center, room, ec);
+			var func = new GameObject("Custom_" + room.name + "_RoomFunction");
+			func.transform.SetParent(room.transform);
+			var compFunc = func.AddComponent<T>();
+
+			AccessTools.Field(typeof(RoomFunction), "boxCollider").SetValue(compFunc, func.AddComponent<BoxCollider>()); // Sets the box collider field value to the box collider from the object
+
+			room.functionObject = func;
+
+			if (autoStart)
+				compFunc.Initialize(room);
+
+			return compFunc;
 		}
 
 		/// <summary>
@@ -775,7 +850,7 @@ namespace BB_MOD
 		/// <param name="sinalizeObject"></param>
 		/// <param name="sinalizeWallObject"></param>
 		/// <returns>The object spawned</returns>
-		public static T PlaceObject_RawPos<T>(T prefab, RoomBuilder bld, Vector3 localPosition, Quaternion rotation, bool sinalizeObject = false, bool sinalizeWallObject = false) where T : Component
+		public static T PlaceObject_RawPos<T>(this RoomBuilder bld, T prefab, Vector3 localPosition, Quaternion rotation, bool sinalizeObject = false, bool sinalizeWallObject = false) where T : Component
 		{
 			var t = UnityEngine.Object.Instantiate(prefab, (Transform)AccessTools.Field(typeof(RoomBuilder), "objectsTransform").GetValue(bld));
 			t.transform.localPosition = localPosition + (localPosition.y < 5f ? (Vector3.up * 5f) : Vector3.zero);
@@ -853,6 +928,108 @@ namespace BB_MOD
 				tile.CoverWall(wall, true);
 			}
 		}
+		/// <summary>
+		/// Creates an open area for a custom special room with a continuous <paramref name="wallTex"/> array (the cafeteria from BBCR for example, which has a gradient black void above)
+		/// </summary>
+		/// <param name="roomCreator"></param>
+		/// <param name="room"></param>
+		/// <param name="height"></param>
+		/// <param name="wallTex"></param>
+		/// <param name="ceilingTex"></param>
+		public static void CreateOpenAreaForSpecialRoom(this SpecialRoomCreator roomCreator, RoomController room, Texture2D wallTex, Texture2D ceilingTex, int height, bool hasRoof = true)
+		{
+			var wallArray = new Texture2D[height];
+			for (int i = 0; i < wallArray.Length; i++)
+			{
+				wallArray[i] = wallTex;
+			}
+
+			CreateOpenAreaForSpecialRoom(roomCreator, room, wallArray, ceilingTex, height, hasRoof);
+		}
+
+		/// <summary>
+		/// Creates an open area for a custom special room with a continuous <paramref name="wallTex"/> array (the cafeteria from BBCR for example, which has a gradient black void above)
+		/// </summary>
+		/// <param name="roomCreator"></param>
+		/// <param name="room"></param>
+		/// <param name="height"></param>
+		/// <param name="wallTex"></param>
+		/// <param name="ceilingTex"></param>
+		public static void CreateOpenAreaForSpecialRoom(this SpecialRoomCreator roomCreator, RoomController room, Texture2D[] wallTex, Texture2D ceilingTex, int height, bool hasRoof = true)
+		{
+			try
+			{
+				// Some throwers
+				if (height <= 1) throw new ArgumentException($"Invalid height to open area for the special room \"{roomCreator.name}\", must be higher than 1");
+				if (wallTex.Length < height || wallTex.Length > height) throw new InvalidOperationException($"The wall tex array length doesn\'t match with the set height (length: {wallTex.Length} || height: {height})");
+
+				// End of throwers
+
+				var transform = roomCreator.transform;
+				void CreatePlane(Material material, Vector3 pos, Vector3 rot) // Simple Local Function just to create the specified plane
+				{
+					var side = GameObject.CreatePrimitive(PrimitiveType.Plane);
+					side.name = "higherTile";
+					side.transform.SetParent(transform);
+					side.GetComponent<MeshRenderer>().material = material; // Gets the visible material
+					side.transform.Rotate(rot);
+					side.transform.position = pos;
+				}
+
+
+
+				Vector3 sidePos = room.ec.RealRoomMax(room) + Vector3.up * 15f + Vector3.back * 5f;
+				Vector3 ogPos = sidePos;
+				Vector3 rotation = new Vector3(90f, 0f, 90f);
+				var dirs = new Direction[] { Direction.South, Direction.West, Direction.North, Direction.East }; // This order gives a reversed square sequence
+
+				var mat = UnityEngine.Object.Instantiate(FindResourceObjectContainingName<Material>("ActualTileFloor")); // Uses a material of single texture that doesn't use atlas
+				int curSize = room.size.z;
+
+				for (int y = 0; y < height; y++) // Creates the extra walls
+				{
+					mat.mainTexture = wallTex[y];
+					for (int z = 0; z < 4; z++)
+					{
+						Vector3 curDitRotation = dirs[z].ToVector3(); // The current direction the tile will go from the pos
+						for (int i = 0; i < curSize; i++)
+						{
+							CreatePlane(mat, sidePos, rotation);
+							sidePos += curDitRotation * 10f; // Loop through creating planes
+						}
+						if (z + 1 < dirs.Length) // Prevents from using an out of bounds value from the array
+							sidePos += -(curDitRotation * 5f) + (dirs[z + 1].ToVector3() * 5f);
+
+						rotation.y += 90f; // Turns 90º on Y Axis
+						curSize = curSize == room.size.z ? room.size.x : room.size.z;
+					}
+					ogPos.y += 10f;
+					sidePos = ogPos; // Resets position and draw the next row
+				}
+
+				if (!hasRoof) return;
+
+				mat.mainTexture = ceilingTex;
+				ogPos.y -= 5f;
+				sidePos = ogPos;
+				rotation = new Vector3(0f, 0f, 180f); // Facing downwards
+				for (int z = 0; z < room.size.z + 1; z++) // Creates roof
+				{
+					for (int x = 0; x < room.size.x + 1; x++)
+					{
+						CreatePlane(mat, sidePos, rotation);
+						sidePos.x -= 10f;
+					}
+					ogPos.z -= 10f;
+					sidePos = ogPos;
+				}
+			}
+			catch (Exception e)
+			{
+				Debug.LogException(e);
+				Debug.LogWarning($"Failed to create an area for the special room: {roomCreator.name}");
+			}
+		}
 
 		public static T[] Array<T>(params T[] vals) => vals;
 
@@ -915,6 +1092,9 @@ namespace BB_MOD
 		public const float PlayerDefaultWalkSpeed = 16f, PlayerDefaultRunSpeed = 24f;
 
 		public const float LightHeight = 9f;
+		public static RoomCategory SpecialRoomEnum => instance.customRoomEnums[0];
+
+		public static Door SwingingDoor => FindResourceObjectWithName<SwingDoor>("Door_Swinging"); // MUST Return the swinging door
 	}
 
 	/// <summary>
@@ -1036,7 +1216,7 @@ namespace BB_MOD
 				}
 				else if (typeof(T).Equals(typeof(Sprite)))
 				{
-					
+
 					if (args.Length > 1)
 						AddSpriteAsset(path, (int)args[0], name, (Vector2)args[1]);
 					if (args.Length > 1)
@@ -1097,7 +1277,7 @@ namespace BB_MOD
 
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "npc", "MGS_Magic.png"), 40, "MGS_MagicSprite"); // Sprite of "Magic" for magical student
 
-			
+
 
 			AddAudioAsset(Path.Combine(modPath, "Audio", "npc", "clock_Scream.wav"), "clock_scream", false); // Crazy Clock Audios
 			AddAudioAsset(Path.Combine(modPath, "Audio", "npc", "clock_tick.wav"), "clock_tick", false);
@@ -1143,6 +1323,10 @@ namespace BB_MOD
 			AddAudioAsset(Path.Combine(modPath, "Audio", "event", "blackout_out.wav"), "blackout_off", false); // Blackout event noises
 			AddAudioAsset(Path.Combine(modPath, "Audio", "event", "blackout_on.wav"), "blackout_on", false);
 
+			// Special Room Assets
+
+
+
 			// Misc Assets
 
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "otherMainMenu.png"), 1, "newBaldiMenu"); // The BB Times Main Menu
@@ -1160,6 +1344,25 @@ namespace BB_MOD
 			AddAudioAsset(Path.Combine(modPath, "Audio", "ventNoise.wav"), "ventNoises", true); // Vent Noises
 
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "balExplode.png"), 29, "balExploding");
+
+			AddTextureAsset(Path.Combine(modPath, "Textures", "schooltext", "defaultWall.png"), "defaultWallTexture"); // Adds the default texture for the wall
+			AddTextureAsset(Path.Combine(modPath, "Textures", "schooltext", "defaultSaloonTexture.png"), "defaultSaloonTexture"); // Adds the default texture for the wall
+
+			AddAudioAsset(Path.Combine(modPath, "Audio", "extras", "schoolHouseEscape.wav"), "SchoolEscapeSong", true);
+			AddAudioAsset(Path.Combine(modPath, "Audio", "extras", "Quiet_noise_loop.wav"), "AngrySchool_Phase1", true); // That UFO-like noise for the first phase of the red school house
+			AddAudioAsset(Path.Combine(modPath, "Audio", "extras", "Chaos_EarlyLoopStart.wav"), "AngrySchool_Phase2", true); // Phase 2 with initial starting "angry" noise
+			AddAudioAsset(Path.Combine(modPath, "Audio", "extras", "Chaos_EarlyLoop.wav"), "AngrySchool_Phase3", true); // Phase 3 with looping "angry" noise
+			AddAudioAsset(Path.Combine(modPath, "Audio", "extras", "Chaos_FinalLoop.wav"), "AngrySchool_Phase4", true); // Phase 4 with initial ultra "angry" noise
+			AddAudioAsset(Path.Combine(modPath, "Audio", "extras", "Chaos_FinalLoopNoise.wav"), "AngrySchool_Phase5", true); // Phase 5 with looping ultra "angry" noise
+			AddAudioAsset(Path.Combine(modPath, "Audio", "extras", "BAL_AllNotebooksNormal.wav"), "BaldiNormalEscape", true); // Baldi Normal Speeaaaak
+			AddAudioAsset(Path.Combine(modPath, "Audio", "extras", "BAL_AllNotebooksFinal.wav"), "BaldiAngryEscape", true); // Baldi ANGRY SPEEAAAAAAAK
+
+			AddSpriteAsset(Path.Combine(modPath, "Textures", "SchoolFire.png"), 25, "SchoolFire_FirstFrame"); // Fire Frames
+			AddSpriteAsset(Path.Combine(modPath, "Textures", "SchoolFire2.png"), 25, "SchoolFire_SecondFrame");
+
+			AddTextureAsset(Path.Combine(modPath, "Textures", "GateR.png"), "elevator_gateR"); // R U N
+			AddTextureAsset(Path.Combine(modPath, "Textures", "GateU.png"), "elevator_gateU");
+			AddTextureAsset(Path.Combine(modPath, "Textures", "GateN.png"), "elevator_gateN");
 
 		}
 
@@ -1179,7 +1382,7 @@ namespace BB_MOD
 			// Weight Info: Npcs mostly have weights between 75 - 100, you can set below 75, but depending on the floor and the amount of potential characters, putting low values such as 25 for F3 for example, can make the character almost impossible to spawn
 			// spriteFileName > All File Names of Textures that should be added to the npc (should be png), the first filename on the array will be the default texture
 			// flatSprite > if the sprite of the NPC doesn't use billboard (As chalkles does when he is on a chalkboard, for example), if you want to switch between materials, the NPC_CustomData component already have a method for that
-			// includeAnimator > Include the animator component (Do whatever you want with it lol)
+			// includeAnimator > Include the animator component from beans (use whatever you want with that)
 			// pixelsPerUnit > Basically if this value is larger, the NPC's sprite is smaller
 			// spriteYOffset > the offset of the sprite being rendered (if it passes the ground or goes too above, you can regulate by using this variable)
 			// posterFileName > file name of the character's detention poster (should also be png), use the placeholder poster from the textures folder to make your own poster
@@ -1217,17 +1420,17 @@ namespace BB_MOD
 				"ClockGuy_Frown.png",
 				"ClockGuy_Scream_Tick.png", "ClockGuy_Scream_Tock.png",
 			"ClockGuy_Hide1.png", "ClockGuy_Hide2.png", "ClockGuy_Hide3.png", "ClockGuy_Hide4.png", "ClockGuy_Hide5.png", "ClockGuy_Hide6.png", "ClockGuy_Hide7.png", "ClockGuy_Hide8.png", "ClockGuy_Hide9.png", "ClockGuy_Hide10.png", "ClockGuy_Hide11.png") // Hiding Animation
-			, true, false, 30f, 0f, "pri_crazyclock.png", "PST_CC_Name", "PST_CC_Desc", ContentUtilities.Array(Floors.F3), ContentUtilities.Array(RoomCategory.FieldTrip, RoomCategory.Test), forceSpawn: true, aggored: true, ignoreBelts: true, isStatic:true)); // Poolgametm (Coded by PixelGuy)
+			, true, false, 30f, 0f, "pri_crazyclock.png", "PST_CC_Name", "PST_CC_Desc", ContentUtilities.Array(Floors.F3), ContentUtilities.Array(RoomCategory.FieldTrip, ContentUtilities.SpecialRoomEnum), forceSpawn: true, aggored: true, ignoreBelts: true, isStatic: true)); // Poolgametm (Coded by PixelGuy)
 			allNpcs.Add(CreateNPC<Forgotten>("Forgotten", 40, ContentUtilities.Array("forgotten.png"), false, false, 25f, 0f, "pri_forgotten.png", "PST_Forgotten_Name", "PST_Forgotten_Name_Desc", ContentUtilities.Array(Floors.F2, Floors.F3, Floors.END), enterRooms: true, capsuleRadius: 4f)); // JDvideosPR
 			allNpcs.Add(CreateNPC<LetsDrum>("Let's Drum", 45, ContentUtilities.Array("Lets_Drum.png"), false, false, 51f, -1f, "pri_letsdrum.png", "PST_DRUM_Name", "PST_DRUM_Desc", ContentUtilities.Array(Floors.F2, Floors.F3), enterRooms: false)); // PixelGuy
 			allNpcs.Add(CreateNPC<Robocam>("Robocam", 65, ContentUtilities.Array("robocam.png"), false, false, 10f, 0f, "pri_robocam.png", "PST_Robocam_Name", "PST_Robocam_Name_Desc", ContentUtilities.Array(Floors.F3, Floors.END), enterRooms: false)); // JDvideosPR
 			allNpcs.Add(CreateNPC<PencilBoy>("Pencil Boy", 50, ContentUtilities.Array("pb_angry.png", "pb_angrySpot.png", "pb_happy.png"), false, false, 65f, -1.75f, "pri_pb.png", "PST_PB_Name", "PST_PB_Desc", ContentUtilities.Array(Floors.F2, Floors.END), ContentUtilities.Array(RoomCategory.Hall, RoomCategory.Test), enterRooms: false, capsuleRadius: 2.6f));
 
 			// Replacement NPCs here
-			allNpcs.Add(CreateReplacementNPC<ZeroPrize>("0th Prize", 75, ContentUtilities.Array("0thprize_sleep.png", "0thprize.png"), false, false, 50f, -0.5f, 
-				"pri_0thprize.png", "PST_0TH_Name", "PST_0TH_Desc", ContentUtilities.Array(Floors.F3), ContentUtilities.Array(Character.Sweep), forceSpawn: true, capsuleRadius:4f, enterRooms:false, hasLooker:false)); // PixelGuy
+			allNpcs.Add(CreateReplacementNPC<ZeroPrize>("0th Prize", 75, ContentUtilities.Array("0thprize_sleep.png", "0thprize.png"), false, false, 50f, -0.5f,
+				"pri_0thprize.png", "PST_0TH_Name", "PST_0TH_Desc", ContentUtilities.Array(Floors.F3), ContentUtilities.Array(Character.Sweep), forceSpawn: true, capsuleRadius: 4f, enterRooms: false, hasLooker: false)); // PixelGuy
 			allNpcs.Add(CreateReplacementNPC<MagicalStudent>("Magical Student", 35, ContentUtilities.Array("MGS_Throw1.png", "MGS_Throw2.png", "MGS_Throw3.png"), false, false, 60f, -1.6f,
-				"pri_MGS.png", "PST_MGS_Name", "PST_MGS_Desc", ContentUtilities.Array(Floors.F3, Floors.END), ContentUtilities.Array(Character.Principal), usingWanderRounds:true)); // TheEnkoder (Coded by PixelGuy)
+				"pri_MGS.png", "PST_MGS_Name", "PST_MGS_Desc", ContentUtilities.Array(Floors.F3, Floors.END), ContentUtilities.Array(Character.Principal), usingWanderRounds: true)); // TheEnkoder (Coded by PixelGuy)
 
 
 			// End of Character Spawns
@@ -1247,12 +1450,15 @@ namespace BB_MOD
 				CheckForParameters(weight, floor);
 
 				Destroy(cBean.GetComponent<Beans>()); // Removes beans component, useless
+				if (!includeAnimator)
+					Destroy(cBean.GetComponent<Animator>()); // Useless component
 
 
-				var customData = cBean.AddComponent<CustomNPCData>();
 				Character cEnum = c;
 				if (c == Character.Null) cEnum = EnumExtensions.ExtendEnum<Character>(name);
 				customNPCEnums.Add(cEnum);
+				var customData = cBean.AddComponent<CustomNPCData>();
+
 				customData.MyCharacter = cEnum;
 				customData.EnterRooms = enterRooms;
 				customData.Aggroed = aggored;
@@ -1269,21 +1475,18 @@ namespace BB_MOD
 				var beanPoster = beans.GetComponent<Beans>().Poster; // Get beans poster to set data
 
 				customData.poster = ObjectCreatorHandlers.CreatePosterObject(AssetManager.TextureFromFile(Path.Combine(modPath, "Textures", "npc", posterFileName)), beanPoster.material, ContentUtilities.ConvertPosterTextData(beanPoster.textData, keyForPosterName, keyForPoster));
+				var comp = cBean.AddComponent<C>();
 
-				cBean.AddComponent<C>(); // Adds main component: Custom NPC
 
-				cBean.GetComponent<Animator>().enabled = includeAnimator;
 				cBean.GetComponent<Looker>().enabled = hasLooker;
 
 
 				cBean.SetActive(false);
-				cBean.GetComponent<C>().enabled = true;
 
+				comp.enabled = true;
+				comp.spriteBase = cBean.transform.Find("SpriteBase").gameObject;
 
-
-				cBean.GetComponent<C>().spriteBase = cBean.transform.Find("SpriteBase").gameObject;
-
-				var sprite = cBean.GetComponent<C>().spriteBase.transform.Find("Sprite");
+				var sprite = comp.spriteBase.transform.Find("Sprite");
 
 				sprite.localPosition = new Vector3(0f, 0f + spriteYOffset, 0f); // Sets offset
 
@@ -1292,8 +1495,8 @@ namespace BB_MOD
 
 				customData.spriteObject = renderer; // Sets the renderer to be used
 
-				cBean.GetComponent<C>().spawnableRooms = new List<RoomCategory>() { RoomCategory.Hall };
-				cBean.GetComponent<C>().baseTrigger = ContentUtilities.Array<Collider>(cBean.GetComponent<CapsuleCollider>());
+				comp.spawnableRooms = new List<RoomCategory>() { RoomCategory.Hall };
+				comp.baseTrigger = ContentUtilities.Array<Collider>(cBean.GetComponent<CapsuleCollider>());
 
 				customData.materials[0] = renderer.material;
 				customData.materials[1] = Instantiate(Resources.FindObjectsOfTypeAll<Material>().First(x => x.name.ToLower() == "chalkles"));
@@ -1308,10 +1511,11 @@ namespace BB_MOD
 				if (capsuleRadius > 0)
 					cBean.GetComponent<CapsuleCollider>().radius = capsuleRadius;
 				success = true;
+
 				return new WeightedNPC()
 				{
 					weight = weight,
-					selection = cBean.GetComponent<C>()
+					selection = comp
 				};
 			}
 			catch (Exception e)
@@ -1382,17 +1586,19 @@ namespace BB_MOD
 
 			addedItems = true;
 
-			allShoppingItems.Add(new WeightedItemObject() { 
-				selection = ContentUtilities.FindResourceObjectContainingName<ItemObject>("principalwhistle"), 
-				weight = 50 }, ContentUtilities.AllFloorsExcept(Floors.F1)); // Adds principal's whistle back into the johnny's store
+			allShoppingItems.Add(new WeightedItemObject()
+			{
+				selection = ContentUtilities.FindResourceObjectContainingName<ItemObject>("principalwhistle"),
+				weight = 50
+			}, ContentUtilities.AllFloorsExcept(Floors.F1)); // Adds principal's whistle back into the johnny's store
 
 			// Item Creation Here
 
 			allNewItems.Add(CreateItem<ITM_Present>("PRS_Name", "PRS_Desc", "present.png", "present.png", "Present", 120, 40, 30, ContentUtilities.Array(Floors.F3), 55, ContentUtilities.Array(Floors.F3), 60, includeOnMysteryRoom: true)); // PixelGuy
 			allNewItems.Add(CreateItem<ITM_Hammer>("HAM_Name", "HAM_Desc", "hammer.png", "hammerSmall.png", "Hammer", 30, 35, 25, ContentUtilities.AllFloorsExcept(Floors.F1), 125, ContentUtilities.AllFloors, 60)); // PixelGuy
-			allNewItems.Add(CreateItem<ITM_Bell>("BEL_Name", "BEL_Desc", "bell.png", "bell.png", "Bell", 30, 25, 25, ContentUtilities.AllFloors, 125, ContentUtilities.AllFloors, 45, includeOnFieldTrip:true)); // PixelGuy
-			allNewItems.Add(CreateItem<ITM_GPS>("GPS_Name", "GPS_Desc", "gps.png", "gpsSmall.png", "GPS", 70, 20, 25, ContentUtilities.Array(Floors.F2, Floors.END), 245, ContentUtilities.Array(Floors.F2, Floors.F3), 30, includeOnPartyEvent:true, includeOnFieldTrip:true)); // PixelGuy
-			allNewItems.Add(CreateItem<ITM_Pencil>("PC_Name", "PC_Desc", "Pencil.png", "Pencil.png", "Pencil", 40, 22, 25, ContentUtilities.Array(Floors.F2, Floors.END), 40, ContentUtilities.Array(Floors.F2, Floors.F3), 30, includeOnFieldTrip:true)); // FileName3 (Coded by PixelGuy)
+			allNewItems.Add(CreateItem<ITM_Bell>("BEL_Name", "BEL_Desc", "bell.png", "bell.png", "Bell", 30, 25, 25, ContentUtilities.AllFloors, 125, ContentUtilities.AllFloors, 45, includeOnFieldTrip: true)); // PixelGuy
+			allNewItems.Add(CreateItem<ITM_GPS>("GPS_Name", "GPS_Desc", "gps.png", "gpsSmall.png", "GPS", 70, 20, 25, ContentUtilities.Array(Floors.F2, Floors.END), 245, ContentUtilities.Array(Floors.F2, Floors.F3), 30, includeOnPartyEvent: true, includeOnFieldTrip: true)); // PixelGuy
+			allNewItems.Add(CreateItem<ITM_Pencil>("PC_Name", "PC_Desc", "Pencil.png", "Pencil.png", "Pencil", 40, 22, 25, ContentUtilities.Array(Floors.F2, Floors.END), 40, ContentUtilities.Array(Floors.F2, Floors.F3), 30, includeOnFieldTrip: true)); // FileName3 (Coded by PixelGuy)
 		}
 
 
@@ -1532,24 +1738,24 @@ namespace BB_MOD
 		// ------------------------------------ CUSTOM POSTER CREATION ---------------------------------------
 
 
-			// Parameters of CreateSingle/Multi Poster:
-			// textureName > name of the texture used for the poster (must be png, and in Textures/poster folder)
-			// weight (default is 100) > sets the chance to the poster to spawn (default is 100 to have the same weight as other posters, community walls uses 10 on weight)
-			// -- If your poster contains text --
-			// textKey > the key (to read the text) from the posterCaps.json file
-			// fontSize > size of the font
-			// borderLength > basically where will the the text begin to break lines based from the position the text has been set
-			// position > text position
-			// fontStyle > style of the font (italic, bold, etc.)
-			// alignment > alignment of the text
-			// textColor > color of the text
-			// -- If it is a multi poster --
-			// posters > array of posters (you must use the CreatePosterObject() method to fill the array), the first poster on the array will be the main one
+		// Parameters of CreateSingle/Multi Poster:
+		// textureName > name of the texture used for the poster (must be png, and in Textures/poster folder)
+		// weight (default is 100) > sets the chance to the poster to spawn (default is 100 to have the same weight as other posters, community walls uses 10 on weight)
+		// -- If your poster contains text --
+		// textKey > the key (to read the text) from the posterCaps.json file
+		// fontSize > size of the font
+		// borderLength > basically where will the the text begin to break lines based from the position the text has been set
+		// position > text position
+		// fontStyle > style of the font (italic, bold, etc.)
+		// alignment > alignment of the text
+		// textColor > color of the text
+		// -- If it is a multi poster --
+		// posters > array of posters (you must use the CreatePosterObject() method to fill the array), the first poster on the array will be the main one
 
-			// You can add the poster either for allposters list (general posters that spawn in hallways) or chalkboards list (the chalkboards that spawn at classrooms)
+		// You can add the poster either for allposters list (general posters that spawn in hallways) or chalkboards list (the chalkboards that spawn at classrooms)
 
-			// -------- WARNING --------
-			// Before adding your posters, make sure that the poster texture has the EXACT SIZE OF 256x256 in both dimensions, or else the game will fail to load your texture and will leave an ugly gray wall
+		// -------- WARNING --------
+		// Before adding your posters, make sure that the poster texture has the EXACT SIZE OF 256x256 in both dimensions, or else the game will fail to load your texture and will leave an ugly gray wall
 
 		public void SetupPosterWeights()
 		{
@@ -1697,9 +1903,6 @@ namespace BB_MOD
 		// roomsOnly > if the texture is only applied for the rooms (off by default)
 		// weight > the chance of the texture being chosen (100 by default, to be equal to the other weights)
 
-		// ---- WARNING ----
-		// Just like the poster warning, the wall/ground/ceiling textures must be of the exact: 128x128 on both dimensions!
-
 		public void SetupSchoolTextWeights()
 		{
 			if (addedTexts)
@@ -1709,9 +1912,17 @@ namespace BB_MOD
 
 			// Add your textures here
 
-			CreateSchoolTexture("lightCarpet.png", ContentUtilities.AllFloors, SchoolTextType.Floor, existOnClassrooms: true, roomsOnly: true);
-			CreateSchoolTexture("GraniteCeiling.png", ContentUtilities.AllFloorsExcept(Floors.F1), SchoolTextType.Ceiling);
-			CreateSchoolTexture("woodFloor.png", ContentUtilities.AllFloors, SchoolTextType.Floor);
+			CreateSchoolTexture("lightCarpet.png", ContentUtilities.AllFloors, SchoolTextType.Floor, existOnClassrooms: true, roomsOnly: true); // PixelGuy
+			CreateSchoolTexture("GraniteCeiling.png", ContentUtilities.AllFloorsExcept(Floors.F1), SchoolTextType.Ceiling);// PixelGuy
+			CreateSchoolTexture("woodFloor.png", ContentUtilities.AllFloors, SchoolTextType.Floor);// JDVideos
+			CreateSchoolTexture("squaredTiledFloor.png", ContentUtilities.AllFloors, SchoolTextType.Floor);// tsu
+			CreateSchoolTexture("CleanWall.png", ContentUtilities.AllFloorsExcept(Floors.F1, Floors.END), SchoolTextType.Wall, existOnFaculties:true, roomsOnly:true);// tsu
+			CreateSchoolTexture("woodenFloor.png", ContentUtilities.Array(Floors.F3), SchoolTextType.Floor, existOnFaculties:true, roomsOnly:true); // tsu
+			CreateSchoolTexture("whiteClassFloor.png", ContentUtilities.AllFloors, SchoolTextType.Floor, existOnClassrooms:true, roomsOnly:true); // tsu
+			CreateSchoolTexture("sanduCeiling.png", ContentUtilities.Array(Floors.F3), SchoolTextType.Ceiling); // tsu
+			CreateSchoolTexture("sequencedWall_1.png", ContentUtilities.Array(Floors.F1, Floors.F2), SchoolTextType.Wall, existOnClassrooms:true); // tsu
+			CreateSchoolTexture("sequencedWall_2.png", ContentUtilities.Array(Floors.F1, Floors.F2), SchoolTextType.Wall, existOnClassrooms: true); // tsu
+
 		}
 
 		private void CreateSchoolTexture(string textureName, Floors[] floors, SchoolTextType[] types, bool existOnClassrooms = false, bool existOnFaculties = false, bool roomsOnly = false, int weight = 100)
@@ -1727,7 +1938,7 @@ namespace BB_MOD
 
 				var text = AssetManager.TextureFromFile(Path.Combine(modPath, "Textures", "schooltext", textureName));
 
-				CheckForParameters(weight, text, 128, 128, floors);
+				CheckForParameters(weight, floors);
 
 				textPair.Add(floors);
 				textPairForRooms.Add(new bool[]
@@ -1787,12 +1998,40 @@ namespace BB_MOD
 		// darkRoom (optional, disabled by default): if you want the room to be naturally dark (in order to create special lighting for example), you can always set this true
 		// You can use AddCustomBuilderToExistentCustomRoom() to do what the method name literally says, add a builder to a custom room, all you gotta put is just the name of the builder and the roomName that was used (MUST BE AFTER CREATING THE CUSTOM ROOM, doesn't support builders for existent rooms)
 
+		// Here is the parameters for specifically creating SpecialRooms:
+		// name: name of the bigroom
+		// weight: chance for the bigroom to spawn
+		// high ceiling: a special feature that replicates the playground's skybox, but being a literal wall
+		// floors: the floors this special room will spawn at
+		// minSize: min size of the special room
+		// maxSize: max size of the special room
+		// stickToHalls (true by default): if the special room is only attached to the border of the map
+		// acceptExits (true by default): if the special room accepts the elevators (cafeterias for example)
+		// wallTex (optional): texture for the wall of the special room (uses the cafeteria's default texture)
+		// ceilingTex (optional): texture for the ceiling of the special room (uses the cafeteria's default texture), this only works if higherCeiling is disabled
+		// floorTex (optional): texture for the floor of the special room (uses the cafeteria's default texture)
+		// Generics:
+		// S: The special room creator (SpecialRoomCreator class)
+		// B: The room builder it'll use to build objects and structures (RoomBuilder class)
+		// R (Optional): If the special room has a function, such as Playground for removing the guilty of the player, you can use this one aswell (RoomFunction class)
+		// Extra Functions for SpecialRoomCreator:
+		// this.FixElevatorTiles() is a method exclusively for special rooms with higher ceiling, it fixes the elevator ceiling tiles by adding texture to them (or else, they would be transparent and ugly)
+		// this.CreateOpenAreaForSpecialRoom() is a method also exclusively for special rooms with higher ceiling, it adds walls higher than the map's height to simulate the playground's skybox
+		
+		// Just like roombuilders, you can also duplicate special rooms to different floors to have variety in weights (DuplicateSpecialRoom)
+
+
 		public void SetupObjectBuilders()
 		{
 			executedRooms.Clear(); // Clears up an important list before executing
 			if (addedBuilders)
 				return;
 			addedBuilders = true;
+			foreach (var specialRoom in ContentUtilities.FindResourceObjects<SpecialRoomCreator>()) // Replaces every single roomcontroller from the special rooms with actual special room enums (for global use)
+			{
+				specialRoom.Room.category = ContentUtilities.SpecialRoomEnum; // sets to the field
+				AccessTools.Field(typeof(SpecialRoomCreator), "roomCategory").SetValue(specialRoom, ContentUtilities.SpecialRoomEnum); // Sets the other category field to the enum aswell
+			}
 
 			// Extra functions for builders here (Refer the methods from ExtraStuff/Builders.cs)
 			// Current supported categories: Office, Class, Faculty
@@ -1813,16 +2052,16 @@ namespace BB_MOD
 
 			CreateRoomBuilder<LossyClassBuilder>("Messy Class Builder", 60, ContentUtilities.Array(RoomCategory.Class)); // PixelGuy
 
-			 CreateRoomBuilder<BathBuilder>("BathroomBuilder", 50, "bathroom", ContentUtilities.Array(Floors.F1), false, ContentUtilities.Array(CreateRawSchoolTexture("bathroomCeiling.png")),
-				ContentUtilities.Array(CreateRawSchoolTexture("bathroomWall.png")),
-				ContentUtilities.Array(CreateRawSchoolTexture("bathroomFloor.png")), "bathDoorOpened.png", "bathDoorClosed.png", Color.white, 
-				ContentUtilities.Array(ContentUtilities.LightPrefab, CreateExtraDecoration_Raw("long_hanginglamp.png", 200, 30, ContentUtilities.AllCategories, true, true, Vector3.up * (ContentUtilities.LightHeight - 0.7f))), 0, 1); // PixelGuy >> Bathroom for F1
+			CreateRoomBuilder<BathBuilder>("BathroomBuilder", 50, "bathroom", ContentUtilities.Array(Floors.F1), false, ContentUtilities.Array(CreateRawSchoolTexture("bathroomCeiling.png")),
+			   ContentUtilities.Array(CreateRawSchoolTexture("bathroomWall.png")),
+			   ContentUtilities.Array(CreateRawSchoolTexture("bathroomFloor.png")), "bathDoorOpened.png", "bathDoorClosed.png", Color.white,
+			   ContentUtilities.Array(ContentUtilities.LightPrefab, CreateExtraDecoration_Raw("long_hanginglamp.png", 200, 30, ContentUtilities.AllCategories, true, true, Vector3.up * (ContentUtilities.LightHeight - 0.7f))), 0, 1); // PixelGuy >> Bathroom for F1
 			DuplicateRoomBuilder("bathroom", ContentUtilities.Array(Floors.F2, Floors.END), 1, 2); //PixelGuy > Bathroom for F2 & END
 			DuplicateRoomBuilder("bathroom", Floors.F3, 2, 4); // PixelGuy >> Bathroom for F3
 
 			CreateRoomBuilder<AbandonedBuilder>("AbandonedRoomBuilder", 64, "abandoned", ContentUtilities.Array(Floors.F3), false, ContentUtilities.Array(CreateRawSchoolTexture("GraniteCeiling.png")),
 			ContentUtilities.Array(CreateRawSchoolTexture("moldWall.png")),
-			ContentUtilities.Array(CreateRawSchoolTexture("woodFloor.png")), "oldDoorOpen.png", "oldDoorClosed.png", new Color(128f, 43f, 0f), 
+			ContentUtilities.Array(CreateRawSchoolTexture("woodFloor.png")), "oldDoorOpen.png", "oldDoorClosed.png", new Color(128f, 43f, 0f),
 			ContentUtilities.Array(ContentUtilities.LightPrefab, CreateExtraDecoration_Raw("long_hanginglamp.png", 200, 30, ContentUtilities.AllCategories, true, true, Vector3.up * (ContentUtilities.LightHeight - 0.7f))), 0, 1, true); // JDvideosPR >> Abandoned locked room for F3
 
 			// Note: if you want to create custom lights for the room, you can always use CreateExtraDecoration_Raw, and if you want to keep the original, you include ContentUtilities.LightPrefab on the array
@@ -1832,8 +2071,112 @@ namespace BB_MOD
 
 			// Pro Tip: You can stack multiple custom room builders like the bathroom one, and change the amount of rooms for each floor! Just use DuplicateRoomBuilder(name, floors, min and max amount) << parameters, please put the name of the room builder as the bathroom does
 
+			// New Special Rooms
+
+			CreateSpecialRoom<BasketBallArea, BasketBallBuilder, RuleFreeZone>("BasketBallArea", 75, true, ContentUtilities.Array(Floors.F2, Floors.END), new IntVector2(11, 15), new IntVector2(13, 19), stickToHalls:false, wallTex: GetAsset<Texture2D>("defaultSaloonTexture"), ceilingTex: GetAsset<Texture2D>("defaultSaloonTexture"), floorTex: CreateRawTexture("basketBallArea_Floor.png"));
+			DuplicateSpecialRoom("BasketBallArea", ContentUtilities.Array(Floors.F3), 90);
 
 
+		}
+
+		private S CreateSpecialRoom<S, B, R>(string name, int weight, bool highCeiling, Floors[] floors, IntVector2 minSize, IntVector2 maxSize, bool stickToHalls = true, bool acceptExits = true, Texture2D wallTex = null, Texture2D ceilingTex = null, Texture2D floorTex = null) where S : SpecialRoomCreator where B : RoomBuilder where R : RoomFunction
+		{
+			var room = CreateSpecialRoom<S, B>(name, weight, highCeiling, floors, minSize, maxSize, stickToHalls, acceptExits, wallTex, ceilingTex, floorTex);
+
+			if (!room) return null; // If rooms fails to be created
+
+			room.Room.CreateRoomFunction<R>();
+
+			return room;
+		}
+
+		private S CreateSpecialRoom<S, B>(string name, int weight, bool highCeiling, Floors[] floors, IntVector2 minSize, IntVector2 maxSize, bool stickToHalls = true, bool acceptExits = true, Texture2D wallTex = null, Texture2D ceilingTex = null, Texture2D floorTex = null) where S : SpecialRoomCreator where B : RoomBuilder
+		{
+			if (!specialRoomPre)
+			{
+				Debug.LogWarning("No instance of special room was found to be instanced");
+				return null;
+			}
+			var preRoom = Instantiate<SpecialRoomCreator>(specialRoomPre); // Casts to the right component, so it doesn't refer to CafeteriaCreator and breaks everything
+			try
+			{
+				preRoom.name = "CustomSpecialRoom_" + name;
+
+				Destroy(preRoom.GetComponent<CafeteriaCreator>()); // Removes the unnecessary component
+				Destroy(preRoom.transform.Find("AudioArea").gameObject); // Removes unnecessary stuff
+				Destroy(preRoom.GetComponent<RandomObjectSpawner>());
+				Destroy(preRoom.transform.Find("Builder").gameObject); // Removes the builder object aswell
+
+				
+
+
+				CheckForParameters(weight, floors);
+
+				var room = preRoom.gameObject.AddComponent<S>(); // Adds the special room creator
+				preRoom.gameObject.AddComponent<B>(); // Adds the room builder
+
+				AccessTools.Field(typeof(SpecialRoomCreator), "room").SetValue(room, room.GetComponent<RoomController>()); // Refers the room controller to the room itself
+				AccessTools.Field(typeof(SpecialRoomCreator), "minSize").SetValue(room, minSize); // Sets min size of bigroom
+				AccessTools.Field(typeof(SpecialRoomCreator), "maxSize").SetValue(room, maxSize); // Sets max size of bigroom
+				AccessTools.Field(typeof(SpecialRoomCreator), "stickToHalls").SetValue(room, stickToHalls); // Sets max size of bigroom
+				AccessTools.Field(typeof(SpecialRoomCreator), "roomCategory").SetValue(room, ContentUtilities.SpecialRoomEnum); // Sets bigroom enum
+
+				if (ceilingTex)
+					room.Room.ceilingTex = ceilingTex;
+				if (wallTex)
+					room.Room.wallTex = wallTex;
+				if (floorTex)
+					room.Room.floorTex = floorTex;
+
+				room.Room.acceptsExits = acceptExits;
+
+				if (highCeiling) // Basically creates an empty 256x256 texture for the ceiling
+				{
+					var emptyTex = new Texture2D(256, 256);
+					var clearColor = Color.clear;
+					Color[] transparentColors = new Color[65_536]; // 256 * 256
+
+					for (int i = 0; i < transparentColors.Length; i++)
+					{
+						transparentColors[i] = clearColor;
+					}
+
+					emptyTex.SetPixels(transparentColors);
+					emptyTex.Apply();
+					preRoom.Room.ceilingTex = emptyTex;
+				}
+
+				room.obstacle = EnumExtensions.ExtendEnum<Obstacle>(name);
+				customObstacleEnums.Add(room.obstacle);
+
+				DontDestroyOnLoad(room);
+				specialRoomDatas.Add(new SpecialRoomData(room, highCeiling, floors, weight));
+				return room;
+			}
+			catch (Exception e)
+			{
+				Debug.LogException(e);
+				Debug.LogWarning($"An error occurred while creating the specialroom: \"{name}\", the specialroom will be destroyed");
+				Destroy(preRoom.gameObject);
+				return null;
+			}
+			
+		}
+
+		private void DuplicateSpecialRoom(string name, Floors[] floors, int weight)
+		{
+			try
+			{
+				CheckForParameters(weight, floors);
+				SpecialRoomData newData = specialRoomDatas[specialRoomDatas.IndexAt(x => x.Room.name.ToLower().Contains(name.ToLower()))];
+				newData.SetData(floors, weight);
+				specialRoomDatas.Add(newData);
+			}
+			catch (Exception e)
+			{
+				Debug.LogException(e);
+				Debug.LogWarning("Failed to duplicate the special room: " + name);
+			}
 		}
 
 		private void DuplicateRoomBuilder(string name, Floors[] floors, int minAmount, int maxAmount)
@@ -1843,7 +2186,7 @@ namespace BB_MOD
 				CheckForParameters(floors);
 				if (!customRoomEnums.GetRoomByName(name, out RoomCategory cat))
 					throw new ArgumentException($"Invalid Room Name: \"{name}\"");
-				
+
 				var newData = roomDatas[roomDatas.IndexAt(x => x.IsANewRoom && x.Rooms.Contains(cat))];
 				newData.SetParameters(minAmount, maxAmount, floors);
 				roomDatas.Add(newData);
@@ -1851,7 +2194,7 @@ namespace BB_MOD
 			catch (Exception e)
 			{
 				Debug.LogException(e);
-				Debug.Log("Failed to duplicate the room builder: " + name);
+				Debug.LogWarning("Failed to duplicate the room builder: " + name);
 			}
 		}
 		private void DuplicateRoomBuilder(string name, Floors floor, int minAmount, int maxAmount) => DuplicateRoomBuilder(name, ContentUtilities.Array(floor), minAmount, maxAmount);
@@ -1894,7 +2237,7 @@ namespace BB_MOD
 		private void CreateRoomBuilder<B>(string name, int weight, string roomName, Floors[] floors, bool onlyConnectedToHall, WeightedTexture2D_ForRooms[] ceiling, WeightedTexture2D_ForRooms[] wall, WeightedTexture2D_ForRooms[] floor, string doorOpenPath, string doorClosedPath, Color mapColor, int minAmount = 1, int maxAmount = 1, bool darkRoom = false) where B : RoomBuilder =>
 		CreateRoomBuilder<B>(name, weight, roomName, floors, onlyConnectedToHall, ceiling, wall, floor, doorOpenPath, doorClosedPath, mapColor, ContentUtilities.Array(ContentUtilities.LightPrefab), minAmount, maxAmount, darkRoom);
 
-		private void AddCustomBuilderToExistentCustomRoom<B>(string name, int weight, string roomName) where B : RoomBuilder 
+		private void AddCustomBuilderToExistentCustomRoom<B>(string name, int weight, string roomName) where B : RoomBuilder
 		{
 			var cat = customRoomEnums.GetRoomByName(roomName);
 			CreateRoomBuilder<B>(name, weight, ContentUtilities.Array(RoomCategory.Null), ContentUtilities.AllFloors, out _, out WeightedRoomBuilder builder);
@@ -1921,14 +2264,14 @@ namespace BB_MOD
 			ceiling.Do(x => x.SetupVariables(SchoolTextType.Ceiling, rEnum));
 			wall.Do(x => x.SetupVariables(SchoolTextType.Wall, rEnum));
 			floor.Do(x => x.SetupVariables(SchoolTextType.Floor, rEnum));
-				customRoomEnums.Add(rEnum);
+			customRoomEnums.Add(rEnum);
 			foreach (var light in lightPre)
 			{
 				light.selection.name += "_HangingLight";
 			}
 
 			roomDatas[roomDatas.Count - 1] = RoomData.ConvertToRoom(roomDatas[roomDatas.Count - 1], onlyConnectedToHall, minAmount, maxAmount, Path.Combine(modPath, "Textures", "customRooms", doorClosedPath), Path.Combine(modPath, "Textures", "customRooms", doorOpenPath), mapColor, darkRoom, rEnum, ceiling, wall, floor, lightPre);
-			
+
 		}
 
 		private WeightedTexture2D_ForRooms CreateRawSchoolTexture(string textureName, int weight = 100)
@@ -1951,6 +2294,24 @@ namespace BB_MOD
 				return new WeightedTexture2D_ForRooms(null, SchoolTextType.None);
 			}
 
+		}
+
+		private Texture2D CreateRawTexture(string textureName)
+		{
+			try
+			{
+				var text = AssetManager.TextureFromFile(Path.Combine(modPath, "Textures", "schooltext", textureName));
+
+				CheckForParameters(text, 128, 128);
+
+				return text;
+			}
+			catch (Exception e)
+			{
+				Debug.LogException(e);
+				Debug.LogWarning($"Failed to load texture: {textureName}");
+				return null;
+			}
 		}
 
 		private void CreateStandardHallBuilder<B>(string name, float weight) where B : HallBuilder
@@ -2024,7 +2385,8 @@ namespace BB_MOD
 		// scoldName: scolding name that principal will look for to play when scolding player
 		// audioName: the name of the audio file (must be .wav in Audios/npc)
 		// audKey: key for the audio caption
-		// CreateExtraDecoration()
+		// CreateExtraDecoration<T>()
+		// T (optional): if your decoration has any extra features that involves scripting, you can always add a component to it aswell
 		// texturePath: file name of the decoration texture (in Textures folder, must be .png)
 		// weight: chance to spawn
 		// pixelsPerUnit: size of image, lower value means a bigger image
@@ -2047,6 +2409,30 @@ namespace BB_MOD
 				addedExtraContent[1] = true;
 				CreateExtraDecoration("lightBulb.png", 100, 50, ContentUtilities.Array(RoomCategory.Faculty), true);
 				CreateExtraDecoration("sink.png", 1, 60, ContentUtilities.Array(customRoomEnums.GetRoomByName("bathroom")), true, true);
+				CreateExtraDecoration("basketHoop.png", 1, 6, ContentUtilities.Array(ContentUtilities.SpecialRoomEnum), true, true, new Vector3(0f, 15f, 0f));
+				CreateExtraDecoration("basketLotsOfBalls.png", 1, 60, ContentUtilities.Array(ContentUtilities.SpecialRoomEnum), true, true, new Vector3(0f, 3f, 0f));
+				CreateExtraDecoration("BaldiBall.png", 1, 25, ContentUtilities.Array(ContentUtilities.SpecialRoomEnum), true, true, new Vector3(0f, 1.9f, 0f));
+
+				CreateExtraDecoration<FireObject>("SchoolFire.png", 1, 25, ContentUtilities.Array(RoomCategory.Null), true, true, new Vector3(0f, -2.4f, 0f));
+			}
+			if (!addedExtraContent[2]) // Extra Schoolhouse Themes here
+			{
+				addedExtraContent[2] = true;
+				CreateSchoolHouseMusic("mus_NewSchool.wav", ContentUtilities.AllFloorsExcept(Floors.F3));
+			}
+		}
+
+		private void CreateSchoolHouseMusic(string musicName, params Floors[] supportedFloors)
+		{
+			var path = Path.Combine(modPath, "Audio", "extras", musicName);
+			try
+			{
+				var loop = ContentUtilities.CreateLoopingSoundObject(ContentUtilities.GetAudioClip(path), ContentUtilities.FindResourceObjectWithName<AudioMixerGroup>("Master"));
+				schoolHouseMusics.Add(new GenericObjectHolder<LoopingSoundObject>(loop, supportedFloors));
+			}
+			catch (Exception e)
+			{
+				GenericExceptionThrow(e, $"Failed to generate the school music from path: \"{path}\"");
 			}
 		}
 
@@ -2058,8 +2444,15 @@ namespace BB_MOD
 			}
 			catch (Exception e)
 			{
-				Debug.LogException(e);
-				Debug.Log("Failed to add principal\'s scolding audio, probably due to wrong filename");
+				GenericExceptionThrow(e, "Failed to add principal\'s scolding audio, probably due to wrong filename");
+			}
+		}
+
+		private void CreateExtraDecoration<T>(string texturePath, int weight, int pixelsPerUnit, RoomCategory[] categories, bool independent = false, bool separatedSprite = false, Vector3 spriteOffset = default) where T : Component
+		{
+			if (CreateExtraDecoration(texturePath, weight, pixelsPerUnit, categories, out WeightedTransform transform, independent, separatedSprite, spriteOffset))
+			{
+				transform.selection.gameObject.AddComponent<T>();
 			}
 		}
 
@@ -2069,7 +2462,7 @@ namespace BB_MOD
 		private bool CreateExtraDecoration(string texturePath, int weight, int pixelsPerUnit, RoomCategory[] categories, out WeightedTransform transform, bool independent = false, bool separatedSprite = false, Vector3 spriteOffset = default)
 		{
 			var obj = Instantiate(decorationPre.gameObject);
-			
+
 			try
 			{
 				CheckForParameters(weight);
@@ -2085,16 +2478,16 @@ namespace BB_MOD
 					trans = new WeightedTransform() { selection = parent.transform, weight = weight };
 				}
 				else
-				{ 
+				{
 					trans = new WeightedTransform() { selection = obj.transform, weight = weight };
 					obj.SetActive(false);
 				}
 
-				
-				
+
+
 				obj.GetComponent<SpriteRenderer>().sprite = AssetManager.SpriteFromTexture2D(AssetManager.TextureFromFile(Path.Combine(modPath, "Textures", texturePath)), new Vector2(0.5f, 0.5f), pixelsPerUnit); // Sets sprite
 				DontDestroyOnLoad(obj);
-				
+
 				decorations.Add(ExtraDecorationData.Create(trans, categories, independent));
 				allDecorations.Add(trans.selection);
 				transform = trans;
@@ -2103,8 +2496,7 @@ namespace BB_MOD
 			catch (Exception e)
 			{
 				Destroy(obj);
-				Debug.LogException(e);
-				Debug.Log("Failed to create the custom decoration (read the exception description)");
+				GenericExceptionThrow(e, "Failed to create the custom decoration (read the exception description)");
 				transform = null;
 				return false;
 			}
@@ -2119,6 +2511,14 @@ namespace BB_MOD
 			}
 
 			return null;
+		}
+
+		private WeightedTransform CreateExtraDecoration_Raw<T>(string texturePath, int weight, int pixelsPerUnit, RoomCategory[] categories, bool independent = false, bool separatedSprite = false, Vector3 spriteOffset = default) where T : Component
+		{
+			var transform = CreateExtraDecoration_Raw(texturePath, weight, pixelsPerUnit, categories, independent, separatedSprite, spriteOffset);
+			if (transform != null)
+				transform.selection.gameObject.AddComponent<T>();
+			return transform;
 		}
 
 
@@ -2193,6 +2593,17 @@ namespace BB_MOD
 				throw new ArgumentException("Floors.None enum has been included on the array, that isn\'t allowed");
 		}
 
+		/// <summary>
+		/// Check for the parameters provided and throw the exceptions in case they are wrong.
+		/// On this case, it checks if the <paramref name="text"/> provided is not on the right resolution
+		/// </summary>
+		/// <param name="weight"></param>
+		/// <exception cref="ArgumentOutOfRangeException"></exception>
+		private void CheckForParameters(Texture2D text, int width, int height)
+		{
+			if (text.height != height || text.width != width)
+				throw new ArgumentOutOfRangeException($"The poster\'s resolution is invalid (Texture Current Resolution: {text.height}x{text.width} > must be {height}x{width})");
+		}
 
 		/// <summary>
 		/// Check for the parameters provided and throw the exceptions in case they are wrong.
@@ -2258,10 +2669,21 @@ namespace BB_MOD
 			}
 		}
 
+		private void GenericExceptionThrow(Exception e, params string[] messages)
+		{
+			Debug.LogException(e);
+			foreach (var m in messages)
+			{
+				Debug.LogWarning(m);
+			}
+		}
+
 
 		public GameObject beans; // Most important game object for npc creation
 
 		public PosterObject posterPre; // First poster instance to be used
+
+		public CafeteriaCreator specialRoomPre; // First instance of special room creator on resources
 
 		public Transform decorationPre;
 
@@ -2473,6 +2895,38 @@ namespace BB_MOD
 		}
 		private readonly List<RoomData> roomDatas = new List<RoomData>();
 
+		private readonly List<SpecialRoomData> specialRoomDatas = new List<SpecialRoomData>();
+
+		public struct SpecialRoomData
+		{
+			public SpecialRoomData(SpecialRoomCreator room, bool highCeiling, Floors[] floors, int weight)
+			{
+				Room = room;
+				HighCeiling = highCeiling;
+				AvailableFloors = floors;
+				Weight = weight;
+			}
+
+			public SpecialRoomData(SpecialRoomCreator room, bool highCeiling, Floors floors, int weight)
+			{
+				Room = room;
+				HighCeiling = highCeiling;
+				AvailableFloors = new Floors[] { floors };
+				Weight = weight;
+			}
+
+			public void SetData(Floors[] floors, int weight)
+			{
+				AvailableFloors = floors;
+				Weight = weight;
+			}
+			public bool HighCeiling { get; private set; }
+			public SpecialRoomCreator Room { get; }
+			public Floors[] AvailableFloors { get; private set; }
+			public int Weight { get; private set; }
+			public WeightedSpecialRoomCreator WeightedRoom => new WeightedSpecialRoomCreator() { selection = Room, weight = Weight };
+		}
+
 		public class ExtraDecorationData
 		{
 			public ExtraDecorationData(WeightedTransform prefab, RoomCategory[] rooms, bool independent)
@@ -2503,7 +2957,8 @@ namespace BB_MOD
 		{
 			try
 			{
-				obj = decorations.Where(x => x.Rooms.Contains(category) && x.IndependentDecoration == independent).Select(x => x.Prefab.selection).First(x => x.name.ToLower().Contains(name.ToLower()));
+				obj = Instantiate(decorations.Where(x => x.Rooms.Contains(category) && x.IndependentDecoration == independent).Select(x => x.Prefab.selection).First(x => x.name.ToLower().Contains(name.ToLower())));
+				tempInstantiatedDecs.Add(obj);
 				return true;
 			}
 			catch
@@ -2513,9 +2968,19 @@ namespace BB_MOD
 			}
 		}
 
+		private readonly List<Transform> tempInstantiatedDecs = new List<Transform>();
+
+		public void DestroyTempDecorations()
+		{
+			tempInstantiatedDecs.ForEach(x => Destroy(x.gameObject));
+			tempInstantiatedDecs.Clear();
+		}
+
 		public void TurnDecorations(bool turn) => allDecorations.ForEach(x => x.gameObject.SetActive(turn));
 
 		public RoomData GetRoom(RoomCategory room) => roomDatas.First(x => x.Rooms.Contains(room));
+
+		public WeightedSpecialRoomCreator[] GetSpecialRooms(Floors floor) => specialRoomDatas.Where(x => x.AvailableFloors.Contains(floor)).Select(x => x.WeightedRoom).ToArray();
 
 		public bool TryGetRoom(RoomCategory room, out RoomData roomDat)
 		{
@@ -2885,11 +3350,32 @@ namespace BB_MOD
 
 		public List<Obstacle> customObstacleEnums = new List<Obstacle>();
 
-		public List<RoomCategory> customRoomEnums = new List<RoomCategory>();
+		public List<RoomCategory> customRoomEnums = new List<RoomCategory>() { EnumExtensions.ExtendEnum<RoomCategory>("specialroom") }; // Has by default the specialroom enum to replace RoomCategory.Test
 
 		readonly Dictionary<string, SoundObject> principalLines = new Dictionary<string, SoundObject>();
 
 		public SoundObject GetPrincipalLine(string scold) => principalLines.ContainsKey(scold) ? principalLines[scold] : null;
+
+		class GenericObjectHolder<T>
+		{
+			public GenericObjectHolder(T obj, params Floors[] floors)
+			{
+				this.floors = floors;
+				holderObj = obj;
+			}
+
+			readonly private Floors[] floors;
+
+			readonly private T holderObj;
+
+			public T Object => holderObj;
+
+			public bool IsObjectFromFloor(Floors floor) => floors.Contains(floor);
+		}
+
+		readonly List<GenericObjectHolder<LoopingSoundObject>> schoolHouseMusics = new List<GenericObjectHolder<LoopingSoundObject>>();
+
+		public LoopingSoundObject[] GetSchoolHouseThemes(Floors floor) => schoolHouseMusics.Where(x => x.IsObjectFromFloor(floor)).Select(x => x.Object).ToArray();
 
 		// -------- DONT TOUCH Variables ---------
 
@@ -2907,7 +3393,7 @@ namespace BB_MOD
 
 		private bool assetsLoaded = false;
 
-		private readonly bool[] addedExtraContent = ContentUtilities.Array(false, false); // Added principal dialogues, added extra decorations
+		private readonly bool[] addedExtraContent = new bool[3]; // Added principal dialogues, added extra decorations
 
 		private readonly List<WeightedItemObject> mysteryItems = new List<WeightedItemObject>();
 

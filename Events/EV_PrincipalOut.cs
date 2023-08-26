@@ -48,7 +48,8 @@ namespace BB_MOD.Events
 			base.End();
 			foreach (var pri in principals)
 			{
-				pri.Key.controlOverride = false;
+				if (pri.Key)
+					pri.Key.controlOverride = false;
 			}
 		}
 

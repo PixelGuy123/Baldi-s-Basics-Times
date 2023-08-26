@@ -1,7 +1,5 @@
 ﻿using MTM101BaldAPI;
-using MTM101BaldAPI.AssetManager;
 using System.Collections;
-using System.IO;
 using UnityEngine;
 
 namespace BB_MOD.NPCs

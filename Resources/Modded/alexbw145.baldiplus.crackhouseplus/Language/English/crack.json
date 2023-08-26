@@ -1,0 +1,30 @@
+{"items":[
+
+{"key":"Vfx_VAN_play","value":"Let's play!"},
+{"key":"Vfx_VAN_go","value":"Ready? Go!"},
+{"key":"Vfx_VAN_1","value":"1"},
+{"key":"Vfx_VAN_2","value":"2"},
+{"key":"Vfx_VAN_3","value":"3"},
+{"key":"Vfx_VAN_4","value":"4"},
+{"key":"Vfx_VAN_5","value":"5"},
+{"key":"Vfx_VAN_congrats","value":"Well that's great!"},
+{"key":"Vfx_VAN_shot","value":"Why the fuck did you shoot my fucking car?! You fucking asshole!"},
+{"key":"Vfx_VAN_EERIE","value":"*Creepy Violin Noises*"},
+{"key":"Vfx_VAN_laugh","value":"*Evil Laughter*"},
+{"key":"PST_PRI_VANMAN1","value":"Van Man"},
+{"key":"PST_PRI_VANMAN2","value":"placed on multiple fbi watchlists"},
+{"key":"Vfx_VAN_caught","value":"Oh shit!"},
+{"key":"Hud_VAN_Instructions","value":"Time to play...\nDon't fall,\nor its kidnapping time for you!"},
+
+{"key":"PST_PRI_MrBeast1","value":"MrBeast"},
+{"key":"PST_PRI_MrBeast2","value":"\"I murdered a 5 year olds parents, then bought him a new one!\""},
+{"key":"Vfx_BEAST_hey","value":"Hey! Do you want to participate, in my youtube challenge?"},
+{"key":"Vfx_BEAST_challengeinstruct","value":"I've trapped 100 subscribers in Raldi's Basics. The last one to leave gets a random item, starting now!"},
+{"key":"Vfx_BEAST_congrats","value":"Congrats, you've won my challenge! Here's your prize, see you next video!"},
+{"key":"Vfx_BEAST_ANGRY","value":"YOUR LIL' FOE JUST STOLE MY CREDIT CARD, I'LL FIND YOU!"},
+{"key":"Vfx_BEAST_wait","value":"Wait..."},
+{"key":"Vfx_BEAST_CHALLENGEANGRY","value":"WHY DO YOU HAVE MY CREDIT CARD?! I'LL GET YOU!"},
+{"key":"Sfx_BeastLose","value":"MR. BEEAASSSSTTTT!!!"},
+{"key":"Mfx_mus_beast","value":"*Music*"}
+
+]}

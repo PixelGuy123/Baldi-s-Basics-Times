@@ -105,6 +105,11 @@ namespace BB_MOD.NPCs
 			}
 		}
 
+		public override void Despawn()
+		{
+			ResetPlayer();
+			base.Despawn();
+		}
 
 		private void Update()
 		{

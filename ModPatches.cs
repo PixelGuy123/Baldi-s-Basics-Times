@@ -1,10 +1,12 @@
-﻿using BB_MOD.Events;
+﻿using AlmostEngine;
+using BB_MOD.Events;
 using BB_MOD.Extra;
+using BB_MOD.ExtraComponents;
+using BB_MOD.ExtraItems;
 using BB_MOD.NPCs;
 using HarmonyLib;
 using MonoMod.Utils;
 using MTM101BaldAPI;
-using Rewired.Libraries.SharpDX.RawInput;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -14,7 +16,9 @@ using System.Reflection;
 using System.Reflection.Emit;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Audio;
 using UnityEngine.UI;
+using UnityEngine.XR;
 
 namespace BB_MOD
 {
@@ -33,13 +37,17 @@ namespace BB_MOD
 			EnvironmentExtraVariables.ec = __instance.Ec;
 			EnvironmentExtraVariables.lb = __instance;
 
+			// Setting Special Room
+
+			ContentManager.instance.specialRoomPre = ContentUtilities.FindResourceObject<CafeteriaCreator>();
+
 			// Add custom posters
 
 			if (!ContentManager.instance.posterPre)
 			{
 				try
 				{
-					ContentManager.instance.posterPre = __instance.ld.posters.First().selection;
+					ContentManager.instance.posterPre = __instance.ld.posters[0].selection;
 				}
 				catch
 				{
@@ -183,10 +191,10 @@ namespace BB_MOD
 						__instance.ld.maxClassRooms = 12;
 						__instance.ld.minSize += new IntVector2(8, 10);
 						__instance.ld.maxSize += new IntVector2(20, 20);
-						__instance.ld.minPlotSize -= 1;
 						__instance.ld.minPlots += 6;
 						__instance.ld.maxPlots += 9;
-						__instance.ld.minHallsToRemove += 1;
+						__instance.ld.minHallsToRemove += 2;
+						__instance.ld.maxHallsToRemove += 3;
 						__instance.ld.minReplacementHalls += 1;
 						__instance.ld.maxReplacementHalls += 3;
 						__instance.ld.minFacultyRooms += 3;
@@ -228,7 +236,10 @@ namespace BB_MOD
 				ContentManager.instance.sweepSprite = UnityEngine.Object.Instantiate(sweep.spriteBase.transform.Find("Sprite").GetComponent<SpriteRenderer>().sprite);
 			}
 
-			
+			if (!accessedFloor)
+			{
+				__instance.ld.specialRooms = __instance.ld.specialRooms.AddRangeToArray(ContentManager.instance.GetSpecialRooms(currentFloor));
+			}
 
 			
 
@@ -317,12 +328,14 @@ namespace BB_MOD
 			var stickToHalls = AccessTools.PropertyGetter(typeof(SpecialRoomCreator), "StickToHalls");
 
 			i = codeInstructions.IndexAt(x => x.opcode == OpCodes.Callvirt && (MethodInfo)x.operand == stickToHalls); // Gets the line that calls the stickToHalls method
+
+			
+
 			codeInstructions.Replace(i + 1, new CodeInstruction(OpCodes.Nop)); // Literally disables that update spots thing to use the one from the delegate
 
 			codeInstructions.Replace(i, Transpilers.EmitDelegate<Action>(() =>
-			EnvironmentExtraVariables.lb.UpdatePotentialRoomSpawns(EnvironmentExtraVariables.currentFloor == Floors.F1 || EnvironmentExtraVariables.lb.controlledRNG.NextDouble() >= 0.85d))); // If F1, just leave default which is true, otherwise, randomly choose between sticking or not to halls)
+			EnvironmentExtraVariables.lb.UpdatePotentialRoomSpawns(EnvironmentExtraVariables.currentFloor == Floors.F1 ? ContentUtilities.FindLastObjectOfType<SpecialRoomCreator>().StickToHalls: EnvironmentExtraVariables.lb.controlledRNG.NextDouble() >= 0.6d))); // If F1, just leave default which is true, otherwise, randomly choose between sticking or not to halls)
 			// Really hard work here ^^
-
 
 			return codeInstructions.AsEnumerable();
 		}
@@ -375,10 +388,19 @@ namespace BB_MOD
 		}
 	}
 
-	[HarmonyPatch(typeof(BaseGameManager), "Initialize")]
+	[HarmonyPatch(typeof(BaseGameManager))]
 	internal class AfterGen
 	{
-		private static void Prefix(int ___levelNo, BaseGameManager __instance)
+		[HarmonyPatch("BeginSpoopMode")]
+		[HarmonyPostfix]
+		private static void DisableQueuedMusic()
+		{
+			Singleton<MusicManager>.Instance.StopFile();
+		}
+
+		[HarmonyPatch("Initialize")]
+		[HarmonyPrefix]
+		private static void PostGen(int ___levelNo, BaseGameManager __instance)
 		{
 
 			var rng = new System.Random(Singleton<CoreGameManager>.Instance.Seed() + ___levelNo);
@@ -388,8 +410,211 @@ namespace BB_MOD
 			ContentManager.instance.LockAccessedFloor(currentFloor); // On the end of the patch, so the features aren't applied twice
 
 			ContentManager.instance.TurnDecorations(false);
+
+			StandardDoor_ExtraFunctions.AssignDoorsToTheFunction(__instance.Ec);
+
+			ContentManager.instance.DestroyTempDecorations(); // Destroys left garbage
+
+
+		}
+
+		[HarmonyPatch("AllNotebooks")]
+		[HarmonyPrefix]
+		private static void EndGame(BaseGameManager __instance)
+		{
+			if (EnvironmentExtraVariables.IsEndGame) return; // Not repeat same phrase twice if another notebook is somehow collected
+
+			SoundObject sound;
+			if (EnvironmentExtraVariables.currentFloor == Floors.F3)
+				sound = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("BaldiAngryEscape"), "Vfx_BaldiAngrySpeak", SoundType.Effect, Color.green); // Angry Speak!
+			else
+			{
+				Singleton<MusicManager>.Instance.QueueFile(ContentUtilities.CreateLoopingSoundObject(ContentAssets.GetAsset<AudioClip>("SchoolEscapeSong"), ContentUtilities.FindResourceObjectWithName<AudioMixerGroup>("Master")), true); // Normal Escape Sequence
+				sound = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("BaldiNormalEscape"), "Vfx_BaldiNormalSpeak", SoundType.Effect, Color.green);
+			}
+			__instance.StartCoroutine(EnvironmentExtraVariables.SmoothFOVSequence(25f, 7.5f));
+			sound.subtitle = false; // No subtitles.
+			ItemSoundHolder.CreateSoundHolder(Singleton<CoreGameManager>.Instance.GetPlayer(0).transform, sound, false, 100f);
+
+			EnvironmentExtraVariables.EndGamePhase(); // Just turns on that boolean
+		}
+
+		[HarmonyPatch("ElevatorClosed")]
+		[HarmonyPrefix]
+		private static void RedSequence(BaseGameManager __instance, int ___elevatorsClosed, EnvironmentController ___ec, Elevator elevator)
+		{
+			if (EnvironmentExtraVariables.currentFloor != Floors.F3) // If this ain't F3, no way there is gonna have a scary escape sequence
+				return;
+
+			IEnumerator LightChanger(EnvironmentController ec, List<TileController> lights, bool on, float delay)
+			{
+				float time = delay;
+				while (lights.Count > 0)
+				{
+					while (time > 0f)
+					{
+						time -= Time.deltaTime;
+						yield return null;
+					}
+					time = delay;
+					int num = UnityEngine.Random.Range(0, lights.Count);
+					lights[num].lightColor = Color.red;
+					ec.SetLight(on, lights[num]);
+					lights.RemoveAt(num);
+				}
+				yield break;
+			}
+
+			IEnumerator BaldiInfiniteAnger(Baldi baldi, EnvironmentController ec)
+			{
+				while (true)
+				{
+					baldi.GetAngry(0.2f * ec.NpcTimeScale * Time.deltaTime);
+					yield return null;
+				}
+			}
+
+
+
+			List<TileController> list = new List<TileController>();
+			if (___elevatorsClosed == 1)
+			{
+				foreach (TileController tileController in ___ec.AllTilesNoGarbage(true, true))
+				{
+					if (tileController.lightStrength <= 1)
+					{
+						tileController.lightColor = Color.red;
+						___ec.SetLight(true, tileController);
+					}
+					else
+					{
+						list.Add(tileController);
+					}
+				}
+				Shader.SetGlobalColor("_SkyboxColor", Color.red);
+				__instance.StartCoroutine(LightChanger(___ec, list, true, 0.2f));
+				Singleton<MusicManager>.Instance.StopFile();
+				Singleton<MusicManager>.Instance.QueueFile(ContentUtilities.CreateLoopingSoundObject(ContentAssets.GetAsset<AudioClip>("AngrySchool_Phase1"), ContentUtilities.FindResourceObjectWithName<AudioMixerGroup>("Master")), true);
+			}
+			else if (___elevatorsClosed == 2)
+			{
+				foreach (TileController tileController in ___ec.AllTilesNoGarbage(true, true)) // put all red directly
+				{
+					tileController.lightColor = Color.red;
+					___ec.SetLight(true, tileController);
+				}
+
+				Singleton<MusicManager>.Instance.StopFile();
+				Singleton<MusicManager>.Instance.QueueFile(
+					ContentUtilities.CreateLoopingSoundObject(ContentUtilities.Array(ContentAssets.GetAsset<AudioClip>("AngrySchool_Phase2"), ContentAssets.GetAsset<AudioClip>("AngrySchool_Phase3")), ContentUtilities.FindResourceObjectWithName<AudioMixerGroup>("Master")), true);
+			}
+			else if (___elevatorsClosed == 3)
+			{
+				var gateTexs = new Texture2D[] { ContentAssets.GetAsset<Texture2D>("elevator_gateR"), ContentAssets.GetAsset<Texture2D>("elevator_gateU"), ContentAssets.GetAsset<Texture2D>("elevator_gateN") }; // R U N  Textures
+				var elevatorGates = elevator.transform.Find("Gate").GetAllChilds();
+				elevatorGates[0].GetComponent<MeshRenderer>().material.mainTexture = gateTexs[1]; // Sets the RUN word into the gates
+				elevatorGates[1].GetComponent<MeshRenderer>().material.mainTexture = gateTexs[0];
+				elevatorGates[2].GetComponent<MeshRenderer>().material.mainTexture = gateTexs[2];
+
+				__instance.StartCoroutine(EnvironmentExtraVariables.SmoothFOVSequence(75f, 14f));
+				foreach (var rEvent in ___ec.CurrentEventTypes)
+				{
+					___ec.GetEvent(rEvent).End();
+				}
+				___ec.StopAllCoroutines();
+
+				for (int i = 0; i < ___ec.Npcs.Count; i++)
+				{
+					var npc = ___ec.Npcs[i];
+					if (npc.Character != Character.Baldi && (!npc.GetComponent<CustomNPCData>() || npc.GetComponent<CustomNPCData>().isReplacing != Character.Baldi))
+					{
+						npc.Despawn();
+						i--;
+					}
+					else if (npc.Character == Character.Baldi)
+					{
+						__instance.StartCoroutine(BaldiInfiniteAnger(npc.GetComponent<Baldi>(), ___ec));
+					}
+				}
+
+				Singleton<MusicManager>.Instance.QueueFile(ContentUtilities.CreateLoopingSoundObject(ContentUtilities.Array(ContentAssets.GetAsset<AudioClip>("AngrySchool_Phase4"), ContentAssets.GetAsset<AudioClip>("AngrySchool_Phase5")), ContentUtilities.FindResourceObjectWithName<AudioMixerGroup>("Master")), true);
+				if (!Singleton<PlayerFileManager>.Instance.reduceFlashing)
+				{
+					___ec.standardDarkLevel = new Color(0.2f, 0f, 0f);
+					___ec.FlickerLights(true);
+				}
+				for (int i = 0; i < Singleton<MusicManager>.Instance.MidiPlayer.Channels.Length; i++)
+				{
+					Singleton<MusicManager>.Instance.MidiPlayer.MPTK_ChannelEnableSet(i, false);
+				}
+
+				if (!ContentManager.instance.TryGetDecorationTransform(RoomCategory.Null, true, "SchoolFire", out Transform obj)) // If it fails to grab the school fire
+					return;
+				
+
+				var tiles = ___ec.AllTilesNoGarbage(false, false);
+
+				while (tiles.Count > 0)
+				{
+					int index = UnityEngine.Random.Range(0, tiles.Count);
+					if (UnityEngine.Random.Range(0, 3) == 0)
+					{
+						var fire = UnityEngine.Object.Instantiate(obj, tiles[index].transform);
+
+						float offsetX = UnityEngine.Random.Range(-2.0f, 2.0f);
+						float offsetZ = UnityEngine.Random.Range(-2.0f, 2.0f);
+
+						float scale = UnityEngine.Random.Range(1.0f, 1.8f);
+
+						fire.position = tiles[index].transform.position + new Vector3(offsetX, 5f * scale, offsetZ);
+						fire.localScale = new Vector3(scale, scale, scale);
+
+						fire.gameObject.SetActive(true);
+					}
+					tiles.RemoveAt(index);
+				}
+
+			}
+		}
+
+
+	}
+
+	[HarmonyPatch(typeof(MainGameManager), "BeginPlay")]
+	internal class ChangeSchoolMusicTheme
+	{
+		private static void Postfix()
+		{
+			Singleton<MusicManager>.Instance.StopFile();
+			if (EnvironmentExtraVariables.lb.controlledRNG.Next(0, 2) == 1) // Chance to change audio or not
+				return;
+
+			var musics = ContentManager.instance.GetSchoolHouseThemes(EnvironmentExtraVariables.currentFloor);
+			if (musics.Length == 0) return; // If array is empty
+
+			Singleton<MusicManager>.Instance.StopMidi();
+			Singleton<MusicManager>.Instance.QueueFile(musics[EnvironmentExtraVariables.lb.controlledRNG.Next(musics.Length)], true); // Gets a random music instance to play
 		}
 	}
+
+	[HarmonyPatch(typeof(EndlessGameManager), "BeginPlay")]
+	internal class ChangeSchoolMusicTheme_END
+	{
+		private static void Postfix()
+		{
+			Singleton<MusicManager>.Instance.StopFile();
+			if (EnvironmentExtraVariables.lb.controlledRNG.Next(0, 2) == 1) // Chance to change audio or not
+				return;
+
+			var musics = ContentManager.instance.GetSchoolHouseThemes(EnvironmentExtraVariables.currentFloor);
+			if (musics.Length == 0) return; // If array is empty
+
+			Singleton<MusicManager>.Instance.StopMidi();
+			Singleton<MusicManager>.Instance.QueueFile(musics[EnvironmentExtraVariables.lb.controlledRNG.Next(musics.Length)], true); // Gets a random music instance to play
+		}
+	}
+
+
 
 	[HarmonyPatch(typeof(VentBuilder), "Build")]
 	internal class SetupVentBuilder
@@ -582,6 +807,19 @@ namespace BB_MOD
 				return false;
 			}
 			return true;
+		}
+	}
+
+	[HarmonyPatch(typeof(LevelBuilder), "CreateElevator")] // Literally adds the pos, so it can be get later with Ec.TileFromPos()
+	internal class AddTilesToList
+	{
+		private static void Prefix(IntVector2 pos, Direction dir)
+		{
+			EnvironmentExtraVariables.elevatorTilePositions.Add(pos);
+			foreach (var direction in dir.PerpendicularList())
+			{
+				EnvironmentExtraVariables.elevatorTilePositions.Add(pos + direction.ToIntVector2()); // Adds the 2 tiles that are missed from the method
+			}
 		}
 	}
 
@@ -1020,10 +1258,11 @@ namespace BB_MOD
 
 		[HarmonyPrefix]
 		[HarmonyPatch("ReInit")]
-		private static void AddMoreBalObjects(MathMachine __instance, ref MathMachineNumber[] ___numberPres, out List<MathMachineNumber> __state)
+		private static void AddMoreBalObjects(MathMachine __instance, ref MathMachineNumber[] ___numberPres, out object[] __state)
 		{
 			__instance.Corrupt(false);
 			List<MathMachineNumber> bals = new List<MathMachineNumber>();
+			var ogList = new List<MathMachineNumber>(___numberPres);
 			for (int i = 0; i < 9; i++)
 			{
 				MathMachineNumber number = UnityEngine.Object.Instantiate(___numberPres[0]);
@@ -1033,17 +1272,21 @@ namespace BB_MOD
 				___numberPres = ___numberPres.AddToArray(number);
 				bals.Add(number);
 			}
-			__state = bals;
+			__state = new object[2];
+			__state[0] = bals;
+			__state[1] = ogList;
 		}
 
 		[HarmonyPostfix]
 		[HarmonyPatch("ReInit")]
-		private static void RemoveUnusedBalObjects(List<MathMachineNumber> __state)
+		private static void RemoveUnusedBalObjects(object[] __state, ref MathMachineNumber[] ___numberPres)
 		{
-			foreach (var num in __state)
+			foreach (var num in (List<MathMachineNumber>)__state[0])
 			{
 				UnityEngine.Object.Destroy(num.gameObject);
 			}
+
+			___numberPres = ((List<MathMachineNumber>)__state[1]).ToArray();
 		}
 
 		[HarmonyPostfix]
@@ -1147,6 +1390,27 @@ namespace BB_MOD
 		private static bool Prefix()
 		{
 			return !BlackOut.OutageGoing; // If outage going, disable button click
+		}
+	}
+
+	[HarmonyPatch(typeof(StandardDoor), "ItemFits")]
+	internal class PatchDoorUnlockFitting
+	{
+		private static void Postfix(StandardDoor __instance, ref bool __result, Items item)
+		{
+			if (!__instance.GetComponent<StandardDoor_ExtraFunctions>() || !__instance.locked) return; // If component doesn't exist or the door isn't locked, there's no reason to change it then
+
+			__result = __instance.GetComponent<StandardDoor_ExtraFunctions>().ItemFittingFunction(item, __instance);
+		}
+	}
+
+	[HarmonyPatch(typeof(GameCamera), "LateUpdate")]
+	internal class UpdateCameraFOV
+	{
+		private static void Postfix(GameCamera __instance)
+		{
+			__instance.camCom.fieldOfView = EnvironmentExtraVariables.PlayerDefaultFOV + EnvironmentExtraVariables.PlayerAdditionalFOV;
+			__instance.billboardCam.fieldOfView = EnvironmentExtraVariables.PlayerDefaultFOV + EnvironmentExtraVariables.PlayerAdditionalFOV;
 		}
 	}
 

@@ -47,9 +47,13 @@ namespace BB_MOD.NPCs
 
 		}
 
-		
+		public override void Despawn()
+		{
+			Destroy(magic.gameObject);
+			base.Despawn();
+		}
 
-        private void Update()
+		private void Update()
         {
 			if (!controlOverride && !navigator.HasDestination)
 			{

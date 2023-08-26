@@ -1,4 +1,5 @@
-﻿using HarmonyLib;
+﻿using BB_MOD.ExtraComponents;
+using HarmonyLib;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -108,7 +109,7 @@ namespace BB_MOD.Extra
 		{
 			while (!lg.DoorsFinished) { yield return null; }
 
-			var deskSpawner = ContentUtilities.CreateSpawner(new WeightedTransform() { selection = teachDeskPre.transform, weight = 100 }, 1, 1, 25f, false, room, lg.Ec);
+			var deskSpawner = this.CreateSpawner(new WeightedTransform() { selection = teachDeskPre.transform, weight = 100 }, 1, 1, false, 25f);
 
 			deskSpawner.StartSpawner(lg.Ec, new System.Random(cRNG.Next()));
 
@@ -118,7 +119,7 @@ namespace BB_MOD.Extra
 			itemSpawn.transform.SetParent(chair);
 			itemSpawn.transform.localPosition = new Vector3(0f, 1.3f, 0f);
 
-			var spawner = ContentUtilities.CreateSpawner(new WeightedTransform() { selection = chair, weight = 70 }, Math.Min(room.size.x, room.size.z) * 2, Math.Max(room.size.x, room.size.z) * 2, 25f, false, room, lg.Ec);
+			var spawner = this.CreateSpawner(new WeightedTransform() { selection = chair, weight = 70 }, Math.Min(room.size.x, room.size.z) * 2, Math.Max(room.size.x, room.size.z) * 2, false, 25f);
 			spawner.StartSpawner(lg.Ec, new System.Random(cRNG.Next()));
 
 
@@ -135,9 +136,9 @@ namespace BB_MOD.Extra
 
 			Vector3 deskPos = deskSpawner.ObjectsSpawned[0].transform.localPosition; // Sets a random position for the desk
 
-			Activity activity = ContentUtilities.PlaceObject_RawPos(activityPre, this, deskPos, room.dir.ToRotation());
+			Activity activity = this.PlaceObject_RawPos(activityPre, deskPos, room.dir.ToRotation());
 			activity.room = room;
-			Notebook notebook = ContentUtilities.PlaceObject_RawPos(notebookPre, this, deskPos, default);
+			Notebook notebook = this.PlaceObject_RawPos(notebookPre, deskPos, default);
 			lg.Ec.AddNotebook(notebook);
 			Singleton<BaseGameManager>.Instance.AddNotebookTotal(1);
 			activity.SetNotebook(notebook);
@@ -216,11 +217,11 @@ namespace BB_MOD.Extra
 			{
 				var tile = lg.Ec.TileFromPos(spot);
 				if (!tile.wallDirections.Contains(fixatedDir) && !lg.Ec.TileFromPos(tile.position + fixatedDir.ToIntVector2()).containsWallObject)
-					ContentUtilities.PlaceObject_RawPos(obj, this, spot + (fixatedDir.ToVector3() * 5f), dir.GetOpposite().ToRotation());
+					this.PlaceObject_RawPos(obj, spot + (fixatedDir.ToVector3() * 5f), dir.GetOpposite().ToRotation());
 				if (!tile.wallDirections.Contains(fixatedDir.GetOpposite()) && !lg.Ec.TileFromPos(tile.position + fixatedDir.GetOpposite().ToIntVector2()).containsWallObject)
-					ContentUtilities.PlaceObject_RawPos(obj, this, spot + (fixatedDir.GetOpposite().ToVector3() * 5f), dir.GetOpposite().ToRotation());
+					this.PlaceObject_RawPos(obj, spot + (fixatedDir.GetOpposite().ToVector3() * 5f), dir.GetOpposite().ToRotation());
 
-				ContentUtilities.PlaceObject_RawPos(doorObj, this, spot + (dir.GetOpposite().ToVector3() * 4f), fixatedDir.ToRotation(), true, true); // Door
+				this.PlaceObject_RawPos(doorObj, spot + (dir.GetOpposite().ToVector3() * 4f), fixatedDir.ToRotation(), true, true); // Door
 
 				tile.CoverAllWalls();
 
@@ -247,13 +248,13 @@ namespace BB_MOD.Extra
 
 				if (reservedCorner)
 				{
-					ContentUtilities.PlaceObject_RawPos(sink, this, reservedCorner.transform.position + (Vector3.down * sinkOffset), default, true, true);
+					this.PlaceObject_RawPos(sink, reservedCorner.transform.position + (Vector3.down * sinkOffset), default, true, true);
 					room.AddItemSpawn(reservedCorner.transform.position);
 				}
 
 				foreach (var spot in room.GetTilesOfShape(new List<TileShape>() { TileShape.Corner, TileShape.Single }, true).Where(x => x.wallDirections.Contains(dir) && !x.doorHere && !x.containsWallObject && !x.containsObject))
 				{
-					ContentUtilities.PlaceObject_RawPos(sink, this, spot.transform.position + (Vector3.down * sinkOffset), default, true, true);
+					this.PlaceObject_RawPos(sink, spot.transform.position + (Vector3.down * sinkOffset), default, true, true);
 					lg.Ec.BuildPoster(mirror, spot, dir);
 				}
 
@@ -281,45 +282,251 @@ namespace BB_MOD.Extra
 		{
 			base.Build();
 			builder = Builder();
+			room.CreateRoomFunction<AbandonedRoomFunction>(true);
 			StartCoroutine(builder);
 		}
 
 		private IEnumerator Builder()
 		{
 			while (!lg.DoorsFinished) { yield return null; }
-			List<Direction> list = Directions.All();
-			Direction dir = list[cRNG.Next(list.Count)];
 
-			var tiles = room.GetTilesOfShape(new List<TileShape>() { TileShape.Corner, TileShape.Single }, true).Where(x => x.wallDirections.Contains(dir));
+			var corners = room.GetTilesOfShape(new List<TileShape>() { TileShape.Corner }, true);
 
-			var corners = tiles.Where(x => x.shape == TileShape.Corner);
-
-			if (room.size.x < 4)
+			int amountOfCorners = cRNG.Next(1, corners.Count + 1);
+			var allItems = ContentManager.instance.GlobalItems.ToArray();
+			for (int i = 0;  i < amountOfCorners; i++)
 			{
-				list.Remove(Direction.East);
-				list.Remove(Direction.West);
+				lg.Ec.CreateItem(room, WeightedItemObject.ControlledRandomSelection(allItems, cRNG), corners[i].transform.position + Vector3.up * 5f);
 			}
-			if (room.size.z < 4)
-			{
-				list.Remove(Direction.North);
-				list.Remove(Direction.South);
-			}
-
-			if (list.Count == 0) goto endBuilder;
-
-			room.AddItemSpawn(corners.ElementAt(cRNG.Next(corners.Count())).transform.position);
 
 			foreach (var door in room.doors)
 			{
 				door.Lock(true); // Locks those doors
+				door.gameObject.AddComponent<StandardDoor_ExtraFunctions>().AssignFuncToUnlock(false);
 				yield return null;
 			}
 
-		endBuilder:
 			building = false;
 			yield break;
 		}
 	}
 
+	public class AbandonedRoomFunction : RoomFunction
+	{
+		public override void Initialize(RoomController room)
+		{
+			base.Initialize(room);
+			this.room = room;
+			leaveUnlocked = false;
+		}
+		private void Update()
+		{
+			if (leaveUnlocked) return;
+
+			if (EnvironmentExtraVariables.IsEndGame)
+			{
+				leaveUnlocked = true;
+				foreach (var door in room.doors)
+				{
+					if (door.locked)
+						door.Unlock();
+				}
+				return;
+			}
+
+			foreach (var door in room.doors)
+			{
+				if (!door.locked)
+					door.Lock(true); // Locks those doors
+			}
+		}
+
+		RoomController room;
+
+		bool leaveUnlocked = true;
+	}
+
+	// ===================== Special Room Creators ===================================
+
+	public static class CustomSpecialRoom_Extensions
+	{
+		/// <summary>
+		/// If your custom special room has higher ceilings and supports elevators, this should be always ran in AfterUpdatingTIles() method to fix the elevator's ceiling. The <paramref name="ceilingTex"/> MUST BE 256x256
+		/// </summary>
+		/// <param name="room"></param>
+		/// <param name="ceilingTex"></param>
+		public static void FixElevatorTiles(this SpecialRoomCreator room, Texture2D ceilingTex)
+		{
+			try
+			{
+				var tiles = new List<TileController>();
+
+				foreach (var tilePos in EnvironmentExtraVariables.elevatorTilePositions)
+				{
+					var tile = room.Room.ec.TileFromPos(tilePos);
+					if (ReferenceEquals(tile.room, room.Room))
+						tiles.Add(tile); // Adds the tile to the list to replace the ceiling later
+					
+				}
+
+				if (tiles.Count == 0)
+					return;
+
+				var textureAtlas = new Texture2D(512, 512, TextureFormat.RGBA32, false)
+				{
+					filterMode = FilterMode.Point
+				};
+
+				// Makes a new texture atlas for the tiles
+
+				Color[] array;
+				array = MaterialModifier.GetColorsForTileTexture(room.Room.floorTex, 256);
+				textureAtlas.SetPixels(0, 0, 256, 256, array);
+				array = MaterialModifier.GetColorsForTileTexture(room.Room.wallTex, 256);
+				textureAtlas.SetPixels(256, 256, 256, 256, array);
+				array = MaterialModifier.GetColorsForTileTexture(ceilingTex, 256);
+				textureAtlas.SetPixels(0, 256, 256, 256, array);
+				textureAtlas.Apply();
+				var baseMat = UnityEngine.Object.Instantiate(room.Room.baseMat); // Instantiates the material used by room
+				baseMat.SetTexture("_MainTex", textureAtlas);
+
+				foreach (var tile in tiles)
+				{
+					if (ContentManager.instance.DebugMode)
+						Debug.Log("Tiles fixed: " + tile.position.x + "," + tile.position.z);
+
+					tile.SetBase(baseMat); // Sets the base back with new texture atlas
+				}
+			}
+			catch (Exception e)
+			{
+				Debug.LogException(e);
+				Debug.LogWarning(room.name + " failed to fix the elevator ceiling texture");
+			}
+		}
+	}
+
+	public class BasketBallArea : SpecialRoomCreator // Use the BasketBallArea classes as reference for your own special room
+	{
+		public override void Initialize(EnvironmentController ec)
+		{
+			base.Initialize(ec);
+			lg.AddSpecialRoomToExpand(room);
+			
+		}
+		public override void BeforeUpdatingTiles()
+		{
+			base.BeforeUpdatingTiles();
+			for (int i = 0; i < 4; i++)
+			{
+				lg.AddRandomDoor(room, doorPre, false, true);
+			}
+
+			
+		}
+		public override void AfterUpdatingTiles()
+		{
+			base.AfterUpdatingTiles();
+
+			this.FixElevatorTiles(ContentAssets.GetAsset<Texture2D>("defaultSaloonTexture")); // Note, this MUST BE HERE ON "AfterUpdatingTiles()" IF YOUR ROOM HAS HIGHER CEILING, SO ELEVATOR SUPPORTS THE TEXTURE FROM IT
+
+			this.CreateOpenAreaForSpecialRoom(room, ContentAssets.GetAsset<Texture2D>("defaultSaloonTexture"), ContentAssets.GetAsset<Texture2D>("defaultSaloonTexture"), 5); // Creates the beautiful huge walls of the special room (only for higherCeilings!)
+
+			lg.IntegrateRoomBuilder(room, GetComponent<BasketBallBuilder>());
+
+			foreach (var tile in room.GetNewTileList())
+			{
+				room.ec.GenerateLight(tile, lg.ld.standardLightColor, lg.ld.standardLightStrength);
+			}
+
+			room.functionObject.GetComponent<RuleFreeZone>().Initialize(room);
+		}
+
+		readonly Door doorPre = ContentUtilities.SwingingDoor;
+	}
+
+	public class BasketBallBuilder : RoomBuilder
+	{
+		public override void Setup(LevelBuilder lg, RoomController room, System.Random rng)
+		{
+			base.Setup(lg, room, rng);
+			if (ContentManager.instance.TryGetDecorationTransform(room.category, true, "basketHoop", out Transform obj))
+			{
+				basketHoop = obj;
+				ContentUtilities.AddCollisionToSprite(obj.gameObject, new Vector3(4f, 15f, 4f), new Vector3(2f, 5f, -1f), new Vector3(4f, 15f, 4f)); // Creates a collider to the sprite
+			}
+
+			if (ContentManager.instance.TryGetDecorationTransform(room.category, true, "basketLotsOfBalls", out Transform obj2))
+			{
+				basketBalls = obj2;
+			}
+
+			if (ContentManager.instance.TryGetDecorationTransform(room.category, true, "BaldiBall", out Transform obj3))
+			{
+				BALDIBBALL = obj3;
+			}
+
+		}
+
+		public override void Build()
+		{
+			base.Build();
+			builder = Builder();
+			StartCoroutine(builder);
+		}
+
+		private IEnumerator Builder()
+		{
+			if (basketHoop)
+			{
+				var pos = lg.Ec.RealRoomMid(room);
+
+				var ogPos = pos;
+				if (room.size.x > room.size.z)
+				{
+					pos.x += ((room.size.x / 2) - 3) * 10f;
+					_ = this.PlaceObject_RawPos(basketHoop, pos, default);
+					pos = ogPos;
+					pos.x -= ((room.size.x / 2) - 3) * 10f;
+					_ = this.PlaceObject_RawPos(basketHoop, pos, default);
+				}
+				else
+				{
+					pos.z += ((room.size.z / 2) - 3) * 10f;
+					_ = this.PlaceObject_RawPos(basketHoop, pos, default);
+					pos = ogPos;
+					pos.z -= ((room.size.z / 2) - 3) * 10f;
+					_ = this.PlaceObject_RawPos(basketHoop, pos, default);
+				}
+			}
+
+			if (basketBalls)
+			{
+				var collider = basketBalls.gameObject.AddComponent<BoxCollider>(); // Temporary collision for it to avoid spawning too close to walls
+				collider.size = new Vector3(3f, 1f, 3f);
+				var spawner = this.CreateSpawner(ContentUtilities.Array(
+					new WeightedTransform() { selection = basketBalls, weight = 100 },
+					new WeightedTransform() { selection = BALDIBBALL, weight = 25 }
+					), 5, 7, false);
+				spawner.StartSpawner(lg.Ec, cRNG);
+
+				while (!spawner.Finished) { yield return null; }
+
+				foreach (var balls in spawner.ObjectsSpawned)
+				{
+					Destroy(balls.GetComponent<BoxCollider>());
+				}
+			}
+
+			building = false;
+			yield break;
+		}
+
+		Transform basketHoop;
+
+		Transform basketBalls;
+
+		Transform BALDIBBALL;
+	}
 
 }

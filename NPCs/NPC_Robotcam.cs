@@ -41,6 +41,11 @@ namespace BB_MOD.NPCs
 
 		public override void PlayerInSight(PlayerManager player)
 		{
+			if (Singleton<CoreGameManager>.Instance.Paused)
+			{
+				robocamCamera.enabled = false;
+				return;
+			}
 			if (!player.Tagged && looker.IsVisible)
 			{
 				robocamCamera.enabled = true;
@@ -51,6 +56,12 @@ namespace BB_MOD.NPCs
 		public override void PlayerLost(PlayerManager player)
 		{
 			robocamCamera.enabled = false;
+		}
+
+		public override void Despawn()
+		{
+			robocamCamera.enabled = false;
+			base.Despawn();
 		}
 
 		private Camera robocamCamera;
