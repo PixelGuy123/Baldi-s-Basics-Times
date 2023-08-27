@@ -1,7 +1,4 @@
-﻿using MTM101BaldAPI;
-using MTM101BaldAPI.AssetManager;
-using System;
-using System.IO;
+﻿using System;
 using UnityEngine;
 
 namespace BB_MOD.ExtraComponents
@@ -46,6 +43,7 @@ namespace BB_MOD.ExtraComponents
 		private void Awake()
 		{
 			renderer = transform.Find("Sprite").GetComponent<SpriteRenderer>();
+			renderer.material.SetTexture("_LightMap", null);
 			spriteAnimation = new Sprite[] { ContentAssets.GetAsset<Sprite>("SchoolFire_FirstFrame"), ContentAssets.GetAsset<Sprite>("SchoolFire_SecondFrame") };
 			ec = EnvironmentExtraVariables.ec;
 		}

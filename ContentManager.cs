@@ -1356,6 +1356,7 @@ namespace BB_MOD
 			AddAudioAsset(Path.Combine(modPath, "Audio", "extras", "Chaos_FinalLoopNoise.wav"), "AngrySchool_Phase5", true); // Phase 5 with looping ultra "angry" noise
 			AddAudioAsset(Path.Combine(modPath, "Audio", "extras", "BAL_AllNotebooksNormal.wav"), "BaldiNormalEscape", true); // Baldi Normal Speeaaaak
 			AddAudioAsset(Path.Combine(modPath, "Audio", "extras", "BAL_AllNotebooksFinal.wav"), "BaldiAngryEscape", true); // Baldi ANGRY SPEEAAAAAAAK
+			AddAudioAsset(Path.Combine(modPath, "Audio", "extras", "BAL_AngryGetOut.wav"), "BaldiFinalWarning", true); // Baldi ANGRY FINAL WARNING SPEEEAEK
 
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "SchoolFire.png"), 25, "SchoolFire_FirstFrame"); // Fire Frames
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "SchoolFire2.png"), 25, "SchoolFire_SecondFrame");
@@ -2061,7 +2062,7 @@ namespace BB_MOD
 
 			CreateRoomBuilder<AbandonedBuilder>("AbandonedRoomBuilder", 64, "abandoned", ContentUtilities.Array(Floors.F3), false, ContentUtilities.Array(CreateRawSchoolTexture("GraniteCeiling.png")),
 			ContentUtilities.Array(CreateRawSchoolTexture("moldWall.png")),
-			ContentUtilities.Array(CreateRawSchoolTexture("woodFloor.png")), "oldDoorOpen.png", "oldDoorClosed.png", new Color(128f, 43f, 0f),
+			ContentUtilities.Array(CreateRawSchoolTexture("woodFloor.png")), "oldDoorOpen.png", "oldDoorClosed.png", new Color(204f, 153f, 0),
 			ContentUtilities.Array(ContentUtilities.LightPrefab, CreateExtraDecoration_Raw("long_hanginglamp.png", 200, 30, ContentUtilities.AllCategories, true, true, Vector3.up * (ContentUtilities.LightHeight - 0.7f))), 0, 1, true); // JDvideosPR >> Abandoned locked room for F3
 
 			// Note: if you want to create custom lights for the room, you can always use CreateExtraDecoration_Raw, and if you want to keep the original, you include ContentUtilities.LightPrefab on the array
@@ -2972,7 +2973,13 @@ namespace BB_MOD
 
 		public void DestroyTempDecorations()
 		{
-			tempInstantiatedDecs.ForEach(x => Destroy(x.gameObject));
+			foreach (var dec in tempInstantiatedDecs)
+			{
+				if (dec)
+				{
+					Destroy(dec.gameObject);
+				}
+			}
 			tempInstantiatedDecs.Clear();
 		}
 

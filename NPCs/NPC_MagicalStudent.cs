@@ -229,10 +229,13 @@ namespace BB_MOD.NPCs
 			}
 			else if (other.gameObject != originObject && other.tag == "NPC" && other.isTrigger)
 			{
-				Disable();
-				NPC component = other.GetComponent<NPC>();
-				int num = Random.Range(0, ec.offices.Count);
-				component.transform.position = ec.RealRoomMid(ec.offices[num]) + Vector3.up * 5f;
+				if (!ContentManager.instance.IsNpcStatic(other.GetComponent<NPC>().Character)) // If character is static, it's not a real collision
+				{
+					Disable();
+					NPC component = other.GetComponent<NPC>();
+					int num = Random.Range(0, ec.offices.Count);
+					component.transform.position = ec.RealRoomMid(ec.offices[num]) + Vector3.up * 5f;
+				}
 			}
 		}
 

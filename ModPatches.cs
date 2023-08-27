@@ -193,8 +193,8 @@ namespace BB_MOD
 						__instance.ld.maxSize += new IntVector2(20, 20);
 						__instance.ld.minPlots += 6;
 						__instance.ld.maxPlots += 9;
-						__instance.ld.minHallsToRemove += 2;
-						__instance.ld.maxHallsToRemove += 3;
+						__instance.ld.minHallsToRemove += 4;
+						__instance.ld.maxHallsToRemove += 5;
 						__instance.ld.minReplacementHalls += 1;
 						__instance.ld.maxReplacementHalls += 3;
 						__instance.ld.minFacultyRooms += 3;
@@ -392,6 +392,7 @@ namespace BB_MOD
 	internal class AfterGen
 	{
 		[HarmonyPatch("BeginSpoopMode")]
+		[HarmonyPatch("LoadFieldTrip")]
 		[HarmonyPostfix]
 		private static void DisableQueuedMusic()
 		{
@@ -424,17 +425,22 @@ namespace BB_MOD
 		{
 			if (EnvironmentExtraVariables.IsEndGame) return; // Not repeat same phrase twice if another notebook is somehow collected
 
-			SoundObject sound;
-			if (EnvironmentExtraVariables.currentFloor == Floors.F3)
-				sound = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("BaldiAngryEscape"), "Vfx_BaldiAngrySpeak", SoundType.Effect, Color.green); // Angry Speak!
-			else
+			if (EnvironmentExtraVariables.currentFloor != Floors.END) // Skips if END floor
 			{
-				Singleton<MusicManager>.Instance.QueueFile(ContentUtilities.CreateLoopingSoundObject(ContentAssets.GetAsset<AudioClip>("SchoolEscapeSong"), ContentUtilities.FindResourceObjectWithName<AudioMixerGroup>("Master")), true); // Normal Escape Sequence
-				sound = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("BaldiNormalEscape"), "Vfx_BaldiNormalSpeak", SoundType.Effect, Color.green);
+				bool mainMode = Singleton<CoreGameManager>.Instance.currentMode == Mode.Main;
+				SoundObject sound;
+				if (EnvironmentExtraVariables.currentFloor == Floors.F3 && mainMode)
+					sound = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("BaldiAngryEscape"), "Vfx_BaldiAngrySpeak", SoundType.Effect, Color.green); // Angry Speak!
+				else
+				{
+					Singleton<MusicManager>.Instance.QueueFile(ContentUtilities.CreateLoopingSoundObject(ContentAssets.GetAsset<AudioClip>("SchoolEscapeSong"), ContentUtilities.FindResourceObjectWithName<AudioMixerGroup>("Master")), true); // Normal Escape Sequence
+					sound = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("BaldiNormalEscape"), "Vfx_BaldiNormalSpeak", SoundType.Effect, Color.green);
+				}
+				__instance.StartCoroutine(EnvironmentExtraVariables.SmoothFOVSequence(25f, 7.5f));
+				sound.subtitle = false; // No subtitles.
+				if (mainMode)
+					ItemSoundHolder.CreateSoundHolder(Singleton<CoreGameManager>.Instance.GetPlayer(0).transform, sound, false, 100f);
 			}
-			__instance.StartCoroutine(EnvironmentExtraVariables.SmoothFOVSequence(25f, 7.5f));
-			sound.subtitle = false; // No subtitles.
-			ItemSoundHolder.CreateSoundHolder(Singleton<CoreGameManager>.Instance.GetPlayer(0).transform, sound, false, 100f);
 
 			EnvironmentExtraVariables.EndGamePhase(); // Just turns on that boolean
 		}
@@ -443,7 +449,7 @@ namespace BB_MOD
 		[HarmonyPrefix]
 		private static void RedSequence(BaseGameManager __instance, int ___elevatorsClosed, EnvironmentController ___ec, Elevator elevator)
 		{
-			if (EnvironmentExtraVariables.currentFloor != Floors.F3) // If this ain't F3, no way there is gonna have a scary escape sequence
+			if (EnvironmentExtraVariables.currentFloor != Floors.F3 || Singleton<CoreGameManager>.Instance.currentMode != Mode.Main) // If this ain't F3, no way there is gonna have a scary escape sequence
 				return;
 
 			IEnumerator LightChanger(EnvironmentController ec, List<TileController> lights, bool on, float delay)
@@ -453,7 +459,7 @@ namespace BB_MOD
 				{
 					while (time > 0f)
 					{
-						time -= Time.deltaTime;
+						time -= Time.deltaTime * ec.EnvironmentTimeScale;
 						yield return null;
 					}
 					time = delay;
@@ -467,9 +473,10 @@ namespace BB_MOD
 
 			IEnumerator BaldiInfiniteAnger(Baldi baldi, EnvironmentController ec)
 			{
+				var man = Singleton<CoreGameManager>.Instance;
 				while (true)
 				{
-					baldi.GetAngry(0.2f * ec.NpcTimeScale * Time.deltaTime);
+					__instance.AngerBaldi(0.2f * ec.NpcTimeScale * Time.deltaTime);
 					yield return null;
 				}
 			}
@@ -510,6 +517,10 @@ namespace BB_MOD
 			}
 			else if (___elevatorsClosed == 3)
 			{
+				var sound = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("BaldiFinalWarning"), "Vfx_BaldiAngrySpeak", SoundType.Effect, Color.green);
+				sound.subtitle = false;
+				ItemSoundHolder.CreateSoundHolder(Singleton<CoreGameManager>.Instance.GetPlayer(0).transform, sound, false, 100f);
+
 				var gateTexs = new Texture2D[] { ContentAssets.GetAsset<Texture2D>("elevator_gateR"), ContentAssets.GetAsset<Texture2D>("elevator_gateU"), ContentAssets.GetAsset<Texture2D>("elevator_gateN") }; // R U N  Textures
 				var elevatorGates = elevator.transform.Find("Gate").GetAllChilds();
 				elevatorGates[0].GetComponent<MeshRenderer>().material.mainTexture = gateTexs[1]; // Sets the RUN word into the gates
@@ -537,7 +548,8 @@ namespace BB_MOD
 					}
 				}
 
-				Singleton<MusicManager>.Instance.QueueFile(ContentUtilities.CreateLoopingSoundObject(ContentUtilities.Array(ContentAssets.GetAsset<AudioClip>("AngrySchool_Phase4"), ContentAssets.GetAsset<AudioClip>("AngrySchool_Phase5")), ContentUtilities.FindResourceObjectWithName<AudioMixerGroup>("Master")), true);
+				Singleton<MusicManager>.Instance.QueueFile(ContentUtilities.CreateLoopingSoundObject(ContentAssets.GetAsset<AudioClip>("AngrySchool_Phase4"), ContentUtilities.FindResourceObjectWithName<AudioMixerGroup>("Master")), true);
+				Singleton<MusicManager>.Instance.QueueFile(ContentUtilities.CreateLoopingSoundObject(ContentAssets.GetAsset<AudioClip>("AngrySchool_Phase5"), ContentUtilities.FindResourceObjectWithName<AudioMixerGroup>("Master")), true); // Queue separately, so the last audio will be looping
 				if (!Singleton<PlayerFileManager>.Instance.reduceFlashing)
 				{
 					___ec.standardDarkLevel = new Color(0.2f, 0f, 0f);
@@ -585,7 +597,6 @@ namespace BB_MOD
 	{
 		private static void Postfix()
 		{
-			Singleton<MusicManager>.Instance.StopFile();
 			if (EnvironmentExtraVariables.lb.controlledRNG.Next(0, 2) == 1) // Chance to change audio or not
 				return;
 
@@ -602,7 +613,6 @@ namespace BB_MOD
 	{
 		private static void Postfix()
 		{
-			Singleton<MusicManager>.Instance.StopFile();
 			if (EnvironmentExtraVariables.lb.controlledRNG.Next(0, 2) == 1) // Chance to change audio or not
 				return;
 
@@ -611,6 +621,15 @@ namespace BB_MOD
 
 			Singleton<MusicManager>.Instance.StopMidi();
 			Singleton<MusicManager>.Instance.QueueFile(musics[EnvironmentExtraVariables.lb.controlledRNG.Next(musics.Length)], true); // Gets a random music instance to play
+		}
+	}
+
+	[HarmonyPatch(typeof(ElevatorScreen), "StartGame")]
+	internal class StopMusicThereAswell
+	{
+		private static void Prefix()
+		{
+			Singleton<MusicManager>.Instance.StopFile(); // Stops music before opening elevator
 		}
 	}
 
@@ -975,11 +994,13 @@ namespace BB_MOD
 
 	// ---- Basic NPC Startup ----
 
-	[HarmonyPatch(typeof(NPC), "Awake")]
+	[HarmonyPatch(typeof(NPC))]
 
 	internal class SetupCustomNPCs
 	{
-		private static void Postfix(NPC __instance, ref Character ___character, ref Navigator ___navigator, ref EnvironmentController ___ec, ref bool ___ignoreBelts, ref bool ___aggroed, ref PosterObject ___poster, ref Looker ___looker, ref bool ___ignorePlayerOnSpawn)
+		[HarmonyPatch("Awake")]
+		[HarmonyPostfix]
+		private static void FixNPC(NPC __instance, ref Character ___character, ref Navigator ___navigator, ref EnvironmentController ___ec, ref bool ___ignoreBelts, ref bool ___aggroed, ref PosterObject ___poster, ref Looker ___looker, ref bool ___ignorePlayerOnSpawn)
 		{
 			if (__instance.gameObject.name.StartsWith("CustomNPC_")) // setups NPC data here (for marked as customNpcs)
 			{
@@ -1000,6 +1021,44 @@ namespace BB_MOD
 				___ignorePlayerOnSpawn = data.forceSpawn;
 			}
 			
+		}
+
+		[HarmonyPatch("Despawn")]
+		[HarmonyPrefix]
+		private static void FixSomeNPCDespawnActions(NPC __instance, EnvironmentController ___ec)
+		{
+			try
+			{
+				switch (__instance.Character)
+				{
+					case Character.LookAt:
+						___ec.RemoveFog(__instance.GetComponent<LookAtGuy>().fog);
+						AccessTools.Method(typeof(LookAtGuy), "FreezeNPCs").Invoke(__instance, ContentUtilities.Array<object>(false)); // Invokes the freezing npc method
+						break;
+					case Character.Pomp:
+						((TMP_Text)AccessTools.Field(typeof(NoLateTeacher), "popupText").GetValue(__instance)).text = "";
+						((NoLateIcon)AccessTools.Field(typeof(NoLateTeacher), "mapIcon").GetValue(__instance)).gameObject.SetActive(false); // Disables any object that relates to mrs pomp
+						break;
+					case Character.Beans:
+						if (__instance.GetComponent<Beans>().gum)
+							UnityEngine.Object.Destroy(__instance.GetComponent<Beans>().gum.gameObject);
+						break;
+					case Character.Cumulo:
+						((BeltManager)AccessTools.Field(typeof(Cumulo), "windManager").GetValue(__instance)).gameObject.SetActive(false); // Ends wind and noise
+						((AudioManager)AccessTools.Field(typeof(Cumulo), "audMan").GetValue(__instance)).FlushQueue(true);
+						break;
+					default:
+						break;
+				}
+			}
+			catch (Exception e)
+			{
+				if (ContentManager.instance.DebugMode)
+				{
+					Debug.LogException(e);
+					Debug.LogWarning("Failed to extra-despawn character: " + __instance.Character);
+				}
+			}
 		}
 	}
 
@@ -1335,7 +1394,7 @@ namespace BB_MOD
 			float speed = (float)speedField.GetValue(beltManager);
 			int constantValue = Singleton<CoreGameManager>.Instance.sceneObject.levelNo * 2;
 			speed += EnvironmentExtraVariables.lb.controlledRNG.Next(-1 * constantValue, 1 * constantValue); // Sets a random speed for the conveyor
-			speedField.SetValue(beltManager, speed);
+			beltManager.SetSpeed(speed);
 			EnvironmentExtraVariables.belts.Add(beltManager, speed); // Stores the belt manager for public use
 		}
 	}

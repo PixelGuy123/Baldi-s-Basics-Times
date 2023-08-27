@@ -323,9 +323,10 @@ namespace BB_MOD.Extra
 		{
 			if (leaveUnlocked) return;
 
-			if (EnvironmentExtraVariables.IsEndGame)
+			if (EnvironmentExtraVariables.IsEndGame || forceUnlock)
 			{
 				leaveUnlocked = true;
+				forceUnlock = false;
 				foreach (var door in room.doors)
 				{
 					if (door.locked)
@@ -341,9 +342,19 @@ namespace BB_MOD.Extra
 			}
 		}
 
+		private void OnTriggerEnter(Collider other)
+		{
+			if (other.tag == "Player" && !leaveUnlocked)
+			{
+				forceUnlock = true;
+			}
+		}
+
 		RoomController room;
 
 		bool leaveUnlocked = true;
+
+		bool forceUnlock = false;
 	}
 
 	// ===================== Special Room Creators ===================================
