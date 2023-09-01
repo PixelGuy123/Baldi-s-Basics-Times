@@ -94,7 +94,7 @@ namespace BB_MOD.NPCs
 			transform.position = tile.transform.position + Vector3.up * height;
 			Direction dir = tile.wallDirections[Random.Range(0, tile.wallDirections.Length - 1)];
 			spriteBase.transform.eulerAngles = Directions.ToRotation(dir.GetOpposite()).eulerAngles;
-			spriteBase.transform.position = transform.position + dir.ToVector3() * tileOffset;
+			spriteBase.transform.position = transform.position + dir.ToVector3() * ContentUtilities.TileOffset;
 			myTile = tile;
 			isActive = true;
 			ChangeState(0, true);
@@ -298,7 +298,7 @@ namespace BB_MOD.NPCs
 		private const float height = 5f;
 
 		[SerializeField]
-		private const float tileOffset = 4.9f, hideAnimationRate = 10f, frownDistance = 30f;
+		private const float hideAnimationRate = 10f, frownDistance = 30f;
 
 
 	}

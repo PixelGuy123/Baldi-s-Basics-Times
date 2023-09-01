@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using BB_MOD.ExtraComponents;
+using UnityEngine;
 
 namespace BB_MOD.ExtraItems
 {
@@ -17,14 +18,17 @@ namespace BB_MOD.ExtraItems
 				Destroy(gameObject);
 				return false;
 			}
-
+			Destroy(gameObject);
 			if (hit.transform.CompareTag("Window"))
 			{
 				hit.transform.GetComponent<Window>().Break(true);
-				pm.RuleBreak("breakproperty", 1f);
+				if (hit.transform.GetComponent<WindowExtraFields>().IsBroken)
+				{
+					pm.RuleBreak("breakproperty", 1f);
+					return true;
+				}
 			}
-			Destroy(gameObject);
-			return true;
+			return false;
 		}
 	}
 }

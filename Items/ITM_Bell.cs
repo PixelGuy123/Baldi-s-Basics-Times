@@ -12,7 +12,7 @@ namespace BB_MOD.ExtraItems
 
 		public override bool Use(PlayerManager pm)
 		{
-			ItemSoundHolder.CreatePositionalSoundHolder(pm.transform, ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("bellNoise"), "Vfx_BEL_Ring", SoundType.Voice, new Color(179, 179, 0)), true, 95, destructiveParent: transform);
+			ItemSoundHolder.CreateSoundHolder(pm.transform.position, ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("bellNoise"), "Vfx_BEL_Ring", SoundType.Voice, new Color(179, 179, 0)), true, maxDistance:95, destructiveParent: transform);
 
 			pm.ec.MakeNoise(pm.transform.position, 112); // alarm clock noise val
 

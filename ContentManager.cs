@@ -6,6 +6,7 @@ using BB_MOD.NPCs;
 using HarmonyLib;
 using MTM101BaldAPI;
 using MTM101BaldAPI.AssetManager;
+using Steamworks;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -18,7 +19,6 @@ using UnityEngine.Audio;
 using UnityEngine.Networking;
 using static BB_MOD.ContentAssets;
 using static BB_MOD.ContentManager;
-using static Mono.Security.X509.X520;
 
 // -------------------- PRO TIP ----------------------
 // Recommended using UnityExplorer to debug your item, event or npc. It's a very useful tool
@@ -526,6 +526,19 @@ namespace BB_MOD
 	public static class ContentUtilities
 	{
 		/// <summary>
+		/// Literally replaces a <paramref name="window"/> at set position
+		/// </summary>
+		/// <param name="window"></param>
+		/// <param name="replacementWindow"></param>
+		public static void ReplaceWindow(Window window, WindowObject replacementWindow, EnvironmentController ec)
+		{
+			var newWindow = UnityEngine.Object.Instantiate(replacementWindow.windowPre);
+			newWindow.gameObject.SetActive(true);
+			newWindow.Initialize(ec, IntVector2.GetGridPosition(window.transform.position), window.direction, replacementWindow);
+			UnityEngine.Object.Destroy(window.gameObject);
+		}
+
+		/// <summary>
 		/// Creates a looping sound object, useful for creating custom music/songs
 		/// </summary>
 		/// <param name="clip"></param>
@@ -641,6 +654,23 @@ namespace BB_MOD
 
 				return DownloadHandlerAudioClip.GetContent(www);
 			}
+		}
+
+		public static Texture2D EmptyTexture(int width, int height)
+		{
+			var emptyTex = new Texture2D(width, height);
+			var clearColor = Color.clear;
+			Color[] transparentColors = new Color[width * height];
+
+			for (int i = 0; i < transparentColors.Length; i++)
+			{
+				transparentColors[i] = clearColor;
+			}
+
+			emptyTex.SetPixels(transparentColors);
+			emptyTex.Apply();
+
+			return emptyTex;
 		}
 
 		/// <summary>
@@ -890,7 +920,7 @@ namespace BB_MOD
 			return new PosterTextData
 			{
 				textKey = textKey,
-				font = instance.posterPre.textData[0].font,
+				font = Prefabs.posterPre.textData[0].font,
 				style = style,
 				size = textSize,
 				fontSize = fontSize,
@@ -1095,6 +1125,10 @@ namespace BB_MOD
 		public static RoomCategory SpecialRoomEnum => instance.customRoomEnums[0];
 
 		public static Door SwingingDoor => FindResourceObjectWithName<SwingDoor>("Door_Swinging"); // MUST Return the swinging door
+
+		public const float TileOffset = 4.9f;
+
+		public const int defaultBillboardLayer = 9;
 	}
 
 	/// <summary>
@@ -1271,7 +1305,9 @@ namespace BB_MOD
 		public void SetupAssetData()
 		{
 			if (assetsLoaded) return;
-			assetsLoaded = true;
+			assetsLoaded = true;			
+
+
 
 			// NPC Assets
 
@@ -1307,6 +1343,8 @@ namespace BB_MOD
 			AddAudioAsset(Path.Combine(modPath, "Audio", "npc", "PB_SeeLaught.wav"), "pb_spot", false);
 			AddAudioAsset(Path.Combine(modPath, "Audio", "npc", "PB_EvilLaught.wav"), "pb_catch", false);
 			AddAudioAsset(Path.Combine(modPath, "Audio", "item", "pc_stab.wav"), "pb_stab", false);
+
+			AddAudioAsset(Path.Combine(modPath, "Audio", "npc", "CC_PAH.wav"), "cumulo_PAH", true); // Cloudy Copter PAH Noise
 
 
 
@@ -1365,6 +1403,12 @@ namespace BB_MOD
 			AddTextureAsset(Path.Combine(modPath, "Textures", "GateU.png"), "elevator_gateU");
 			AddTextureAsset(Path.Combine(modPath, "Textures", "GateN.png"), "elevator_gateN");
 
+			AddSpriteAsset(Path.Combine(modPath, "Textures", "gumSplash.png"), 25, "GumInWall"); // Gum Assets
+			AddSpriteAsset(Path.Combine(modPath, "Textures", "gumSplash_back.png"), 25, "GumInWall_Back"); // Gum Assets
+			AddAudioAsset(Path.Combine(modPath, "Audio", "extras", "gumSplash.wav"), "gumSplash", true);
+
+			AddAudioAsset(Path.Combine(modPath, "Audio", "extras", "windowHit.wav"), "windowHit", true);
+
 		}
 
 		// ------------------------------------------------------ NPC CREATION STUFF ------------------------------------------------------
@@ -1373,6 +1417,8 @@ namespace BB_MOD
 		{
 			if (addedNPCs)
 				return;
+
+			Prefabs.flatMaterial = Instantiate(Resources.FindObjectsOfTypeAll<Material>().First(x => x.name.ToLower() == "chalkles"));
 
 			// THIS IS THE PART WHERE YOU PUT YOUR CUSTOM CHARACTER
 			// Add the custom npc to the list using the CreateNPC<C> method as seen below (C stands for Character Class, which is the class the NPC will use)
@@ -1410,10 +1456,10 @@ namespace BB_MOD
 
 			// CreateNPC methods should be put here:
 
-			allNpcs.Add(CreateNPC<OfficeChair>("Office Chair", 35, ContentUtilities.Array("officechair.png", "officechair_disabled.png"), false, false, 18f, -0.8f, "pri_ofc.png", "PST_OFC_Name", "PST_OFC_Desc", ContentUtilities.Array(Floors.F1, Floors.END), ContentUtilities.Array(RoomCategory.Faculty, RoomCategory.Office), hasLooker: false, aggored: true, capsuleRadius: 4f, forceSpawn: true)); // PixelGuy
-			allNpcs.Add(CreateNPC<HappyHolidays>("Happy Holidays", 15, ContentUtilities.Array("happyholidays.png"), false, false, 70f, -1.5f, "pri_hapho.png", "PST_HapH_Name", "PST_HapH_Desc", ContentUtilities.Array(Floors.F1), enterRooms: false, capsuleRadius: 3f)); // PixelGuy
-			allNpcs.Add(CreateNPC<SuperIntendent>("Super Intendent", 75, ContentUtilities.Array("Superintendent.png"), false, false, 50f, -1f, "pri_SI.png", "PST_SI_Name", "PST_SI_Desc", ContentUtilities.Array(Floors.F2, Floors.END), usingWanderRounds: true)); // PixelGuy
-			allNpcs.Add(CreateNPC<CrazyClock>("Crazy Clock", 95, ContentUtilities.Array( // All clock sprites in order
+			CreateNPC<OfficeChair>("Office Chair", 35, ContentUtilities.Array("officechair.png", "officechair_disabled.png"), false, false, 18f, -0.8f, "pri_ofc.png", "PST_OFC_Name", "PST_OFC_Desc", ContentUtilities.Array(Floors.F1, Floors.END), ContentUtilities.Array(RoomCategory.Faculty, RoomCategory.Office), hasLooker: false, aggored: true, capsuleRadius: 4f, forceSpawn: true); // PixelGuy
+			CreateNPC<HappyHolidays>("Happy Holidays", 15, ContentUtilities.Array("happyholidays.png"), false, false, 70f, -1.5f, "pri_hapho.png", "PST_HapH_Name", "PST_HapH_Desc", ContentUtilities.Array(Floors.F1), enterRooms: false, capsuleRadius: 3f); // PixelGuy
+			CreateNPC<SuperIntendent>("Super Intendent", 75, ContentUtilities.Array("Superintendent.png"), false, false, 50f, -1f, "pri_SI.png", "PST_SI_Name", "PST_SI_Desc", ContentUtilities.Array(Floors.F2, Floors.END), usingWanderRounds: true); // PixelGuy
+			CreateNPC<CrazyClock>("Crazy Clock", 95, ContentUtilities.Array( // All clock sprites in order
 			"ClockGuy_Normal_Tick1.png", "ClockGuy_Normal_Tock1.png",
 				"ClockGuy_Normal_Tick2.png", "ClockGuy_Normal_Tock2.png",
 				"ClockGuy_Sight_Tick1.png", "ClockGuy_Sight_Tock1.png",
@@ -1421,17 +1467,17 @@ namespace BB_MOD
 				"ClockGuy_Frown.png",
 				"ClockGuy_Scream_Tick.png", "ClockGuy_Scream_Tock.png",
 			"ClockGuy_Hide1.png", "ClockGuy_Hide2.png", "ClockGuy_Hide3.png", "ClockGuy_Hide4.png", "ClockGuy_Hide5.png", "ClockGuy_Hide6.png", "ClockGuy_Hide7.png", "ClockGuy_Hide8.png", "ClockGuy_Hide9.png", "ClockGuy_Hide10.png", "ClockGuy_Hide11.png") // Hiding Animation
-			, true, false, 30f, 0f, "pri_crazyclock.png", "PST_CC_Name", "PST_CC_Desc", ContentUtilities.Array(Floors.F3), ContentUtilities.Array(RoomCategory.FieldTrip, ContentUtilities.SpecialRoomEnum), forceSpawn: true, aggored: true, ignoreBelts: true, isStatic: true)); // Poolgametm (Coded by PixelGuy)
-			allNpcs.Add(CreateNPC<Forgotten>("Forgotten", 40, ContentUtilities.Array("forgotten.png"), false, false, 25f, 0f, "pri_forgotten.png", "PST_Forgotten_Name", "PST_Forgotten_Name_Desc", ContentUtilities.Array(Floors.F2, Floors.F3, Floors.END), enterRooms: true, capsuleRadius: 4f)); // JDvideosPR
-			allNpcs.Add(CreateNPC<LetsDrum>("Let's Drum", 45, ContentUtilities.Array("Lets_Drum.png"), false, false, 51f, -1f, "pri_letsdrum.png", "PST_DRUM_Name", "PST_DRUM_Desc", ContentUtilities.Array(Floors.F2, Floors.F3), enterRooms: false)); // PixelGuy
-			allNpcs.Add(CreateNPC<Robocam>("Robocam", 65, ContentUtilities.Array("robocam.png"), false, false, 10f, 0f, "pri_robocam.png", "PST_Robocam_Name", "PST_Robocam_Name_Desc", ContentUtilities.Array(Floors.F3, Floors.END), enterRooms: false)); // JDvideosPR
-			allNpcs.Add(CreateNPC<PencilBoy>("Pencil Boy", 50, ContentUtilities.Array("pb_angry.png", "pb_angrySpot.png", "pb_happy.png"), false, false, 65f, -1.75f, "pri_pb.png", "PST_PB_Name", "PST_PB_Desc", ContentUtilities.Array(Floors.F2, Floors.END), ContentUtilities.Array(RoomCategory.Hall, RoomCategory.Test), enterRooms: false, capsuleRadius: 2.6f));
+			, true, false, 30f, 0f, "pri_crazyclock.png", "PST_CC_Name", "PST_CC_Desc", ContentUtilities.Array(Floors.F3), ContentUtilities.Array(RoomCategory.FieldTrip, ContentUtilities.SpecialRoomEnum), forceSpawn: true, aggored: true, ignoreBelts: true, isStatic: true); // Poolgametm (Coded by PixelGuy)
+			CreateNPC<Forgotten>("Forgotten", 40, ContentUtilities.Array("forgotten.png"), false, false, 25f, 0f, "pri_forgotten.png", "PST_Forgotten_Name", "PST_Forgotten_Name_Desc", ContentUtilities.Array(Floors.F2, Floors.F3, Floors.END), enterRooms: true, capsuleRadius: 4f); // JDvideosPR
+			CreateNPC<LetsDrum>("Let's Drum", 45, ContentUtilities.Array("Lets_Drum.png"), false, false, 51f, -1f, "pri_letsdrum.png", "PST_DRUM_Name", "PST_DRUM_Desc", ContentUtilities.Array(Floors.F2, Floors.F3), enterRooms: false); // PixelGuy
+			CreateNPC<Robocam>("Robocam", 65, ContentUtilities.Array("robocam.png"), false, false, 10f, 0f, "pri_robocam.png", "PST_Robocam_Name", "PST_Robocam_Name_Desc", ContentUtilities.Array(Floors.F3, Floors.END), enterRooms: false); // JDvideosPR
+			CreateNPC<PencilBoy>("Pencil Boy", 50, ContentUtilities.Array("pb_angry.png", "pb_angrySpot.png", "pb_happy.png"), false, false, 65f, -1.75f, "pri_pb.png", "PST_PB_Name", "PST_PB_Desc", ContentUtilities.Array(Floors.F2, Floors.END), ContentUtilities.Array(RoomCategory.Hall, RoomCategory.Test), enterRooms: false, capsuleRadius: 2.6f);
 
 			// Replacement NPCs here
-			allNpcs.Add(CreateReplacementNPC<ZeroPrize>("0th Prize", 75, ContentUtilities.Array("0thprize_sleep.png", "0thprize.png"), false, false, 50f, -0.5f,
-				"pri_0thprize.png", "PST_0TH_Name", "PST_0TH_Desc", ContentUtilities.Array(Floors.F3), ContentUtilities.Array(Character.Sweep), forceSpawn: true, capsuleRadius: 4f, enterRooms: false, hasLooker: false)); // PixelGuy
-			allNpcs.Add(CreateReplacementNPC<MagicalStudent>("Magical Student", 35, ContentUtilities.Array("MGS_Throw1.png", "MGS_Throw2.png", "MGS_Throw3.png"), false, false, 60f, -1.6f,
-				"pri_MGS.png", "PST_MGS_Name", "PST_MGS_Desc", ContentUtilities.Array(Floors.F3, Floors.END), ContentUtilities.Array(Character.Principal), usingWanderRounds: true)); // TheEnkoder (Coded by PixelGuy)
+			CreateReplacementNPC<ZeroPrize>("0th Prize", 75, ContentUtilities.Array("0thprize_sleep.png", "0thprize.png"), false, false, 50f, -0.5f,
+				"pri_0thprize.png", "PST_0TH_Name", "PST_0TH_Desc", ContentUtilities.Array(Floors.F3), ContentUtilities.Array(Character.Sweep), forceSpawn: true, capsuleRadius: 4f, enterRooms: false, hasLooker: false); // PixelGuy
+			CreateReplacementNPC<MagicalStudent>("Magical Student", 35, ContentUtilities.Array("MGS_Throw1.png", "MGS_Throw2.png", "MGS_Throw3.png"), false, false, 60f, -1.6f,
+				"pri_MGS.png", "PST_MGS_Name", "PST_MGS_Desc", ContentUtilities.Array(Floors.F3, Floors.END), ContentUtilities.Array(Character.Principal), usingWanderRounds: true); // TheEnkoder (Coded by PixelGuy)
 
 
 			// End of Character Spawns
@@ -1442,7 +1488,7 @@ namespace BB_MOD
 
 		private WeightedNPC CreateNPC<C>(out bool success, string name, int weight, string[] spritesFileName, bool flatSprite, bool includeAnimator, float pixelsPerUnit, float spriteYOffset, string posterFileName, string keyForPosterName, string keyForPoster, Floors[] floor, bool hasLooker = true, bool enterRooms = true, bool aggored = false, bool ignoreBelts = false, float capsuleRadius = 0f, bool usingWanderRounds = false, bool forceSpawn = false, Character c = Character.Null, bool isStatic = false) where C : NPC // The order of everything here must be IN THE ORDER I PUT, or else it'll log annoying null exceptions
 		{
-			var cBean = Instantiate(beans); // Instantiate a bean instance and customize it
+			var cBean = Instantiate(Prefabs.beans); // Instantiate a bean instance and customize it
 			cBean.name = "CustomNPC_" + name;
 			try
 			{
@@ -1473,7 +1519,7 @@ namespace BB_MOD
 
 				DontDestroyOnLoad(cBean);
 
-				var beanPoster = beans.GetComponent<Beans>().Poster; // Get beans poster to set data
+				var beanPoster = Prefabs.beans.GetComponent<Beans>().Poster; // Get beans poster to set data
 
 				customData.poster = ObjectCreatorHandlers.CreatePosterObject(AssetManager.TextureFromFile(Path.Combine(modPath, "Textures", "npc", posterFileName)), beanPoster.material, ContentUtilities.ConvertPosterTextData(beanPoster.textData, keyForPosterName, keyForPoster));
 				var comp = cBean.AddComponent<C>();
@@ -1500,24 +1546,27 @@ namespace BB_MOD
 				comp.baseTrigger = ContentUtilities.Array<Collider>(cBean.GetComponent<CapsuleCollider>());
 
 				customData.materials[0] = renderer.material;
-				customData.materials[1] = Instantiate(Resources.FindObjectsOfTypeAll<Material>().First(x => x.name.ToLower() == "chalkles"));
+				customData.materials[1] = Prefabs.newFlatMaterial;
 
 
 				customData.SwitchMaterials(flatSprite); // Gets chalkles material which has no billboard
 
 
-				npcPair.Add(floor);
 				if (isStatic) staticNpcs.Add(cEnum);
 
 				if (capsuleRadius > 0)
 					cBean.GetComponent<CapsuleCollider>().radius = capsuleRadius;
 				success = true;
 
-				return new WeightedNPC()
+				var weightedNpc = new WeightedNPC()
 				{
 					weight = weight,
 					selection = comp
 				};
+
+				allNpcs.Add(new GenericObjectHolder<WeightedNPC>(weightedNpc, floor));
+
+				return weightedNpc;
 			}
 			catch (Exception e)
 			{
@@ -1526,12 +1575,11 @@ namespace BB_MOD
 				Debug.LogWarning("Your NPC will be destroyed, and a disabled Beans Instance will be added to the list");
 			}
 			Destroy(cBean);
-			npcPair.Add(Array.Empty<Floors>());
 			success = false;
 			return new WeightedNPC()
 			{
 				weight = 1,
-				selection = beans.GetComponent<Beans>()
+				selection = Prefabs.beans.GetComponent<Beans>()
 			};
 
 		}
@@ -1587,19 +1635,19 @@ namespace BB_MOD
 
 			addedItems = true;
 
-			allShoppingItems.Add(new WeightedItemObject()
+			allShoppingItems.Add(new GenericObjectHolder<WeightedItemObject>(new WeightedItemObject()
 			{
 				selection = ContentUtilities.FindResourceObjectContainingName<ItemObject>("principalwhistle"),
 				weight = 50
-			}, ContentUtilities.AllFloorsExcept(Floors.F1)); // Adds principal's whistle back into the johnny's store
+			}, ContentUtilities.AllFloorsExcept(Floors.F1))); // Adds principal's whistle back into the johnny's store
 
 			// Item Creation Here
 
-			allNewItems.Add(CreateItem<ITM_Present>("PRS_Name", "PRS_Desc", "present.png", "present.png", "Present", 120, 40, 30, ContentUtilities.Array(Floors.F3), 55, ContentUtilities.Array(Floors.F3), 60, includeOnMysteryRoom: true)); // PixelGuy
-			allNewItems.Add(CreateItem<ITM_Hammer>("HAM_Name", "HAM_Desc", "hammer.png", "hammerSmall.png", "Hammer", 30, 35, 25, ContentUtilities.AllFloorsExcept(Floors.F1), 125, ContentUtilities.AllFloors, 60)); // PixelGuy
-			allNewItems.Add(CreateItem<ITM_Bell>("BEL_Name", "BEL_Desc", "bell.png", "bell.png", "Bell", 30, 25, 25, ContentUtilities.AllFloors, 125, ContentUtilities.AllFloors, 45, includeOnFieldTrip: true)); // PixelGuy
-			allNewItems.Add(CreateItem<ITM_GPS>("GPS_Name", "GPS_Desc", "gps.png", "gpsSmall.png", "GPS", 70, 20, 25, ContentUtilities.Array(Floors.F2, Floors.END), 245, ContentUtilities.Array(Floors.F2, Floors.F3), 30, includeOnPartyEvent: true, includeOnFieldTrip: true)); // PixelGuy
-			allNewItems.Add(CreateItem<ITM_Pencil>("PC_Name", "PC_Desc", "Pencil.png", "Pencil.png", "Pencil", 40, 22, 25, ContentUtilities.Array(Floors.F2, Floors.END), 40, ContentUtilities.Array(Floors.F2, Floors.F3), 30, includeOnFieldTrip: true)); // FileName3 (Coded by PixelGuy)
+			CreateItem<ITM_Present>("PRS_Name", "PRS_Desc", "present.png", "present.png", "Present", 120, 40, 30, ContentUtilities.Array(Floors.F3), 55, ContentUtilities.Array(Floors.F3), 60, includeOnMysteryRoom: true); // PixelGuy
+			CreateItem<ITM_Hammer>("HAM_Name", "HAM_Desc", "hammer.png", "hammerSmall.png", "Hammer", 30, 35, 25, ContentUtilities.AllFloorsExcept(Floors.F1), 125, ContentUtilities.AllFloors, 60); // PixelGuy
+			CreateItem<ITM_Bell>("BEL_Name", "BEL_Desc", "bell.png", "bell.png", "Bell", 30, 25, 25, ContentUtilities.AllFloors, 125, ContentUtilities.AllFloors, 45, includeOnFieldTrip: true); // PixelGuy
+			CreateItem<ITM_GPS>("GPS_Name", "GPS_Desc", "gps.png", "gpsSmall.png", "GPS", 70, 20, 25, ContentUtilities.Array(Floors.F2, Floors.END), 245, ContentUtilities.Array(Floors.F2, Floors.F3), 30, includeOnPartyEvent: true, includeOnFieldTrip: true); // PixelGuy
+			CreateItem<ITM_Pencil>("PC_Name", "PC_Desc", "Pencil.png", "Pencil.png", "Pencil", 40, 22, 25, ContentUtilities.Array(Floors.F2, Floors.END), 40, ContentUtilities.Array(Floors.F2, Floors.F3), 30, includeOnFieldTrip: true); // FileName3 (Coded by PixelGuy)
 		}
 
 
@@ -1623,11 +1671,13 @@ namespace BB_MOD
 					weight = spawnWeight
 				};
 				allItems.Add(weightedItem);
-				itemPair.Add(ContentUtilities.AllFloors);
+				allNewItems.Add(new GenericObjectHolder<WeightedItemObject>(weightedItem, ContentUtilities.AllFloors));
 
 				if (shoppingFloors.Length > 0 && (shoppingFloors[0] != Floors.None || shoppingFloors.Length > 1))
 				{
-					allShoppingItems.Add(new WeightedItemObject() { selection = item, weight = shoppingWeight }, shoppingFloors);
+					allShoppingItems.Add(new GenericObjectHolder<WeightedItemObject>(
+						new WeightedItemObject() { selection = item, weight = shoppingWeight }, shoppingFloors)
+						);
 				}
 
 				if (includeOnMysteryRoom)
@@ -1652,7 +1702,6 @@ namespace BB_MOD
 				Debug.LogWarning("Your Item will be destroyed");
 			}
 			Destroy(itemInstance);
-			itemPair.Add(Array.Empty<Floors>());
 			return new WeightedItemObject()
 			{
 				weight = 50,
@@ -1664,7 +1713,7 @@ namespace BB_MOD
 		private WeightedItemObject CreateItem<I>(string itemNameKey, string itemDescKey, string largeSpriteFile, string smallSpriteFile, string itemName, int shopPrice, int itemCost, int spawnWeight, Floors[] spawnFloors, int largerPixelsPerUnit, Floors[] shoppingFloors, int shoppingWeight, bool includeOnMysteryRoom = false, bool includeOnFieldTrip = false, bool includeOnPartyEvent = false) where I : Item
 		{
 			var item = CreateItem<I>(itemNameKey, itemDescKey, largeSpriteFile, smallSpriteFile, itemName, shopPrice, itemCost, spawnWeight, largerPixelsPerUnit, shoppingFloors, shoppingWeight, includeOnMysteryRoom, includeOnFieldTrip, includeOnPartyEvent);
-			itemPair.Replace(itemPair.Count - 1, spawnFloors);
+			allNewItems[allNewItems.Count - 1].OverwriteAvailableFloors(spawnFloors);
 			return item;
 		}
 
@@ -1688,8 +1737,8 @@ namespace BB_MOD
 
 			// Event Creation Here
 
-			allEvents.Add(CreateEvent<PrincipalOut>("PrincipalOut", "Event_PriOut", 40f, 60f, Floors.F2, 75)); // PixelGuy
-			allEvents.Add(CreateEvent<BlackOut>("BlackOut", "Event_BlackOut", 60f, 120f, Floors.F3, 45)); // PixelGuy
+			CreateEvent<PrincipalOut>("PrincipalOut", "Event_PriOut", 40f, 60f, Floors.F2, 75); // PixelGuy
+			CreateEvent<BlackOut>("BlackOut", "Event_BlackOut", 60f, 120f, Floors.F3, 45); // PixelGuy
 
 		}
 
@@ -1715,12 +1764,15 @@ namespace BB_MOD
 
 				DontDestroyOnLoad(obj);
 				obj.SetActive(false);
-
-				return new WeightedRandomEvent()
+				var weighted = new WeightedRandomEvent()
 				{
 					selection = obj.GetComponent<E>(),
 					weight = weight
 				};
+
+				allEvents.Add(new GenericObjectHolder<WeightedRandomEvent>(weighted, availableFloors));
+
+				return weighted;
 			}
 			catch (Exception e)
 			{
@@ -1791,7 +1843,7 @@ namespace BB_MOD
 				var text = AssetManager.TextureFromFile(Path.Combine(modPath, "Textures", "poster", textureName));
 				CheckForParameters(weight, text, 256, 256);
 
-				var material = posterPre.material.DoAndReturn(x => new Material(x)
+				var material = Prefabs.posterPre.material.DoAndReturn(x => new Material(x)
 				{
 					mainTexture = text
 				}).ToArray();
@@ -1817,7 +1869,7 @@ namespace BB_MOD
 				var text = AssetManager.TextureFromFile(Path.Combine(modPath, "Textures", "poster", textureName));
 				CheckForParameters(weight, text, 256, 256);
 
-				var material = posterPre.material.DoAndReturn(x => new Material(x)
+				var material = Prefabs.posterPre.material.DoAndReturn(x => new Material(x)
 				{
 					mainTexture = text
 				}).ToArray();
@@ -1834,7 +1886,7 @@ namespace BB_MOD
 			}
 			return new WeightedPosterObject()
 			{
-				selection = posterPre,
+				selection = Prefabs.posterPre,
 				weight = 0
 			};
 		}
@@ -1852,7 +1904,7 @@ namespace BB_MOD
 
 				CheckForParameters(weight, text, 256, 256);
 
-				var material = posterPre.material.DoAndReturn(x => new Material(x)
+				var material = Prefabs.posterPre.material.DoAndReturn(x => new Material(x)
 				{
 					mainTexture = text
 				}).ToArray();
@@ -1869,7 +1921,7 @@ namespace BB_MOD
 			}
 			return new WeightedPosterObject()
 			{
-				selection = posterPre,
+				selection = Prefabs.posterPre,
 				weight = 0
 			};
 		}
@@ -1880,7 +1932,7 @@ namespace BB_MOD
 			{
 				return new WeightedPosterObject()
 				{
-					selection = posterPre,
+					selection = Prefabs.posterPre,
 					weight = 0
 				};
 			}
@@ -2093,12 +2145,12 @@ namespace BB_MOD
 
 		private S CreateSpecialRoom<S, B>(string name, int weight, bool highCeiling, Floors[] floors, IntVector2 minSize, IntVector2 maxSize, bool stickToHalls = true, bool acceptExits = true, Texture2D wallTex = null, Texture2D ceilingTex = null, Texture2D floorTex = null) where S : SpecialRoomCreator where B : RoomBuilder
 		{
-			if (!specialRoomPre)
+			if (!Prefabs.specialRoomPre)
 			{
 				Debug.LogWarning("No instance of special room was found to be instanced");
 				return null;
 			}
-			var preRoom = Instantiate<SpecialRoomCreator>(specialRoomPre); // Casts to the right component, so it doesn't refer to CafeteriaCreator and breaks everything
+			var preRoom = Instantiate<SpecialRoomCreator>(Prefabs.specialRoomPre); // Casts to the right component, so it doesn't refer to CafeteriaCreator and breaks everything
 			try
 			{
 				preRoom.name = "CustomSpecialRoom_" + name;
@@ -2133,18 +2185,7 @@ namespace BB_MOD
 
 				if (highCeiling) // Basically creates an empty 256x256 texture for the ceiling
 				{
-					var emptyTex = new Texture2D(256, 256);
-					var clearColor = Color.clear;
-					Color[] transparentColors = new Color[65_536]; // 256 * 256
-
-					for (int i = 0; i < transparentColors.Length; i++)
-					{
-						transparentColors[i] = clearColor;
-					}
-
-					emptyTex.SetPixels(transparentColors);
-					emptyTex.Apply();
-					preRoom.Room.ceilingTex = emptyTex;
+					preRoom.Room.ceilingTex = ContentUtilities.EmptyTexture(256, 256);
 				}
 
 				room.obstacle = EnumExtensions.ExtendEnum<Obstacle>(name);
@@ -2395,6 +2436,16 @@ namespace BB_MOD
 		// Independent (disabled by default): if you want to use this decoration to something else instead of being a decoration on tables, set this to independent (setting this up makes it actually independent and won't spawn naturally)
 		// SeparatedSprite (disabled by default): if the decoration will be have a separated sprite from it's gameobject, basically making the sprite child of the main gameobject (Necessary if the decoration is going to have a collider)
 		// SpriteOffset (only works with separatedsprite on): changes the sprite's position without affecting the main gameobject (parent)
+		// CreateCustomWindows() => All textures must be from Textures/windows
+		// windowFileName: name of the file of the window texture
+		// brokenWindowFileName: name of the file of the broken window texture
+		// maskFileName (optional, leave blank if not used): if your window uses a different shape, you can always set a custom mask for it (refer to the placeholder mask in Textures/windows)
+		// unbreakable: makes the window immune to break (if enabled, the broken texture is unused)
+		// openWindow: If the window already spawns opened by default (like a portal poster, it uses the broken window texture by default)
+		// specialRandomReplace: if the window naturally spawn replacing any other window that has been spawned there (only recommended to disabled it if a room or structure uses it)
+		// supportedCategories: what room types does it support to be set on
+		// supportedFloors: what floors does it appear
+
 		public void SetupExtraContent()
 		{
 			if (!addedExtraContent[0]) // Principal Audios Here
@@ -2420,6 +2471,68 @@ namespace BB_MOD
 			{
 				addedExtraContent[2] = true;
 				CreateSchoolHouseMusic("mus_NewSchool.wav", ContentUtilities.AllFloorsExcept(Floors.F3));
+			}
+			if (!addedExtraContent[3])
+			{
+				addedExtraContent[3] = true;
+				CreateCustomWindow("ClassicWindow.png", "ClassicWindow_Broken.png", "ClassicWindow_Mask.png", false, false, false, Array.Empty<RoomCategory>(), Array.Empty<Floors>());
+				CreateCustomWindow("MetalWindow.png", string.Empty, string.Empty, true, false, true, ContentUtilities.Array(RoomCategory.Office), ContentUtilities.AllFloors);
+			}
+			if (!addedExtraContent[4]) // Internal Stuff for the game such as fabricated prefabs, not really made for any user to touch at
+			{
+				addedExtraContent[4] = true;
+				PrefabInstance.CreateInstance<GumInWall>();
+			}
+		}
+
+		private void CreateCustomWindow(string windowFileName, string brokenWindowFileName, string maskFileName, bool unbreakable, bool openWindow, bool specialRandomReplace, RoomCategory[] supportedCategories, params Floors[] supportedFloors)
+		{
+			// Note: open material = broken
+			// overlay material = the normal texture
+			var window = Instantiate(Prefabs.windowPre);
+			try
+			{
+				window.windowPre = Instantiate(window.windowPre); // Set a clone of the material, so it doesn't get set to all windows
+				window.windowPre.name = "CustomWindow_" + Path.GetFileNameWithoutExtension(windowFileName);
+				var normalTex = AssetManager.TextureFromFile(Path.Combine(modPath, "Textures", "windows", windowFileName));
+
+				CheckForParameters(normalTex, 256, 256);
+
+				var newMaterial = Instantiate(window.overlay[0]);
+				newMaterial.SetTexture("_MainTex", normalTex);
+				window.overlay = new Material[] { newMaterial, newMaterial };
+
+				if (!unbreakable)
+				{
+					var brokenTex = AssetManager.TextureFromFile(Path.Combine(modPath, "Textures", "windows", brokenWindowFileName));
+					CheckForParameters(brokenTex, 256, 256);
+
+					newMaterial = Instantiate(window.open[0]);
+					newMaterial.SetTexture("_MainTex", brokenTex);
+					window.open = new Material[] { newMaterial, newMaterial };
+				}
+
+				if (!string.IsNullOrEmpty(maskFileName))
+				{
+					var mask = AssetManager.TextureFromFile(Path.Combine(modPath, "Textures", "windows", maskFileName));
+					CheckForParameters(mask, 256, 256);
+					window.mask = Instantiate(window.mask); // new mask material
+					window.mask.SetTexture("_Mask", mask);
+				}
+
+				DontDestroyOnLoad(window.windowPre);
+
+				var fields = window.windowPre.gameObject.AddComponent<WindowExtraFields>();
+
+				fields.IsUnbreakable = unbreakable;
+				fields.OpenByDefault = openWindow;
+
+				allWindows.Add(new WindowHolder(window, specialRandomReplace, supportedCategories, supportedFloors));
+			}
+			catch (Exception e)
+			{
+				Destroy(window);
+				GenericExceptionThrow(e, $"The window: {windowFileName} has failed to be created");
 			}
 		}
 
@@ -2462,7 +2575,7 @@ namespace BB_MOD
 
 		private bool CreateExtraDecoration(string texturePath, int weight, int pixelsPerUnit, RoomCategory[] categories, out WeightedTransform transform, bool independent = false, bool separatedSprite = false, Vector3 spriteOffset = default)
 		{
-			var obj = Instantiate(decorationPre.gameObject);
+			var obj = Instantiate(Prefabs.decorationPre.gameObject);
 
 			try
 			{
@@ -2679,47 +2792,6 @@ namespace BB_MOD
 			}
 		}
 
-
-		public GameObject beans; // Most important game object for npc creation
-
-		public PosterObject posterPre; // First poster instance to be used
-
-		public CafeteriaCreator specialRoomPre; // First instance of special room creator on resources
-
-		public Transform decorationPre;
-
-		private readonly Dictionary<Floors, bool> accessedNPCs = new Dictionary<Floors, bool>() // Prevents the weights from being added again (npcs)
-		{
-			{ Floors.F1, false },
-			{ Floors.F2, false },
-			{ Floors.F3, false },
-			{ Floors.END, false }
-		};
-
-		private readonly Dictionary<Floors, bool> accessedItems = new Dictionary<Floors, bool>() // Prevents the weights from being added again (items)
-		{
-			{ Floors.F1, false },
-			{ Floors.F2, false },
-			{ Floors.F3, false },
-			{ Floors.END, false }
-		};
-
-		private readonly Dictionary<Floors, bool> accessedShopItems = new Dictionary<Floors, bool>() // Prevents the weights from being added again (items)
-		{
-			{ Floors.F1, false },
-			{ Floors.F2, false },
-			{ Floors.F3, false },
-			{ Floors.END, false }
-		};
-
-		private readonly Dictionary<Floors, bool> accessedEvents = new Dictionary<Floors, bool>() // Prevents the weights from being added again (items)
-		{
-			{ Floors.F1, false },
-			{ Floors.F2, false },
-			{ Floors.F3, false },
-			{ Floors.END, false }
-		};
-
 		private readonly Dictionary<Floors, bool> accessedExtraStuff = new Dictionary<Floors, bool>()
 		{
 			{ Floors.F1, false },
@@ -2728,17 +2800,19 @@ namespace BB_MOD
 			{ Floors.END, false }
 		};
 
-		private readonly List<WeightedNPC> allNpcs = new List<WeightedNPC>();
+		private readonly List<GenericObjectHolder<WeightedNPC>> allNpcs = new List<GenericObjectHolder<WeightedNPC>>();
 
-		private readonly List<WeightedItemObject> allNewItems = new List<WeightedItemObject>();
+		private readonly List<GenericObjectHolder<WeightedItemObject>> allNewItems = new List<GenericObjectHolder<WeightedItemObject>>();
 
-		private readonly Dictionary<WeightedItemObject, Floors[]> allShoppingItems = new Dictionary<WeightedItemObject, Floors[]>();
+		private readonly List<GenericObjectHolder<WeightedItemObject>> allShoppingItems = new List<GenericObjectHolder<WeightedItemObject>>();
 
-		private readonly List<WeightedRandomEvent> allEvents = new List<WeightedRandomEvent>();
+		private readonly List<GenericObjectHolder<WeightedRandomEvent>> allEvents = new List<GenericObjectHolder<WeightedRandomEvent>>();
 
 		private readonly List<WeightedPosterObject> allPosters = new List<WeightedPosterObject>();
 
 		private readonly List<WeightedPosterObject> allChalkboards = new List<WeightedPosterObject>();
+
+		private readonly List<WindowHolder> allWindows = new List<WindowHolder>();
 
 		// Builders Classes
 
@@ -2779,10 +2853,6 @@ namespace BB_MOD
 		// End of builders
 
 		private readonly Dictionary<WeightedTexture2D, SchoolTextType[]> allTexts = new Dictionary<WeightedTexture2D, SchoolTextType[]>();
-
-		private readonly List<Floors[]> npcPair = new List<Floors[]>();
-
-		private readonly List<Floors[]> itemPair = new List<Floors[]>();
 
 		private readonly List<Floors[]> eventPair = new List<Floors[]>();
 
@@ -2983,7 +3053,11 @@ namespace BB_MOD
 			tempInstantiatedDecs.Clear();
 		}
 
-		public void TurnDecorations(bool turn) => allDecorations.ForEach(x => x.gameObject.SetActive(turn));
+		public void TurnDecorations(bool turn)
+		{
+			allDecorations.ForEach(x => x.gameObject.SetActive(turn));
+			allWindows.ForEach(x => x.Object.windowPre.gameObject.SetActive(turn));
+		}
 
 		public RoomData GetRoom(RoomCategory room) => roomDatas.First(x => x.Rooms.Contains(room));
 
@@ -3017,70 +3091,83 @@ namespace BB_MOD
 
 		public List<WeightedNPC> GetNPCs(Floors floor, bool onlyReplacementNPCs = false)
 		{
-			if (accessedNPCs[floor] && !onlyReplacementNPCs)
-				return new List<WeightedNPC>();
-
-			accessedNPCs[floor] = true;
 			var npcs = new List<WeightedNPC>();
 			for (int i = 0; i < allNpcs.Count; i++)
 			{
-				if (npcPair[i].Contains(floor) && ((!onlyReplacementNPCs && allNpcs[i].selection.gameObject.GetComponent<CustomNPCData>().replacementCharacters.Length == 0) || (allNpcs[i].selection.gameObject.GetComponent<CustomNPCData>().replacementCharacters.Length > 0 && onlyReplacementNPCs))) // Check whether the npc is from said floor and if it is a replacement NPC or not
+				if (allNpcs[i].ReturnObjectIfAvailable(floor, out var npc)) // Check whether the npc is from said floor and if it is a replacement NPC or not
 				{
-					npcs.Add(allNpcs[i]);
+					if ((!onlyReplacementNPCs && npc.selection.gameObject.GetComponent<CustomNPCData>().replacementCharacters.Length == 0) || (npc.selection.gameObject.GetComponent<CustomNPCData>().replacementCharacters.Length > 0 && onlyReplacementNPCs))
+						npcs.Add(npc);
 				}
 			}
 			return npcs;
+		}
+
+		internal List<WindowHolder> AllWindows => allWindows;
+
+		public List<WindowObject> GetWindows(Floors floor, bool nonRandomReplacement)
+		{
+			var windows = new List<WindowObject>();
+			foreach (var window in allWindows)
+			{
+				if (window.IsObjectAvailable(floor) && window.RandomReplacement == !nonRandomReplacement)
+				{
+					windows.Add(window.Object);
+				}
+			}
+			return windows;
+		}
+
+		public List<WindowObject> GetWindows(Floors floor, bool isRandomReplacement, RoomCategory supportedCategory)
+		{
+			var windows = new List<WindowObject>();
+			foreach (var window in allWindows)
+			{
+				if (window.IsObjectAvailable(floor) && window.RandomReplacement == isRandomReplacement && window.TargetRooms.Contains(supportedCategory))
+				{
+					windows.Add(window.Object);
+				}
+			}
+			return windows;
 		}
 
 		public List<WeightedRandomEvent> GetEvents(Floors floor)
 		{
-			if (accessedEvents[floor])
-				return new List<WeightedRandomEvent>();
-
-			accessedEvents[floor] = true;
-			var npcs = new List<WeightedRandomEvent>();
+			var events = new List<WeightedRandomEvent>();
 			for (int i = 0; i < allEvents.Count; i++)
 			{
-				if (eventPair[i].Contains(floor)) // Check whether the item is from said floor
+				if (allEvents[i].ReturnObjectIfAvailable(floor, out var @event)) // Check whether the item is from said floor
 				{
-					npcs.Add(allEvents[i]);
+					events.Add(@event);
 				}
 			}
-			return npcs;
+			return events;
 		}
 
 		public List<WeightedItemObject> GetItems(Floors floor)
 		{
-			if (accessedItems[floor])
-				return new List<WeightedItemObject>();
-
-			accessedItems[floor] = true;
-			var npcs = new List<WeightedItemObject>();
+			var items = new List<WeightedItemObject>();
 			for (int i = 0; i < allNewItems.Count; i++)
 			{
-				if (itemPair[i].Contains(floor)) // Check whether the item is from said floor
+				if (allNewItems[i].ReturnObjectIfAvailable(floor, out var item)) // Check whether the item is from said floor
 				{
-					npcs.Add(allNewItems[i]);
+					items.Add(item);
 				}
 			}
-			return npcs;
+			return items;
 		}
 
 		public List<WeightedItemObject> GetShoppingItems(Floors floor)
 		{
-			if (accessedShopItems[floor])
-				return new List<WeightedItemObject>();
-
-			accessedShopItems[floor] = true;
-			var npcs = new List<WeightedItemObject>();
+			var items = new List<WeightedItemObject>();
 			foreach (var item in allShoppingItems)
 			{
-				if (item.Value.Contains(floor)) // Check whether the item is from said floor
+				if (item.ReturnObjectIfAvailable(floor, out var witem)) // Check whether the item is from said floor
 				{
-					npcs.Add(item.Key);
+					items.Add(witem);
 				}
 			}
-			return npcs;
+			return items;
 		}
 
 		public List<WeightedTexture2D> GetSchoolText(Floors floor, SchoolTextType type, int roomType) // 0 = classroom, 1 = faculty room, 2 = if it is rooms only (not useful on this method)
@@ -3249,14 +3336,14 @@ namespace BB_MOD
 
 		public void LockAccessedFloor(Floors floor) => accessedExtraStuff[floor] = true;
 
-		public List<WeightedNPC> AllNpcs
+		public IEnumerable<WeightedNPC> AllNpcs
 		{
-			get => allNpcs;
+			get => allNpcs.Select(x => x.Object);
 		}
 
-		public List<WeightedRandomEvent> AllEvents
+		public IEnumerable<WeightedRandomEvent> AllEvents
 		{
-			get => allEvents;
+			get => allEvents.Select(x => x.Object);
 		}
 
 		public List<WeightedPosterObject> AllPosters(bool isChalkBoard)
@@ -3264,9 +3351,9 @@ namespace BB_MOD
 			return isChalkBoard ? allChalkboards : allPosters;
 		}
 
-		public List<WeightedItemObject> AllNewItems
+		public IEnumerable<WeightedItemObject> AllNewItems
 		{
-			get => allNewItems;
+			get => allNewItems.Select(x => x.Object);
 		}
 
 		public ItemObject RandomItem
@@ -3363,7 +3450,7 @@ namespace BB_MOD
 
 		public SoundObject GetPrincipalLine(string scold) => principalLines.ContainsKey(scold) ? principalLines[scold] : null;
 
-		class GenericObjectHolder<T>
+		internal class GenericObjectHolder<T>
 		{
 			public GenericObjectHolder(T obj, params Floors[] floors)
 			{
@@ -3371,13 +3458,40 @@ namespace BB_MOD
 				holderObj = obj;
 			}
 
-			readonly private Floors[] floors;
+			private Floors[] floors;
+
+			readonly private List<Floors> accessedFloors = new List<Floors>();
 
 			readonly private T holderObj;
 
-			public T Object => holderObj;
+			public void OverwriteAvailableFloors(params Floors[] floors) => this.floors = floors;
 
+			public T Object => holderObj;
+			public bool ReturnObjectIfAvailable(Floors floor, out T obj, bool lockFloorAfter = true)
+			{
+				obj = holderObj;
+				bool isAvailable = IsObjectAvailable(floor);
+
+				if (lockFloorAfter && isAvailable) 
+					accessedFloors.Add(floor);
+
+				return isAvailable;
+			}
+
+			public bool IsObjectAvailable(Floors floor) => IsObjectFromFloor(floor) && !HasObjectBeenAccessedFromFloor(floor);
 			public bool IsObjectFromFloor(Floors floor) => floors.Contains(floor);
+			public bool HasObjectBeenAccessedFromFloor(Floors floor) => accessedFloors.Contains(floor);
+		}
+
+		internal class WindowHolder : GenericObjectHolder<WindowObject>
+		{
+			public WindowHolder(WindowObject obj, bool replacement, RoomCategory[] rooms, params Floors[] floors) : base(obj, floors)
+			{
+				RandomReplacement = replacement;
+				TargetRooms = rooms;
+			}
+			public bool RandomReplacement { get; }
+			public RoomCategory[] TargetRooms { get; }
 		}
 
 		readonly List<GenericObjectHolder<LoopingSoundObject>> schoolHouseMusics = new List<GenericObjectHolder<LoopingSoundObject>>();
@@ -3400,7 +3514,7 @@ namespace BB_MOD
 
 		private bool assetsLoaded = false;
 
-		private readonly bool[] addedExtraContent = new bool[3]; // Added principal dialogues, added extra decorations
+		private readonly bool[] addedExtraContent = new bool[5]; // Added principal dialogues, added extra decorations
 
 		private readonly List<WeightedItemObject> mysteryItems = new List<WeightedItemObject>();
 
@@ -3413,6 +3527,8 @@ namespace BB_MOD
 		private readonly List<WeightedItemObject> allItems = new List<WeightedItemObject>();
 
 		public bool DebugMode { get; set; }
+
+		public static ContentPrefabs Prefabs = new ContentPrefabs();
 
 		public int RoomCount
 		{
@@ -3445,5 +3561,22 @@ namespace BB_MOD
 
 		readonly RoomCategory[] currentValidCategories = new RoomCategory[] { RoomCategory.Class, RoomCategory.Office, RoomCategory.Faculty };
 
+	}
+
+	public class ContentPrefabs
+	{
+		public GameObject beans; // Most important game object for npc creation
+
+		public PosterObject posterPre; // First poster instance to be used
+
+		public CafeteriaCreator specialRoomPre; // First instance of special room creator on resources
+
+		public Transform decorationPre;
+
+		public WindowObject windowPre;
+
+		public Material newFlatMaterial => UnityEngine.Object.Instantiate(flatMaterial);
+
+		public Material flatMaterial;
 	}
 }

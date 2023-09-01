@@ -1,6 +1,4 @@
-﻿using MTM101BaldAPI.AssetManager;
-using MTM101BaldAPI;
-using System.IO;
+﻿using MTM101BaldAPI;
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
@@ -22,7 +20,7 @@ namespace BB_MOD.ExtraItems
 				return false;
 			}
 
-			ItemSoundHolder.CreatePositionalSoundHolder(pm.transform, ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("gpsBeepNoise"), "Vfx_GPS_Beep", SoundType.Effect, new Color(153, 153, 153)), false, 95);
+			ItemSoundHolder.CreateSoundHolder(pm.transform.position, ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("gpsBeepNoise"), "Vfx_GPS_Beep", SoundType.Effect, new Color(153, 153, 153)), false, maxDistance:95);
 
 			ec = pm.ec;
 

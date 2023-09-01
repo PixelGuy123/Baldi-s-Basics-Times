@@ -30,7 +30,7 @@ namespace BB_MOD.ExtraItems
 			}
 
 			pm.RuleBreak("stabbing", 2f);
-			ItemSoundHolder.CreatePositionalSoundHolder(hit.transform, ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("pb_stab"), "Vfx_PC_stab", SoundType.Voice, new Color(179, 179, 0)), true, 95);
+			ItemSoundHolder.CreateSoundHolder(hit.transform.position, ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("pb_stab"), "Vfx_PC_stab", SoundType.Voice, new Color(179, 179, 0)), true, maxDistance:95);
 			return true;
 		}
 
