@@ -34,7 +34,7 @@ namespace BB_MOD.NPCs
 
 			audMan = GetComponent<AudioManager>();
 
-			aud_ChairRoll = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("chair_rolling"), "Vfx_OFC_Walk", SoundType.Voice, Color.blue); // Creates audioClip
+			aud_ChairRoll = ContentAssets.GetAsset<SoundObject>("chair_rolling"); // Creates audioClip
 
 			spriteMan = GetComponent<CustomNPCData>().spriteObject;
 			sprites = GetComponent<CustomNPCData>().sprites;
@@ -107,7 +107,7 @@ namespace BB_MOD.NPCs
 
 		public override void Despawn()
 		{
-			ResetPlayer();
+			ResetPlayer(false);
 			base.Despawn();
 		}
 

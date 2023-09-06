@@ -6,16 +6,15 @@ using BB_MOD.NPCs;
 using HarmonyLib;
 using MonoMod.Utils;
 using MTM101BaldAPI;
+using Steamworks;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using TMPro;
 using UnityEngine;
-using UnityEngine.Audio;
 using UnityEngine.UI;
 
 namespace BB_MOD
@@ -42,6 +41,9 @@ namespace BB_MOD
 
 			if (!ContentManager.Prefabs.windowPre)
 				ContentManager.Prefabs.windowPre = ContentUtilities.FindResourceObjectContainingName<WindowObject>("wood");
+
+			if (!ContentManager.Prefabs.iconPre)
+				ContentManager.Prefabs.iconPre = ContentUtilities.FindResourceObject<Notebook>().iconPre;
 
 			// Add custom posters
 
@@ -139,8 +141,8 @@ namespace BB_MOD
 			// Replacing Office's Door
 
 			var newMat = ScriptableObject.CreateInstance<StandardDoorMats>();
-			newMat.open = new Material(__instance.ld.classDoorMat.open) { mainTexture = ContentAssets.GetAssetOrCreate<Texture2D>("officeDoorOpen", Path.Combine(ContentManager.modPath, "Textures", "officeDoor_Open.png")) };
-			newMat.shut = new Material(__instance.ld.classDoorMat.shut) { mainTexture = ContentAssets.GetAssetOrCreate<Texture2D>("officeDoorClosed", Path.Combine(ContentManager.modPath, "Textures", "officeDoor_Closed.png")) };
+			newMat.open = new Material(__instance.ld.classDoorMat.open) { mainTexture = ContentAssets.GetAsset<Texture2D>("officeDoorOpen") };
+			newMat.shut = new Material(__instance.ld.classDoorMat.shut) { mainTexture = ContentAssets.GetAsset<Texture2D>("officeDoorClosed") };
 			newMat.name = "OfficeDoor_Mat";
 			__instance.ld.OfficeDoorMat = newMat; // Changing the office material to a custom one
 
@@ -390,9 +392,187 @@ namespace BB_MOD
 		}
 	}
 
+	[HarmonyPatch(typeof(MainGameManager), "LoadNextLevel")]
+	internal class BeautifulCutscene
+	{
+		[HarmonyPrefix]
+		private static bool LeCutsceneFinale(MainGameManager __instance)
+		{
+			if (EnvironmentExtraVariables.currentFloor != Floors.F3 || !AfterGen.finalElevator)
+				return true;
+
+			GameObject leBaldi = null; // Puts le Baldi in front of elevator for final scene
+
+			for (int i = 0; i < __instance.Ec.Npcs.Count; i++) // Destroy any other Baldi available
+			{
+				var npc = __instance.Ec.Npcs[i];
+				if (npc.Character != Character.Baldi & (!npc.GetComponent<CustomNPCData>() || npc.GetComponent<CustomNPCData>().isReplacing != Character.Baldi)) 
+				{
+					npc.Despawn();
+					i--;
+				}
+				else
+				{
+					leBaldi = npc.gameObject;
+					npc.GetComponent<Navigator>().enabled = false; // Disable this components to not throw annoying null exceptions (shut up)
+					npc.GetComponent<Looker>().enabled = false;
+					UnityEngine.Object.Destroy(npc);
+				}
+			}
+
+			Singleton<CoreGameManager>.Instance.disablePause = true;
+			EnvironmentExtraVariables.TurnSubtitles(false);
+
+			var elevator = AfterGen.finalElevator;
+
+			var colPosition = new Vector3(elevator.ColliderGroup.transform.position.x, 5f, elevator.ColliderGroup.transform.position.z);
+
+			var mod = new MovementModifier(Vector3.zero, 0f);
+				 
+			foreach (var player in __instance.Ec.Players)
+			{
+				if (player)
+				{
+					player.transform.position = colPosition - elevator.dir.ToVector3() * 10f;
+					player.GetComponent<ActivityModifier>().moveMods.Add(mod);
+					player.GetComponent<ItemManager>().enabled = false;
+				}
+			}
+
+			var camera = new GameObject("LeCutsceneCamera", typeof(Camera)).GetComponent<Camera>();
+			camera.transform.position = colPosition;
+			camera.transform.LookAt(colPosition - elevator.dir.ToVector3() * 10f);
+			camera.enabled = true;
+
+			if (leBaldi != null)
+			{
+				leBaldi.transform.position = colPosition + elevator.dir.ToVector3() * 10f;
+			}
+
+			__instance.StartCoroutine(CutsceneMoment(camera, elevator.transform.Find("Elevator").GetComponent<ElevatorDoor>(), __instance, leBaldi.transform ?? null));
+
+			AfterGen.finalElevator = null;
+
+			return false;
+		}
+
+		private static IEnumerator CutsceneMoment(Camera cam, ElevatorDoor elevator, MainGameManager man, Transform leBaldiPos = null)
+		{
+			float time = 3f;
+			while (time > 0f)
+			{
+				time -= 1f * man.Ec.EnvironmentTimeScale * Time.deltaTime;
+				yield return null;
+			}
+
+			elevator.Shut();
+
+			time = 1.5f;
+
+			while (time > 0f)
+			{
+				time -= man.Ec.EnvironmentTimeScale * Time.deltaTime;
+				yield return null;
+			}
+
+			if (leBaldiPos)
+			{
+				cam.transform.position += Vector3.down * 2f;
+				cam.transform.LookAt(leBaldiPos);
+			}
+
+			time = 4f;
+
+			while (time > 0f)
+			{
+				time -= man.Ec.EnvironmentTimeScale * Time.deltaTime;
+				yield return null;
+			}
+
+			Vector3 ogPos = cam.transform.position;
+			Vector3 right = cam.transform.right;
+			float shakeness = 0.1f;
+
+			while (shakeness < 3f)
+			{
+				cam.transform.position = ogPos + (right * UnityEngine.Random.Range(-shakeness, shakeness)) + (Vector3.up * UnityEngine.Random.Range(-shakeness, shakeness));
+				shakeness += 2f * man.Ec.EnvironmentTimeScale * Time.deltaTime;
+				yield return null;
+			}
+
+			Shader.SetGlobalColor("_SkyboxColor", Color.black);
+			Singleton<MusicManager>.Instance.StopFile();
+
+			cam.transform.position = ogPos + Vector3.up * 20f;
+			cam.transform.LookAt(cam.transform.position + Vector3.up * 5f);
+
+			time = 4f;
+
+			while (time > 0f)
+			{
+				time -= man.Ec.EnvironmentTimeScale * Time.deltaTime;
+				yield return null;
+			}
+
+			man.Ec.gameObject.SetActive(false);
+			UnityEngine.Object.Destroy(cam.gameObject);
+
+			man.LoadNextLevel();
+
+
+			yield break;
+		}
+	}
+
+	[HarmonyPatch(typeof(BaseGameManager), "ApplyMap")]
+	internal class AddIconsPatch
+	{
+		private static bool Prefix(Map map, EnvironmentController ___ec) // Add your custom icons here
+			// Replacing the old ApplyMap to add a custom item inside the notebook thing
+		{
+			Transform GetMapGridPosition(Transform pos) => map.tiles[IntVector2.GetGridPosition(pos.transform.position).x, IntVector2.GetGridPosition(pos.transform.position).z].transform; // If you want to add into a map tile, just use this directly
+
+
+
+			for (int i = 0; i < Singleton<CoreGameManager>.Instance.setPlayers; i++)
+			{
+				PlayerManager player = Singleton<CoreGameManager>.Instance.GetPlayer(i);
+				map.targets.Add(player.transform);
+			}
+			foreach (Notebook notebook in ___ec.notebooks)
+			{
+				if (notebook.activity && !notebook.activity.GetType().Equals(typeof(NoActivity))) // If it is not a NoActivity Notebook
+					ContentManager.instance.AddMapIcon("mathNotebookIcon", GetMapGridPosition(notebook.transform));
+				else
+					notebook.icon = UnityEngine.Object.Instantiate(notebook.iconPre, GetMapGridPosition(notebook.transform));
+			}
+			foreach (Pickup pickup in ___ec.items)
+			{
+				pickup.icon = UnityEngine.Object.Instantiate(pickup.iconPre, GetMapGridPosition(pickup.transform));
+			}
+			foreach (var machine in UnityEngine.Object.FindObjectsOfType<FogMachine>())
+			{
+				ContentManager.instance.AddMapIcon("FogMachine", GetMapGridPosition(machine.transform));
+			}
+
+
+			return false;
+		}
+	}
+
+
 	[HarmonyPatch(typeof(BaseGameManager))]
 	internal class AfterGen
 	{
+		[HarmonyPatch("EnterExit")]
+		[HarmonyPrefix]
+		private static void LastElevatorSet(ColliderGroup group)
+		{
+			finalElevator = group.transform.parent.GetComponent<Elevator>();
+		}
+
+		public static Elevator finalElevator = null;
+
 		[HarmonyPatch("BeginSpoopMode")]
 		[HarmonyPatch("LoadFieldTrip")]
 		[HarmonyPostfix]
@@ -471,6 +651,24 @@ namespace BB_MOD
 			}
 
 			ContentManager.instance.TurnDecorations(false);
+
+			if (ContentManager.instance.DebugMode)
+			{
+				__instance.CompleteMapOnReady();
+			}
+		}
+
+		[HarmonyPatch("Initialize")]
+		[HarmonyPostfix]
+		private static void SpawnPlayerModel(BaseGameManager __instance)
+		{
+			foreach (var player in __instance.Ec.Players)
+			{
+				if (player) // If the player even exist, since it is an array
+				{
+					PrefabInstance.SpawnPrefab<PlayerModel>(player.transform, __instance.Ec, offset: Vector3.down * 1.2f);
+				}
+			}
 		}
 
 		[HarmonyPatch("AllNotebooks")]
@@ -484,13 +682,13 @@ namespace BB_MOD
 				bool mainMode = Singleton<CoreGameManager>.Instance.currentMode == Mode.Main;
 				SoundObject sound;
 				if (EnvironmentExtraVariables.currentFloor == Floors.F3 && mainMode)
-					sound = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("BaldiAngryEscape"), "Vfx_BaldiAngrySpeak", SoundType.Effect, Color.green); // Angry Speak!
+					sound = ContentAssets.GetAsset<SoundObject>("BaldiAngryEscape"); // Angry Speak!
 				else
 				{
-					Singleton<MusicManager>.Instance.QueueFile(ContentUtilities.CreateLoopingSoundObject(ContentAssets.GetAsset<AudioClip>("SchoolEscapeSong"), ContentUtilities.FindResourceObjectWithName<AudioMixerGroup>("Master")), true); // Normal Escape Sequence
-					sound = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("BaldiNormalEscape"), "Vfx_BaldiNormalSpeak", SoundType.Effect, Color.green);
+					Singleton<MusicManager>.Instance.QueueFile(ContentAssets.GetAsset<LoopingSoundObject>("SchoolEscapeSong"), true); // Normal Escape Sequence
+					sound = ContentAssets.GetAsset<SoundObject>("BaldiNormalEscape");
 				}
-				__instance.StartCoroutine(EnvironmentExtraVariables.SmoothFOVSequence(25f, 7.5f));
+				__instance.StartCoroutine(EnvironmentExtraVariables.SmoothFOVSequence(25f, 7.5f, EnvironmentExtraVariables.PlayerAdditionalFOV));
 				sound.subtitle = false; // No subtitles.
 				if (mainMode)
 					ItemSoundHolder.CreateSoundHolder(Singleton<CoreGameManager>.Instance.GetPlayer(0).transform, sound, false, maxDistance: 100f);
@@ -525,12 +723,18 @@ namespace BB_MOD
 				yield break;
 			}
 
-			IEnumerator BaldiInfiniteAnger(Baldi baldi, EnvironmentController ec)
+			IEnumerator BaldiInfiniteAnger(EnvironmentController ec)
 			{
-				var man = Singleton<CoreGameManager>.Instance;
 				while (true)
 				{
-					__instance.AngerBaldi(0.2f * ec.NpcTimeScale * Time.deltaTime);
+					try
+					{
+						__instance.AngerBaldi(0.2f * ec.NpcTimeScale * Time.deltaTime);
+					}
+					catch
+					{
+						yield break;
+					}
 					yield return null;
 				}
 			}
@@ -555,7 +759,7 @@ namespace BB_MOD
 				Shader.SetGlobalColor("_SkyboxColor", Color.red);
 				__instance.StartCoroutine(LightChanger(___ec, list, true, 0.2f));
 				Singleton<MusicManager>.Instance.StopFile();
-				Singleton<MusicManager>.Instance.QueueFile(ContentUtilities.CreateLoopingSoundObject(ContentAssets.GetAsset<AudioClip>("AngrySchool_Phase1"), ContentUtilities.FindResourceObjectWithName<AudioMixerGroup>("Master")), true);
+				Singleton<MusicManager>.Instance.QueueFile(ContentAssets.GetAsset<LoopingSoundObject>("AngrySchool_Phase1"), true);
 			}
 			else if (___elevatorsClosed == 2)
 			{
@@ -566,12 +770,11 @@ namespace BB_MOD
 				}
 
 				Singleton<MusicManager>.Instance.StopFile();
-				Singleton<MusicManager>.Instance.QueueFile(
-					ContentUtilities.CreateLoopingSoundObject(ContentUtilities.Array(ContentAssets.GetAsset<AudioClip>("AngrySchool_Phase2"), ContentAssets.GetAsset<AudioClip>("AngrySchool_Phase3")), ContentUtilities.FindResourceObjectWithName<AudioMixerGroup>("Master")), true);
+				Singleton<MusicManager>.Instance.QueueFile(ContentAssets.GetAsset<LoopingSoundObject>("AngrySchool_Phase2"), true);
 			}
 			else if (___elevatorsClosed == 3)
 			{
-				var sound = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("BaldiFinalWarning"), "Vfx_BaldiAngrySpeak", SoundType.Effect, Color.green);
+				var sound = ContentAssets.GetAsset<SoundObject>("BaldiFinalWarning");
 				sound.subtitle = false;
 				ItemSoundHolder.CreateSoundHolder(Singleton<CoreGameManager>.Instance.GetPlayer(0).transform, sound, false, maxDistance: 100f);
 
@@ -581,10 +784,11 @@ namespace BB_MOD
 				elevatorGates[1].GetComponent<MeshRenderer>().material.mainTexture = gateTexs[0];
 				elevatorGates[2].GetComponent<MeshRenderer>().material.mainTexture = gateTexs[2];
 
-				__instance.StartCoroutine(EnvironmentExtraVariables.SmoothFOVSequence(75f, 14f));
-				foreach (var rEvent in ___ec.CurrentEventTypes)
+				__instance.StartCoroutine(EnvironmentExtraVariables.SmoothFOVSequence(75f, 14f, EnvironmentExtraVariables.PlayerAdditionalFOV));
+				for (int i = 0; i < ___ec.CurrentEventTypes.Count; i++)
 				{
-					___ec.GetEvent(rEvent).End();
+					___ec.GetEvent(___ec.CurrentEventTypes[i]).End();
+					i--;
 				}
 				___ec.StopAllCoroutines();
 
@@ -596,14 +800,12 @@ namespace BB_MOD
 						npc.Despawn();
 						i--;
 					}
-					else if (npc.Character == Character.Baldi)
-					{
-						__instance.StartCoroutine(BaldiInfiniteAnger(npc.GetComponent<Baldi>(), ___ec));
-					}
 				}
 
-				Singleton<MusicManager>.Instance.QueueFile(ContentUtilities.CreateLoopingSoundObject(ContentAssets.GetAsset<AudioClip>("AngrySchool_Phase4"), ContentUtilities.FindResourceObjectWithName<AudioMixerGroup>("Master")), true);
-				Singleton<MusicManager>.Instance.QueueFile(ContentUtilities.CreateLoopingSoundObject(ContentAssets.GetAsset<AudioClip>("AngrySchool_Phase5"), ContentUtilities.FindResourceObjectWithName<AudioMixerGroup>("Master")), true); // Queue separately, so the last audio will be looping
+				__instance.StartCoroutine(BaldiInfiniteAnger(___ec));
+
+				Singleton<MusicManager>.Instance.QueueFile(ContentAssets.GetAsset<LoopingSoundObject>("AngrySchool_Phase3"), true);
+				Singleton<MusicManager>.Instance.QueueFile(ContentAssets.GetAsset<LoopingSoundObject>("AngrySchool_Phase4"), true); // Queue separately, so the last audio will be looping
 				if (!Singleton<PlayerFileManager>.Instance.reduceFlashing)
 				{
 					___ec.standardDarkLevel = new Color(0.2f, 0f, 0f);
@@ -1561,7 +1763,7 @@ namespace BB_MOD
 		{
 			if (___halls.Count > 0)
 			{
-				ItemSoundHolder.CreateSoundHolder(__instance.transform, ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("cumulo_PAH"), "Vfx_Cumulo_PAH", SoundType.Voice, Color.white), true, minDistance: 40f, maxDistance: 80f); // On the end of the blowtimer, just play this noise
+				ItemSoundHolder.CreateSoundHolder(__instance.transform, ContentAssets.GetAsset<SoundObject>("cumulo_PAH"), true, minDistance: 40f, maxDistance: 80f); // On the end of the blowtimer, just play this noise
 			}
 		}
 	}
@@ -1578,7 +1780,7 @@ namespace BB_MOD
 
 			if (__instance.GetComponent<WindowExtraFields>().IsUnbreakable)
 			{
-				ItemSoundHolder.CreateSoundHolder(__instance.transform, ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("windowHit"), "Vfx_WindowHit", SoundType.Effect, Color.white), true, 40, 70);
+				ItemSoundHolder.CreateSoundHolder(__instance.transform, ContentAssets.GetAsset<SoundObject>("windowHit"), true, 40, 70);
 				return false;
 			}
 
@@ -1609,9 +1811,10 @@ namespace BB_MOD
 	[HarmonyPatch(typeof(Gum), "OnTriggerEnter")]
 	internal class GumOnWall
 	{
-		private static void Prefix(Gum __instance) // Just refer gum as the instance before doing the transpiler stuff
+		private static void Prefix(Gum __instance, Collider other) // Just refer gum as the instance before doing the transpiler stuff
 		{
 			gum = __instance;
+			GumOnWall.other = other;
 		}
 
 		private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
@@ -1633,7 +1836,8 @@ namespace BB_MOD
 						addedContent = true;
 						yield return Transpilers.EmitDelegate<Action>(() =>
 						{
-							var pos = gum.ec.TileFromPos(gum.transform.position).transform.position + (gum.transform.forward * (ContentUtilities.TileOffset - 0.03f)) + Vector3.up * 4.7f;
+							var pos = other.transform.position - gum.transform.forward * 0.2f;
+							pos.y = 4.7f;
 							var backPos = pos + gum.transform.forward * 0.02f;
 
 							var back = PrefabInstance.SpawnPrefab<GumInWall>(backPos, Quaternion.Inverse(gum.transform.rotation), gum.ec, false);
@@ -1648,6 +1852,8 @@ namespace BB_MOD
 		}
 
 		private static Gum gum;
+
+		private static Collider other;
 	}
 
 

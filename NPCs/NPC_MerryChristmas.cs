@@ -26,7 +26,7 @@ namespace BB_MOD.NPCs
 
 			audMan = GetComponent<AudioManager>();
 			
-			aud_MerryChristmas = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("HPH_holiday"), "Vfx_HapH_MerryChristmas", SoundType.Voice, new Color(153,0,0)); // Creates audioClip
+			aud_MerryChristmas = ContentAssets.GetAsset<SoundObject>("HPH_holiday"); // Creates audioClip
 
 		}
 

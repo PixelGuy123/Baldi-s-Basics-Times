@@ -12,5 +12,8 @@
 	{"key":"Vfx_GPS_Beep","value":"*Beep*"},
 	{"key":"PC_Name","value":"Pencil"},
 	{"key":"PC_Desc","value":"Pencil\nA normal pencil for normal uses, it is still prohibited to stab people in the halls."},
-	{"key":"Vfx_PC_stab","value":"*Stab*"}
+	{"key":"Vfx_PC_stab","value":"*Stab*"},
+	{"key":"SD_Name","value":"Screw Driver"},
+	{"key":"SD_Desc","value":"Screw Driver\nFixes machines from the Computer Room, they can break anytime!"},
+	{"key":"Vfx_SD_screw","value":"*Screwing*"}
 ]}

@@ -25,6 +25,7 @@
 	{"key":"Vfx_PRI_NoPropertyBreak","value":"No breaking school property in the halls!"},
 	{"key":"Vfx_PRI_NoGumming","value":"No spitting gums at people in the halls!"},
 	{"key":"Vfx_PRI_NoStabbing","value":"No stabbing people with pencils in the halls!"},
+	{"key":"Vfx_PRI_NoUglyStun","value":"No stunning people with ugliness in the halls!"},
 	{"key":"PST_0TH_Name","value":"0th Prize"},
 	{"key":"PST_0TH_Desc","value":"He doesn't like being a replacement for sick brooms, and he will make sure to be <b>fast enough</b>"},
 	{"key":"Vfx_0TH_WannaSweep","value":"It appears to be time to sweep!"},
@@ -41,6 +42,8 @@
 	{"key":"Vfx_PB_Wander3","value":"Aaargh!"},
 	{"key":"Vfx_PB_Spot","value":"Err- HA!"},
 	{"key":"Vfx_PB_Catch","value":"HAAHAHAHahahaha!"},
-	{"key":"Vfx_Cumulo_PAH","value":"*PAH*"}
-	
+	{"key":"Vfx_Cumulo_PAH","value":"*PAH*"},
+	{"key":"PST_Stunly_Name","value":"Stunly"},
+	{"key":"PST_Stunly_Desc","value":"A snail-like person with such ugliness that is enough for a <b>stunning effect</b>, he abuses of it and stuns anyone!"},
+	{"key":"Vfx_Stunly_Stun","value":"*Stun*"}
 ]}

@@ -1,8 +1,5 @@
 ﻿using MTM101BaldAPI;
-using MTM101BaldAPI.AssetManager;
-using HarmonyLib;
 using System.Collections;
-using System.IO;
 using UnityEngine;
 
 namespace BB_MOD.NPCs
@@ -14,7 +11,7 @@ namespace BB_MOD.NPCs
     public class MagicalStudent : NPC
     {
 
-		private void SetupMagicObject()
+		private void SetupMagicObject() // This will probably be replaced later on with a PrefabInstance for sake's of optimization (even though it doesn't really lag at all)
 		{
 			var obj = new GameObject("Magic", typeof(StudentMagic), typeof(SphereCollider));
 			var renderer = ContentUtilities.DefaultRenderer;
@@ -39,7 +36,7 @@ namespace BB_MOD.NPCs
 			audMan.audioDevice.minDistance = 20f;
 			audMan.audioDevice.maxDistance = 240f;
 
-			aud_Magic = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("MGS_magic"), "Vfx_MGS_Magic", SoundType.Voice, new Color(0f, 0f, 0.0065f)); // Creates audioClip
+			aud_Magic = ContentAssets.GetAsset<SoundObject>("MGS_magic"); // Creates audioClip
 
 			detentionPre = ContentUtilities.FindResourceObject<DetentionUi>(); // Gets the detention ui for future uses
 

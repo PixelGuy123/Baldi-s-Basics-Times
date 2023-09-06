@@ -6,15 +6,18 @@ using BB_MOD.NPCs;
 using HarmonyLib;
 using MTM101BaldAPI;
 using MTM101BaldAPI.AssetManager;
+using Rewired.UI.ControlMapper;
 using Steamworks;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using TMPro;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.Analytics;
 using UnityEngine.Audio;
 using UnityEngine.Networking;
 using static BB_MOD.ContentAssets;
@@ -103,8 +106,9 @@ namespace BB_MOD
 		readonly RoomCategory category = RoomCategory.Null;
 	}
 
-	public static class FloorEnumExtensions
+	public static class GenericExtensions
 	{
+		public static string GetString(this IntVector2 vector) => $"{vector.x},{vector.z}";
 		public static Floors ToFloorIdentifier(this string name)
 		{
 			switch (name.ToLower()) // Converts Floor name to Floors Enum
@@ -406,6 +410,7 @@ namespace BB_MOD
 		public static void ResetVariables()
 		{
 			forceDisableSubtitles = false;
+			AudioListener.volume = 1f;
 			currentFloor = Floors.None;
 			ec = null;
 			lb = null;
@@ -417,6 +422,7 @@ namespace BB_MOD
 			allowHangingLights = true;
 			isEndGame = false;
 			playerFOV = 0f;
+			overlapFOVModifier = false;
 		}
 
 		/// <summary>
@@ -425,7 +431,7 @@ namespace BB_MOD
 		/// <param name="turn"></param>
 		public static void TurnSubtitles(bool turn)
 		{
-			forceDisableSubtitles = !turn;
+				forceDisableSubtitles = !turn;
 		}
 
 		public static void EndGamePhase() => isEndGame = true;
@@ -451,6 +457,10 @@ namespace BB_MOD
 
 		private static bool forceDisableSubtitles = false;
 
+		static bool overlapFOVModifier = false;
+
+		public static bool SmoothFOVActive => overlapFOVModifier;
+
 		private static bool isEndGame = false;
 		public static bool AreSubtitlesForceDisabled => forceDisableSubtitles;
 		public static bool IsEndGame => isEndGame;
@@ -460,6 +470,9 @@ namespace BB_MOD
 			get => playerFOV;
 			set
 			{
+				if (overlapFOVModifier)
+					return;
+
 				if (value < -60f)
 				{
 					playerFOV = -59f;
@@ -474,17 +487,38 @@ namespace BB_MOD
 			}
 		}
 
+		private static void ForceSetFOV(float fov)
+		{
+			if (fov < -60f)
+			{
+				playerFOV = -59f;
+				return;
+			}
+			if (fov > 200f)
+			{
+				playerFOV = 200f;
+				return;
+			}
+			playerFOV = fov;
+		}
+
 		public static IEnumerator SmoothFOVSequence(float offset, float divider, float endingFOV = 0f)
 		{
 			float fovOffset = endingFOV + offset;
-			PlayerAdditionalFOV = fovOffset;
+			if (fovOffset.Compare(endingFOV))
+			{
+				yield break;
+			}
+			overlapFOVModifier = true;
+			ForceSetFOV(fovOffset);
 			while (fovOffset > 0.1f)
 			{
 				fovOffset += (endingFOV - fovOffset) / divider;
-				PlayerAdditionalFOV = fovOffset;
+				ForceSetFOV(fovOffset);
 				yield return null;
 			}
-			PlayerAdditionalFOV = endingFOV;
+			ForceSetFOV(fovOffset);
+			overlapFOVModifier = false;
 			yield break;
 		}
 
@@ -563,6 +597,7 @@ namespace BB_MOD
 		{
 			Vector2[] uv = oldUv;
 			Vector2[] newUvs = GetUVRectangles(x, y, width, height, texWidth, texHeight);
+			
 			int setIdx = index;
 			for (int i = 0; i < 4; i++)
 			{
@@ -571,6 +606,7 @@ namespace BB_MOD
 			}
 			return uv;
 		}
+
 		private static Vector2 ConvertToUVCoords(int x, int y, int width, int height) => new Vector2((float)x / width, (float)y / height);
 
 		private static Vector2[] GetUVRectangles(int x, int y, int width, int height, int textWidth, int textHeight) => new Vector2[] {
@@ -595,8 +631,6 @@ namespace BB_MOD
 		/// <param name="obj"></param>
 		/// <param name="minDistance"></param>
 		/// <param name="maxDistance"></param>
-		/// <param name="audio"></param>
-		/// <param name="source"></param>
 		/// <param name="supportDoppler"></param>
 		public static void CreatePositionalAudio(GameObject obj, float minDistance, float maxDistance, bool supportDoppler = false) => CreatePositionalAudio(obj, minDistance, maxDistance, out _, out _, supportDoppler);
 
@@ -674,7 +708,7 @@ namespace BB_MOD
 		}
 
 		/// <summary>
-		/// Create a basic textured cube object. <paramref name="textureFile"/> refers to png files inside "Textures" folder and must be 256x256
+		/// Create a basic textured cube object. <paramref name="textureFile"/> refers to png files inside "Textures" folder and must be 256x256 by default
 		/// </summary>
 		/// <param name="scale"></param>
 		/// <param name="textureFile"></param>
@@ -685,19 +719,9 @@ namespace BB_MOD
 
 			transform.localScale = scale;
 			Material mat = UnityEngine.Object.Instantiate(FindResourceObjectContainingName<Material>("vent"));
-			mat.mainTexture = GetAssetOrCreate<Texture2D>($"basicCubeText_{Path.GetFileNameWithoutExtension(textureFile)}", Path.Combine(modPath, "Textures", textureFile));
-
-			if (mat.mainTexture.height != 256 || mat.mainTexture.width != 256) throw new ArgumentOutOfRangeException("Selected texture for cube has invalid size. Must be 256x256");
-
-			Vector2[] mesh = transform.GetComponent<MeshFilter>().mesh.uv;
-			mesh = ConvertSideToTexture(0, 0, 256, 256, 256, 256, 0, mesh);
-			mesh = ConvertSideToTexture(0, 0, 256, 256, 256, 256, 4, mesh);
-			mesh = ConvertSideToTexture(0, 0, 256, 256, 256, 256, 8, mesh);
-			mesh = ConvertSideToTexture(0, 0, 256, 256, 256, 256, 12, mesh);
-			mesh = ConvertSideToTexture(0, 0, 256, 256, 256, 256, 16, mesh);
-			mesh = ConvertSideToTexture(0, 0, 256, 256, 256, 256, 20, mesh);
-
-			transform.GetComponent<MeshFilter>().mesh.uv = mesh;
+			string name = $"basicCubeText_{Path.GetFileNameWithoutExtension(textureFile)}";
+			AddTextureAsset(Path.Combine(modPath, "Textures", textureFile), name);
+			mat.mainTexture = GetAsset<Texture2D>(name);
 
 
 			transform.GetComponent<MeshRenderer>().material = mat;
@@ -880,10 +904,10 @@ namespace BB_MOD
 		/// <param name="sinalizeObject"></param>
 		/// <param name="sinalizeWallObject"></param>
 		/// <returns>The object spawned</returns>
-		public static T PlaceObject_RawPos<T>(this RoomBuilder bld, T prefab, Vector3 localPosition, Quaternion rotation, bool sinalizeObject = false, bool sinalizeWallObject = false) where T : Component
+		public static T PlaceObject_RawPos<T>(this RoomBuilder bld, T prefab, Vector3 localPosition, Quaternion rotation, bool sinalizeObject = false, bool sinalizeWallObject = false, bool forceYPosition = false) where T : Component
 		{
 			var t = UnityEngine.Object.Instantiate(prefab, (Transform)AccessTools.Field(typeof(RoomBuilder), "objectsTransform").GetValue(bld));
-			t.transform.localPosition = localPosition + (localPosition.y < 5f ? (Vector3.up * 5f) : Vector3.zero);
+			t.transform.localPosition = localPosition + (localPosition.y < 5f && !forceYPosition ? (Vector3.up * 5f) : Vector3.zero);
 			t.transform.rotation = rotation;
 			var tile = EnvironmentExtraVariables.ec.TileFromPos(t.transform.position);
 			tile.containsObject = sinalizeObject;
@@ -930,6 +954,16 @@ namespace BB_MOD
 			};
 		}
 
+		public static void AddNavigationCollisionToObject(GameObject obj, Vector3 obstacleSize)
+		{
+			if (obj.GetComponent<NavMeshObstacle>()) return; // Stops it from adding twice
+
+			var obs = obj.AddComponent<NavMeshObstacle>();
+			obs.carving = true;
+			obs.size = obstacleSize;
+			obs.center = new Vector3(0f, obj.transform.position.y, 0f);
+		}
+
 		public static void AddCollisionToSprite(GameObject obj, Vector3 boxSize, Vector3 center)
 		{
 			if (obj.GetComponent<BoxCollider>()) return; // Stops it from adding twice
@@ -942,13 +976,7 @@ namespace BB_MOD
 		public static void AddCollisionToSprite(GameObject obj, Vector3 boxSize, Vector3 center, Vector3 obstacleSize)
 		{
 			if (!obj.GetComponent<BoxCollider>()) AddCollisionToSprite(obj, boxSize, center); // If don't exist, add it
-
-			if (obj.GetComponent<NavMeshObstacle>()) return; // Stops it from adding twice
-
-			var obs = obj.AddComponent<NavMeshObstacle>();
-			obs.carving = true;
-			obs.size = obstacleSize;
-			obs.center = new Vector3(0f, obj.transform.position.y, 0f);
+			AddNavigationCollisionToObject(obj, obstacleSize);
 		}
 
 		public static void CoverAllWalls(this TileController tile)
@@ -1118,6 +1146,10 @@ namespace BB_MOD
 		/// Returns an instanced renderer object used by the bsoda to render the billboard
 		/// </summary>
 		public static GameObject DefaultRenderer => UnityEngine.Object.Instantiate(FindResourceObjectContainingName<SpriteRenderer>("BSODA").gameObject);
+		/// <summary>
+		/// Returns an instanced billboard material object used by the bsoda
+		/// </summary>
+		public static Material DefaultBillBoardMaterial => UnityEngine.Object.Instantiate(FindResourceObjectContainingName<SpriteRenderer>("BSODA").material);
 
 		public const float PlayerDefaultWalkSpeed = 16f, PlayerDefaultRunSpeed = 24f;
 
@@ -1129,6 +1161,8 @@ namespace BB_MOD
 		public const float TileOffset = 4.9f;
 
 		public const int defaultBillboardLayer = 9;
+
+		public const int defaultIgnoreRaycastLayer = 2;
 	}
 
 	/// <summary>
@@ -1141,6 +1175,8 @@ namespace BB_MOD
 			audios.Clear();
 			textures.Clear();
 			sprites.Clear();
+			soundObjects.Clear();
+			loopingSoundObjects.Clear();
 		}
 
 		/// <summary>
@@ -1155,8 +1191,6 @@ namespace BB_MOD
 
 			if (!textures.ContainsKey(assetName))
 				textures.Add(assetName, AssetManager.TextureFromFile(path));
-			else
-				Debug.LogWarning("The texture asset: \"" + assetName + "\" already exists on the database");
 
 		}
 
@@ -1173,8 +1207,6 @@ namespace BB_MOD
 
 			if (!sprites.ContainsKey(assetName))
 				sprites.Add(assetName, AssetManager.SpriteFromTexture2D(AssetManager.TextureFromFile(path), center, pixelsPerUnit));
-			else
-				Debug.LogWarning("The sprite asset: \"" + assetName + "\" already exists on the database");
 
 		}
 
@@ -1187,7 +1219,7 @@ namespace BB_MOD
 		public static void AddSpriteAsset(string path, int pixelsPerUnit, string assetName) => AddSpriteAsset(path, pixelsPerUnit, assetName, new Vector2(0.5f, 0.5f));
 
 		/// <summary>
-		/// Creates a texture from <paramref name="path"/> and adds into the database, the <paramref name="useDifferentMethod"/> is a temporary parameter, highly recommended if you are going to make looping audios
+		/// Creates an audio from <paramref name="path"/> and adds into the database, the <paramref name="useDifferentMethod"/> is a temporary parameter, highly recommended if you are going to make looping audios
 		/// </summary>
 		/// <param name="path"></param>
 		/// <param name="assetName"></param>
@@ -1196,17 +1228,65 @@ namespace BB_MOD
 		{
 			CheckParameters(path, assetName);
 
-			if (!textures.ContainsKey(assetName))
+			if (!audios.ContainsKey(assetName))
 				audios.Add(assetName, useDifferentMethod ? ContentUtilities.GetAudioClip(path) : AssetManager.AudioClipFromFile(path)); // Gets an audio from either these 2
-			else
-				Debug.LogWarning("The audio asset: \"" + assetName + "\" already exists on the database");
 
 		}
+		/// <summary>
+		/// Creates an SoundObject by an AudioClip from <paramref name="path"/> and adds into the database, the <paramref name="useDifferentMethod"/> is a temporary parameter, highly recommended if you are going to make looping audios
+		/// </summary>
+		/// <param name="path"></param>
+		/// <param name="assetName"></param>
+		/// <param name="useDifferentMethod"></param>
+		/// <param name="subtitleKey"></param>
+		/// <param name="soundType"></param>
+		/// <param name="subtitleColor"></param>
+		/// <param name="subLength"></param>
+		public static void AddSoundObject(string path, string assetName, bool useDifferentMethod, string subtitleKey, SoundType soundType, Color subtitleColor, float subLength = -1f)
+		{
+			CheckParameters(path, assetName);
+
+			if (!soundObjects.ContainsKey(assetName))
+				soundObjects.Add(assetName, ObjectCreatorHandlers.CreateSoundObject(useDifferentMethod ? ContentUtilities.GetAudioClip(path) : AssetManager.AudioClipFromFile(path), subtitleKey, soundType, subtitleColor, subLength));
+		}
+		/// <summary>
+		/// Creates an LoopingSoundObject by multiple AudioClips from <paramref name="paths"/> and adds into the database, the <paramref name="useDifferentMethod"/> is a temporary parameter, highly recommended if you are going to make looping audios
+		/// </summary>
+		/// <param name="paths"></param>
+		/// <param name="assetName"></param>
+		/// <param name="useDifferentMethod"></param>
+		public static void AddLoopingSoundObject (string assetName, bool useDifferentMethod, AudioMixerGroup mixer, params string[] paths)
+		{
+			CheckParameters(paths, assetName);
+			if (!loopingSoundObjects.ContainsKey(assetName))
+			{
+				AudioClip[] clips = new AudioClip[paths.Length];
+
+				for (int i = 0; i < clips.Length; i++)
+				{
+					clips[i] = useDifferentMethod ? ContentUtilities.GetAudioClip(paths[i]) : AssetManager.AudioClipFromFile(paths[i]);
+				}
+
+				loopingSoundObjects.Add(assetName, ContentUtilities.CreateLoopingSoundObject(clips, mixer));
+			}
+		}
+		/// <summary>
+		/// Creates an LoopingSoundObject by multiple AudioClips from <paramref name="paths"/> and adds into the database, the <paramref name="useDifferentMethod"/> is a temporary parameter, highly recommended if you are going to make looping audios. Uses by default the "Master" AudioMixerGroup
+		/// </summary>
+		/// <param name="paths"></param>
+		/// <param name="assetName"></param>
+		/// <param name="useDifferentMethod"></param>
+		public static void AddLoopingSoundObject(string assetName, bool useDifferentMethod, params string[] paths) => AddLoopingSoundObject(assetName, useDifferentMethod, ContentUtilities.FindResourceObjectWithName<AudioMixerGroup>("Master"), paths);
 
 		private static void CheckParameters(string path, string assetName)
 		{
 			if (string.IsNullOrEmpty(assetName)) throw new ArgumentException($"The asset name is empty");
 			if (!File.Exists(path)) throw new ArgumentException($"No asset found from current path: " + path);
+		}
+		private static void CheckParameters(string[] path, string assetName)
+		{
+			if (string.IsNullOrEmpty(assetName)) throw new ArgumentException($"The asset name is empty");
+			if (path.Any(x => !File.Exists(x))) throw new ArgumentException($"No asset found from the multiple path");
 		}
 		/// <summary>
 		/// Grabs an asset from the database based on <typeparamref name="T"/> type and name <paramref name="name"/>
@@ -1217,7 +1297,7 @@ namespace BB_MOD
 		{
 			try
 			{
-				return typeof(T).Equals(typeof(Texture2D)) ? textures[name] as T : typeof(T).Equals(typeof(Sprite)) ? sprites[name] as T : typeof(T).Equals(typeof(AudioClip)) ? audios[name] as T : throw new NotSupportedException("The asset of type " + typeof(T) + " is not supported"); ; // If T equals a specific type, return that type
+				return typeof(T).Equals(typeof(Texture2D)) ? textures[name] as T : typeof(T).Equals(typeof(Sprite)) ? sprites[name] as T : typeof(T).Equals(typeof(AudioClip)) ? audios[name] as T : typeof(T).Equals(typeof(SoundObject)) ? soundObjects[name] as T : typeof(T).Equals(typeof(LoopingSoundObject)) ? loopingSoundObjects[name] as T : throw new NotSupportedException("The asset of type " + typeof(T) + " is not supported"); ; // If T equals a specific type, return that type
 			}
 			catch
 			{
@@ -1225,56 +1305,18 @@ namespace BB_MOD
 				return null;
 			}
 		}
-		/// <summary>
-		/// Try grabbing an asset from the database based on <typeparamref name="T"/> type and name <paramref name="name"/>, if it fails, it'll create one inside the database using set <paramref name="name"/> (you must also include the parameters inside <paramref name="args"/> for creating it such as pixelsPerUnit for sprites for example) ::
-		/// For reference: The required parameters for sprites in order are: pixelsPerUnit (int), Vector2 (optional) || For audios is: useDifferentMethod (bool)
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="name"></param>
-		/// <param name="path"></param>
-		/// <param name="args"></param>
-		/// <returns>Returns the asset found inside or directly created inside the database</returns>
-		public static T GetAssetOrCreate<T>(string name, string path, params object[] args) where T : UnityEngine.Object
-		{
-			try
-			{
-				return typeof(T).Equals(typeof(Texture2D)) ? textures[name] as T : typeof(T).Equals(typeof(Sprite)) ? sprites[name] as T : typeof(T).Equals(typeof(AudioClip)) ? audios[name] as T : throw new NotSupportedException("The asset of type " + typeof(T) + " is not supported"); ; // If T equals a specific type, return that type
-			}
-			catch
-			{
-				var objs = new Dictionary<string, UnityEngine.Object>();
-				if (typeof(T).Equals(typeof(Texture2D)))
-				{
-					AddTextureAsset(path, name);
-					objs = textures.ToDictionary(x => x.Key, x => (UnityEngine.Object)x.Value);
-				}
-				else if (typeof(T).Equals(typeof(Sprite)))
-				{
 
-					if (args.Length > 1)
-						AddSpriteAsset(path, (int)args[0], name, (Vector2)args[1]);
-					if (args.Length > 1)
-						AddSpriteAsset(path, (int)args[0], name);
-					objs = sprites.ToDictionary(x => x.Key, x => (UnityEngine.Object)x.Value);
-				}
-				else if (typeof(T).Equals(typeof(AudioClip)))
-				{
-					AddAudioAsset(path, name, (bool)args[0]);
-					objs = audios.ToDictionary(x => x.Key, x => (UnityEngine.Object)x.Value);
-				}
-				else
-				{
-					throw new NotSupportedException("The asset of type " + typeof(T) + " is not supported");
-				}
-				return objs[name] as T;
-			}
-		}
+
 
 		readonly static Dictionary<string, AudioClip> audios = new Dictionary<string, AudioClip>();
 
 		readonly static Dictionary<string, Sprite> sprites = new Dictionary<string, Sprite>();
 
 		readonly static Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>();
+
+		readonly static Dictionary<string, SoundObject> soundObjects = new Dictionary<string, SoundObject>();
+
+		readonly static Dictionary<string, LoopingSoundObject> loopingSoundObjects = new Dictionary<string, LoopingSoundObject>();
 	}
 
 	public class ContentManager : MonoBehaviour
@@ -1292,6 +1334,9 @@ namespace BB_MOD
 				weight = 50,
 				selection = x
 			}));
+			int nothingIdx = allItems.IndexAt(x => x.selection.name == "Nothing");
+			if (nothingIdx >= 0 && nothingIdx < allItems.Count)
+				allItems.RemoveAt(nothingIdx);
 		}
 
 
@@ -1315,51 +1360,55 @@ namespace BB_MOD
 
 
 
-			AddAudioAsset(Path.Combine(modPath, "Audio", "npc", "clock_Scream.wav"), "clock_scream", false); // Crazy Clock Audios
-			AddAudioAsset(Path.Combine(modPath, "Audio", "npc", "clock_tick.wav"), "clock_tick", false);
-			AddAudioAsset(Path.Combine(modPath, "Audio", "npc", "clock_tack.wav"), "clock_tock", false);
-			AddAudioAsset(Path.Combine(modPath, "Audio", "npc", "clock_frown.wav"), "clock_frown", false);
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "clock_Scream.wav"), "clock_scream", true, "Vfx_CC_Scream", SoundType.Voice, new Color(230, 46, 0)); // Crazy Clock Audios
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "clock_tick.wav"), "clock_tick", true, "Vfx_CC_Tick", SoundType.Voice, new Color(230, 46, 0));
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "clock_tack.wav"), "clock_tock", true, "Vfx_CC_Tack", SoundType.Voice, new Color(230, 46, 0));
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "clock_frown.wav"), "clock_frown", true, "Vfx_CC_Frown", SoundType.Voice, new Color(230, 46, 0));
 
-			AddAudioAsset(Path.Combine(modPath, "Audio", "npc", "ForgottenWarning.wav"), "forgotten_warn", false); // Forgotten Bell Noise
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "ForgottenWarning.wav"), "forgotten_warn", false, "Vfx_Forgotten_Warning", SoundType.Voice, new Color(43, 42, 51)); // Forgotten Bell Noise
 
-			AddAudioAsset(Path.Combine(modPath, "Audio", "npc", "drum_music.wav"), "letsdrum_music", true); // Lets Drum Audios
-			AddAudioAsset(Path.Combine(modPath, "Audio", "npc", "drum_wannadrum.wav"), "letsdrum_wannadrum", false);
-			AddAudioAsset(Path.Combine(modPath, "Audio", "npc", "drum_lovetodrum.wav"), "letsdrum_DRUM", true);
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "drum_music.wav"), "letsdrum_music", true, "Vfx_DRUM_Music", SoundType.Voice, new Color(0.25f, 0, 2f)); // Lets Drum Audios
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "drum_wannadrum.wav"), "letsdrum_wannadrum", false, "Vfx_DRUM_LetsDrum", SoundType.Voice, new Color(0.25f, 0, 2f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "drum_lovetodrum.wav"), "letsdrum_DRUM", true, "Vfx_DRUM_Annoyence", SoundType.Voice, new Color(0.25f, 0, 2f));
 
-			AddAudioAsset(Path.Combine(modPath, "Audio", "npc", "MGS_Throw.wav"), "MGS_magic", false); // Magical Student Throw Noise
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "MGS_Throw.wav"), "MGS_magic", false, "Vfx_MGS_Magic", SoundType.Voice, new Color(0f, 0f, 0.0065f)); // Magical Student Throw Noise
 
-			AddAudioAsset(Path.Combine(modPath, "Audio", "npc", "HappyHolidays.wav"), "HPH_holiday", false); // Happy Holidays saying merry christmas
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "HappyHolidays.wav"), "HPH_holiday", true, "Vfx_HapH_MerryChristmas", SoundType.Voice, new Color(153, 0, 0)); // Happy Holidays saying merry christmas
 
-			AddAudioAsset(Path.Combine(modPath, "Audio", "npc", "Superintendent.wav"), "SI_overhere", false); // SuperIntendent when spotting player
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "Superintendent.wav"), "SI_overhere", false, "Vfx_SI_BaldiHere", SoundType.Voice, new Color(0, 0, 0.4843f)); // SuperIntendent when spotting player
 
-			AddAudioAsset(Path.Combine(modPath, "Audio", "npc", "0thprize_mustsweep.wav"), "0prize_mustsweep", false); // 0th Prize Noises
-			AddAudioAsset(Path.Combine(modPath, "Audio", "npc", "0thprize_timetosweep.wav"), "0prize_timetosweep", false);
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "0thprize_mustsweep.wav"), "0prize_mustsweep", false, "Vfx_0TH_Sweep", SoundType.Voice, new Color(0.8679f, 0.7536f, 0.434f)); // 0th Prize Noises
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "0thprize_timetosweep.wav"), "0prize_timetosweep", false, "Vfx_0TH_WannaSweep", SoundType.Voice, new Color(0.8679f, 0.7536f, 0.434f));
 
-			AddAudioAsset(Path.Combine(modPath, "Audio", "npc", "ChairRolling.wav"), "chair_rolling", true); // Chair rolling noises
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "ChairRolling.wav"), "chair_rolling", true, "Vfx_OFC_Walk", SoundType.Voice, Color.blue); // Chair rolling noises
 
-			AddAudioAsset(Path.Combine(modPath, "Audio", "npc", "PB_Angry0.wav"), "pb_wander1", false); // Pencil Boy Audios
-			AddAudioAsset(Path.Combine(modPath, "Audio", "npc", "PB_Angry1.wav"), "pb_wander2", false);
-			AddAudioAsset(Path.Combine(modPath, "Audio", "npc", "PB_Angry2.wav"), "pb_wander3", false);
-			AddAudioAsset(Path.Combine(modPath, "Audio", "npc", "PB_SeeLaught.wav"), "pb_spot", false);
-			AddAudioAsset(Path.Combine(modPath, "Audio", "npc", "PB_EvilLaught.wav"), "pb_catch", false);
-			AddAudioAsset(Path.Combine(modPath, "Audio", "item", "pc_stab.wav"), "pb_stab", false);
+			for (int i = 0; i < 3; i++)
+			{
+				AddSoundObject(Path.Combine(modPath, "Audio", "npc", $"PB_Angry{i}.wav"), $"pb_wander{i + 1}", false, $"Vfx_PB_Wander{i + 1}", SoundType.Voice, new Color(128f, 128f, 0f));
+			}
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "PB_SeeLaught.wav"), "pb_spot", false, "Vfx_PB_Spot", SoundType.Voice, new Color(128f, 128f, 0f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "PB_EvilLaught.wav"), "pb_catch", false, "Vfx_PB_Catch", SoundType.Voice, new Color(128f, 128f, 0f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "item", "pc_stab.wav"), "pb_stab", false, "Vfx_PC_stab", SoundType.Voice, new Color(128f, 128f, 0f));
 
-			AddAudioAsset(Path.Combine(modPath, "Audio", "npc", "CC_PAH.wav"), "cumulo_PAH", true); // Cloudy Copter PAH Noise
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "CC_PAH.wav"), "cumulo_PAH", true, "Vfx_Cumulo_PAH", SoundType.Voice, Color.white); // Cloudy Copter PAH Noise
+
+			AddSpriteAsset(Path.Combine(modPath, "Textures", "StunningStars.png"), 25, "StunningStars");
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "stunly_stun.wav"), "stunly_stun", true, "Vfx_Stunly_Stun", SoundType.Effect, new Color(0.5f, 0f, 0f)); // Stunly's Stun
 
 
 
 			// ITEM Assets
 
-			AddAudioAsset(Path.Combine(modPath, "Audio", "item", "bell_bellnoise.wav"), "bellNoise", false); // The bell noise heard when using the bell item
-			AddAudioAsset(Path.Combine(modPath, "Audio", "item", "gps_beep.wav"), "gpsBeepNoise", false); // The beep heard when enabling the Global Positional Displayer
-			AddAudioAsset(Path.Combine(modPath, "Audio", "item", "prs_unbox.wav"), "presentUnboxing", false);
+			AddSoundObject(Path.Combine(modPath, "Audio", "item", "bell_bellnoise.wav"), "bellNoise", true, "Vfx_BEL_Ring", SoundType.Voice, new Color(179, 179, 0)); // The bell noise heard when using the bell item
+			AddSoundObject(Path.Combine(modPath, "Audio", "item", "gps_beep.wav"), "gpsBeepNoise", false, "Vfx_GPS_Beep", SoundType.Effect, new Color(153, 153, 153)); // The beep heard when enabling the Global Positional Displayer
+			AddSoundObject(Path.Combine(modPath, "Audio", "item", "prs_unbox.wav"), "presentUnboxing", false, "Vfx_PRS_Unbox", SoundType.Effect, new Color(77, 77, 255));
+			AddSoundObject(Path.Combine(modPath, "Audio", "item", "sd_screw.wav"), "screwing", true, "Vfx_SD_screw", SoundType.Effect, new Color(0.8984f, 0.8984f, 0f));
 
 			// Events Assets
 
 			AddAudioAsset(Path.Combine(modPath, "Audio", "event", "new_CreepyOldComputer.wav"), "fogNewSong", false); // The new noise when the fog event play
-
-			AddAudioAsset(Path.Combine(modPath, "Audio", "event", "blackout_out.wav"), "blackout_off", false); // Blackout event noises
-			AddAudioAsset(Path.Combine(modPath, "Audio", "event", "blackout_on.wav"), "blackout_on", false);
+			AddSoundObject(Path.Combine(modPath, "Audio", "event", "blackout_out.wav"), "blackout_off", false, "Vfx_EvBO_turnOn", SoundType.Effect, Color.white);
+			AddSoundObject(Path.Combine(modPath, "Audio", "event", "blackout_on.wav"), "blackout_on", false, "Vfx_EvBO_turnOff", SoundType.Effect, Color.white);
 
 			// Special Room Assets
 
@@ -1379,22 +1428,22 @@ namespace BB_MOD
 
 			AddTextureAsset(Path.Combine(modPath, "Textures", "ventAtlas.png"), "ventAtlasText"); // Texture used by the vent
 
-			AddAudioAsset(Path.Combine(modPath, "Audio", "ventNoise.wav"), "ventNoises", true); // Vent Noises
+			AddSoundObject(Path.Combine(modPath, "Audio", "ventNoise.wav"), "ventNoises", true, "Vfx_VentNoise", SoundType.Effect, Color.white); // Vent Noises
 
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "balExplode.png"), 29, "balExploding");
 
 			AddTextureAsset(Path.Combine(modPath, "Textures", "schooltext", "defaultWall.png"), "defaultWallTexture"); // Adds the default texture for the wall
 			AddTextureAsset(Path.Combine(modPath, "Textures", "schooltext", "defaultSaloonTexture.png"), "defaultSaloonTexture"); // Adds the default texture for the wall
 
-			AddAudioAsset(Path.Combine(modPath, "Audio", "extras", "schoolHouseEscape.wav"), "SchoolEscapeSong", true);
-			AddAudioAsset(Path.Combine(modPath, "Audio", "extras", "Quiet_noise_loop.wav"), "AngrySchool_Phase1", true); // That UFO-like noise for the first phase of the red school house
-			AddAudioAsset(Path.Combine(modPath, "Audio", "extras", "Chaos_EarlyLoopStart.wav"), "AngrySchool_Phase2", true); // Phase 2 with initial starting "angry" noise
-			AddAudioAsset(Path.Combine(modPath, "Audio", "extras", "Chaos_EarlyLoop.wav"), "AngrySchool_Phase3", true); // Phase 3 with looping "angry" noise
-			AddAudioAsset(Path.Combine(modPath, "Audio", "extras", "Chaos_FinalLoop.wav"), "AngrySchool_Phase4", true); // Phase 4 with initial ultra "angry" noise
-			AddAudioAsset(Path.Combine(modPath, "Audio", "extras", "Chaos_FinalLoopNoise.wav"), "AngrySchool_Phase5", true); // Phase 5 with looping ultra "angry" noise
-			AddAudioAsset(Path.Combine(modPath, "Audio", "extras", "BAL_AllNotebooksNormal.wav"), "BaldiNormalEscape", true); // Baldi Normal Speeaaaak
-			AddAudioAsset(Path.Combine(modPath, "Audio", "extras", "BAL_AllNotebooksFinal.wav"), "BaldiAngryEscape", true); // Baldi ANGRY SPEEAAAAAAAK
-			AddAudioAsset(Path.Combine(modPath, "Audio", "extras", "BAL_AngryGetOut.wav"), "BaldiFinalWarning", true); // Baldi ANGRY FINAL WARNING SPEEEAEK
+			AddLoopingSoundObject("SchoolEscapeSong", true, Path.Combine(modPath, "Audio", "extras", "schoolHouseEscape.wav"));
+			AddLoopingSoundObject("AngrySchool_Phase1", true, Path.Combine(modPath, "Audio", "extras", "Quiet_noise_loop.wav")); // That UFO-like noise for the first phase of the red school house
+			AddLoopingSoundObject("AngrySchool_Phase2", true, Path.Combine(modPath, "Audio", "extras", "Chaos_EarlyLoopStart.wav"), Path.Combine(modPath, "Audio", "extras", "Chaos_EarlyLoop.wav")); // Phase 2 with initial starting "angry" noise
+
+			AddLoopingSoundObject("AngrySchool_Phase3", true, Path.Combine(modPath, "Audio", "extras", "Chaos_FinalLoop.wav")); // Phase 3 with initial ultra "angry" noise
+			AddLoopingSoundObject("AngrySchool_Phase4", true, Path.Combine(modPath, "Audio", "extras", "Chaos_FinalLoopNoise.wav")); // Phase 4 with looping ultra "angry" noise
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "BAL_AllNotebooksNormal.wav"), "BaldiNormalEscape", true, "Vfx_BaldiNormalSpeak", SoundType.Effect, Color.green); // Baldi Normal Speeaaaak
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "BAL_AllNotebooksFinal.wav"), "BaldiAngryEscape", true, "Vfx_BaldiAngrySpeak", SoundType.Effect, Color.green); // Baldi ANGRY SPEEAAAAAAAK
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "BAL_AngryGetOut.wav"), "BaldiFinalWarning", true, "Vfx_BaldiAngrySpeak", SoundType.Effect, Color.green); // Baldi ANGRY FINAL WARNING SPEEEAEK
 
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "SchoolFire.png"), 25, "SchoolFire_FirstFrame"); // Fire Frames
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "SchoolFire2.png"), 25, "SchoolFire_SecondFrame");
@@ -1405,9 +1454,17 @@ namespace BB_MOD
 
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "gumSplash.png"), 25, "GumInWall"); // Gum Assets
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "gumSplash_back.png"), 25, "GumInWall_Back"); // Gum Assets
-			AddAudioAsset(Path.Combine(modPath, "Audio", "extras", "gumSplash.wav"), "gumSplash", true);
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "gumSplash.wav"), "gumSplash", true, "Vfx_GumSplash", SoundType.Effect, new Color(255f, 0f, 255f));
 
-			AddAudioAsset(Path.Combine(modPath, "Audio", "extras", "windowHit.wav"), "windowHit", true);
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "windowHit.wav"), "windowHit", true, "Vfx_WindowHit", SoundType.Effect, Color.white); // Window hit noise
+
+			AddSpriteAsset(Path.Combine(modPath, "Textures", "player.png"), 195, "playerVisual"); // Player Visual
+
+			AddSpriteAsset(Path.Combine(modPath, "Textures", "fogMachineFront_ON.png"), 25, "fogMachine_ON"); // Fog Machine
+			AddSpriteAsset(Path.Combine(modPath, "Textures", "fogMachineFront_OFF.png"), 25, "fogMachine_OFF");
+
+			AddTextureAsset(Path.Combine(modPath, "Textures", "officeDoor_Open.png"), "officeDoorOpen"); // Office door textures
+			AddTextureAsset(Path.Combine(modPath, "Textures", "officeDoor_Closed.png"), "officeDoorClosed");
 
 		}
 
@@ -1472,12 +1529,15 @@ namespace BB_MOD
 			CreateNPC<LetsDrum>("Let's Drum", 45, ContentUtilities.Array("Lets_Drum.png"), false, false, 51f, -1f, "pri_letsdrum.png", "PST_DRUM_Name", "PST_DRUM_Desc", ContentUtilities.Array(Floors.F2, Floors.F3), enterRooms: false); // PixelGuy
 			CreateNPC<Robocam>("Robocam", 65, ContentUtilities.Array("robocam.png"), false, false, 10f, 0f, "pri_robocam.png", "PST_Robocam_Name", "PST_Robocam_Name_Desc", ContentUtilities.Array(Floors.F3, Floors.END), enterRooms: false); // JDvideosPR
 			CreateNPC<PencilBoy>("Pencil Boy", 50, ContentUtilities.Array("pb_angry.png", "pb_angrySpot.png", "pb_happy.png"), false, false, 65f, -1.75f, "pri_pb.png", "PST_PB_Name", "PST_PB_Desc", ContentUtilities.Array(Floors.F2, Floors.END), ContentUtilities.Array(RoomCategory.Hall, RoomCategory.Test), enterRooms: false, capsuleRadius: 2.6f);
+			CreateNPC<Stunly>("Stunly", 60, ContentUtilities.Array("Stunly.png"), false, false, 34, -1.35f, "pri_stunly.png", "PST_Stunly_Name", "PST_Stunly_Desc", ContentUtilities.AllFloors, enterRooms: false);
+
 
 			// Replacement NPCs here
 			CreateReplacementNPC<ZeroPrize>("0th Prize", 75, ContentUtilities.Array("0thprize_sleep.png", "0thprize.png"), false, false, 50f, -0.5f,
 				"pri_0thprize.png", "PST_0TH_Name", "PST_0TH_Desc", ContentUtilities.Array(Floors.F3), ContentUtilities.Array(Character.Sweep), forceSpawn: true, capsuleRadius: 4f, enterRooms: false, hasLooker: false); // PixelGuy
 			CreateReplacementNPC<MagicalStudent>("Magical Student", 35, ContentUtilities.Array("MGS_Throw1.png", "MGS_Throw2.png", "MGS_Throw3.png"), false, false, 60f, -1.6f,
 				"pri_MGS.png", "PST_MGS_Name", "PST_MGS_Desc", ContentUtilities.Array(Floors.F3, Floors.END), ContentUtilities.Array(Character.Principal), usingWanderRounds: true); // TheEnkoder (Coded by PixelGuy)
+
 
 
 			// End of Character Spawns
@@ -1546,7 +1606,7 @@ namespace BB_MOD
 				comp.baseTrigger = ContentUtilities.Array<Collider>(cBean.GetComponent<CapsuleCollider>());
 
 				customData.materials[0] = renderer.material;
-				customData.materials[1] = Prefabs.newFlatMaterial;
+				customData.materials[1] = Prefabs.NewFlatMaterial;
 
 
 				customData.SwitchMaterials(flatSprite); // Gets chalkles material which has no billboard
@@ -1648,6 +1708,7 @@ namespace BB_MOD
 			CreateItem<ITM_Bell>("BEL_Name", "BEL_Desc", "bell.png", "bell.png", "Bell", 30, 25, 25, ContentUtilities.AllFloors, 125, ContentUtilities.AllFloors, 45, includeOnFieldTrip: true); // PixelGuy
 			CreateItem<ITM_GPS>("GPS_Name", "GPS_Desc", "gps.png", "gpsSmall.png", "GPS", 70, 20, 25, ContentUtilities.Array(Floors.F2, Floors.END), 245, ContentUtilities.Array(Floors.F2, Floors.F3), 30, includeOnPartyEvent: true, includeOnFieldTrip: true); // PixelGuy
 			CreateItem<ITM_Pencil>("PC_Name", "PC_Desc", "Pencil.png", "Pencil.png", "Pencil", 40, 22, 25, ContentUtilities.Array(Floors.F2, Floors.END), 40, ContentUtilities.Array(Floors.F2, Floors.F3), 30, includeOnFieldTrip: true); // FileName3 (Coded by PixelGuy)
+			CreateItem<ITM_ScrewDriver>("SD_Name", "SD_Desc", "screwDriver.png", "screwDriver.png", "ScrewDriver", 110, 25, 15, 110, ContentUtilities.AllFloors, 25, false, false, false);
 		}
 
 
@@ -2114,8 +2175,12 @@ namespace BB_MOD
 
 			CreateRoomBuilder<AbandonedBuilder>("AbandonedRoomBuilder", 64, "abandoned", ContentUtilities.Array(Floors.F3), false, ContentUtilities.Array(CreateRawSchoolTexture("GraniteCeiling.png")),
 			ContentUtilities.Array(CreateRawSchoolTexture("moldWall.png")),
-			ContentUtilities.Array(CreateRawSchoolTexture("woodFloor.png")), "oldDoorOpen.png", "oldDoorClosed.png", new Color(204f, 153f, 0),
+			ContentUtilities.Array(CreateRawSchoolTexture("woodFloor.png")), "oldDoorOpen.png", "oldDoorClosed.png", new Color(0.597f, 0.476f, 0f),
 			ContentUtilities.Array(ContentUtilities.LightPrefab, CreateExtraDecoration_Raw("long_hanginglamp.png", 200, 30, ContentUtilities.AllCategories, true, true, Vector3.up * (ContentUtilities.LightHeight - 0.7f))), 0, 1, true); // JDvideosPR >> Abandoned locked room for F3
+
+			CreateRoomBuilder<ComputerRoomBuilder>("ComputerBuilder", 50, "computerRoom", ContentUtilities.AllFloors, true, ContentUtilities.Array(CreateRawSchoolTexture("computerRoomCeiling.png")), 
+				ContentUtilities.Array(CreateRawSchoolTexture("computerRoomWall.png")), 
+				ContentUtilities.Array(CreateRawSchoolTexture("computerRoomFloor.png")), "computerDoorOpened.png", "computerDoorClosed.png", new Color(0f, 0f, 0.5976f));
 
 			// Note: if you want to create custom lights for the room, you can always use CreateExtraDecoration_Raw, and if you want to keep the original, you include ContentUtilities.LightPrefab on the array
 
@@ -2427,6 +2492,7 @@ namespace BB_MOD
 		// scoldName: scolding name that principal will look for to play when scolding player
 		// audioName: the name of the audio file (must be .wav in Audios/npc)
 		// audKey: key for the audio caption
+
 		// CreateExtraDecoration<T>()
 		// T (optional): if your decoration has any extra features that involves scripting, you can always add a component to it aswell
 		// texturePath: file name of the decoration texture (in Textures folder, must be .png)
@@ -2436,6 +2502,7 @@ namespace BB_MOD
 		// Independent (disabled by default): if you want to use this decoration to something else instead of being a decoration on tables, set this to independent (setting this up makes it actually independent and won't spawn naturally)
 		// SeparatedSprite (disabled by default): if the decoration will be have a separated sprite from it's gameobject, basically making the sprite child of the main gameobject (Necessary if the decoration is going to have a collider)
 		// SpriteOffset (only works with separatedsprite on): changes the sprite's position without affecting the main gameobject (parent)
+
 		// CreateCustomWindows() => All textures must be from Textures/windows
 		// windowFileName: name of the file of the window texture
 		// brokenWindowFileName: name of the file of the broken window texture
@@ -2446,6 +2513,11 @@ namespace BB_MOD
 		// supportedCategories: what room types does it support to be set on
 		// supportedFloors: what floors does it appear
 
+		// CreateMapIcon()
+		// iconName: name of the icon
+		// iconSprite: name of the file (png) of the icon (Textures/mapIcons), by default, a 16x16 texture is enough
+		// pixelsPerUnit: size of the icon, smaller values = bigger sizes
+
 		public void SetupExtraContent()
 		{
 			if (!addedExtraContent[0]) // Principal Audios Here
@@ -2454,6 +2526,7 @@ namespace BB_MOD
 				MakePrincipalScoldingAudio("breakproperty", "principal_nopropertybreak.wav", "Vfx_PRI_NoPropertyBreak");
 				MakePrincipalScoldingAudio("gumming", "principal_nospittinggums.wav", "Vfx_PRI_NoGumming");
 				MakePrincipalScoldingAudio("stabbing", "principal_nostabbing.wav", "Vfx_PRI_NoStabbing");
+				MakePrincipalScoldingAudio("uglyStun", "principal_nouglystun.wav", "Vfx_PRI_NoUglyStun");
 
 			}
 			if (!addedExtraContent[1]) // Extra Decorations Here
@@ -2464,6 +2537,7 @@ namespace BB_MOD
 				CreateExtraDecoration("basketHoop.png", 1, 6, ContentUtilities.Array(ContentUtilities.SpecialRoomEnum), true, true, new Vector3(0f, 15f, 0f));
 				CreateExtraDecoration("basketLotsOfBalls.png", 1, 60, ContentUtilities.Array(ContentUtilities.SpecialRoomEnum), true, true, new Vector3(0f, 3f, 0f));
 				CreateExtraDecoration("BaldiBall.png", 1, 25, ContentUtilities.Array(ContentUtilities.SpecialRoomEnum), true, true, new Vector3(0f, 1.9f, 0f));
+				CreateExtraDecoration("computer.png", 1, 25, ContentUtilities.Array(customRoomEnums.GetRoomByName("computerRoom")), true);
 
 				CreateExtraDecoration<FireObject>("SchoolFire.png", 1, 25, ContentUtilities.Array(RoomCategory.Null), true, true, new Vector3(0f, -2.4f, 0f));
 			}
@@ -2478,14 +2552,56 @@ namespace BB_MOD
 				CreateCustomWindow("ClassicWindow.png", "ClassicWindow_Broken.png", "ClassicWindow_Mask.png", false, false, false, Array.Empty<RoomCategory>(), Array.Empty<Floors>());
 				CreateCustomWindow("MetalWindow.png", string.Empty, string.Empty, true, false, true, ContentUtilities.Array(RoomCategory.Office), ContentUtilities.AllFloors);
 			}
-			if (!addedExtraContent[4]) // Internal Stuff for the game such as fabricated prefabs, not really made for any user to touch at
+			if (!addedExtraContent[4]) // Here you can put interesting prefabs that are saved on DontDestroyOnLoad, they are useful for npcs, since they are only loaded once and has a simple Execute() method and can evict further gameplay lag since they are generated in the generation state
 			{
 				addedExtraContent[4] = true;
 				PrefabInstance.CreateInstance<GumInWall>();
+				PrefabInstance.CreateInstance<StunningStars>();
+				PrefabInstance.CreateInstance<StunlyEffect>();
+				PrefabInstance.CreateInstance<PlayerModel>();
+				PrefabInstance.CreateInstance<FogMachine>();
+			}
+			if (!addedExtraContent[5])
+			{
+				addedExtraContent[5] = true;
+				CreateMapIcon("FogMachine", "fogMachineIcon.png", 22f);
+				CreateMapIcon("mathNotebookIcon", "hiddenNotebookIcon.png", 22f);
 			}
 		}
 
-		private void CreateCustomWindow(string windowFileName, string brokenWindowFileName, string maskFileName, bool unbreakable, bool openWindow, bool specialRandomReplace, RoomCategory[] supportedCategories, params Floors[] supportedFloors)
+		private void CreateMapIcon(string iconName, string iconSprite, float pixelsPerUnit)
+		{
+			var icon = Instantiate(Prefabs.iconPre);
+			try
+			{
+				if (mapIcons.ContainsKey(iconName)) throw new InvalidOperationException("The icon: \"" + iconName + "\" already exists");
+				icon.name = "CustomMapIcon_" + iconName;
+				var texture = AssetManager.SpriteFromTexture2D(AssetManager.TextureFromFile(Path.Combine(modPath, "Textures", "mapIcons", iconSprite)), Vector2.one / 2f, pixelsPerUnit);
+				icon.sprite.sprite = texture;
+				DontDestroyOnLoad(icon);
+				icon.gameObject.SetActive(false);
+				mapIcons.Add(iconName, icon);
+			}
+			catch (Exception e)
+			{
+				Destroy(icon.gameObject);
+				GenericExceptionThrow(e, $"The Map icon: {iconName} has failed to be created");
+			}
+		}
+
+		public MapIcon AddMapIcon(string iconName, Transform parent)
+		{
+			if (!mapIcons.ContainsKey(iconName))
+			{
+				Debug.LogWarning("The icon: \"" + iconName + "\" doesn\'t exist");
+				return null;
+			}
+			var icon = Instantiate(mapIcons[iconName], parent);
+			icon.gameObject.SetActive(true);
+			return icon;
+		}
+
+			private void CreateCustomWindow(string windowFileName, string brokenWindowFileName, string maskFileName, bool unbreakable, bool openWindow, bool specialRandomReplace, RoomCategory[] supportedCategories, params Floors[] supportedFloors)
 		{
 			// Note: open material = broken
 			// overlay material = the normal texture
@@ -3496,6 +3612,8 @@ namespace BB_MOD
 
 		readonly List<GenericObjectHolder<LoopingSoundObject>> schoolHouseMusics = new List<GenericObjectHolder<LoopingSoundObject>>();
 
+		readonly Dictionary<string, MapIcon> mapIcons = new Dictionary<string, MapIcon>();
+
 		public LoopingSoundObject[] GetSchoolHouseThemes(Floors floor) => schoolHouseMusics.Where(x => x.IsObjectFromFloor(floor)).Select(x => x.Object).ToArray();
 
 		// -------- DONT TOUCH Variables ---------
@@ -3514,7 +3632,7 @@ namespace BB_MOD
 
 		private bool assetsLoaded = false;
 
-		private readonly bool[] addedExtraContent = new bool[5]; // Added principal dialogues, added extra decorations
+		private readonly bool[] addedExtraContent = new bool[6]; // Added principal dialogues, added extra decorations
 
 		private readonly List<WeightedItemObject> mysteryItems = new List<WeightedItemObject>();
 
@@ -3574,9 +3692,10 @@ namespace BB_MOD
 		public Transform decorationPre;
 
 		public WindowObject windowPre;
-
-		public Material newFlatMaterial => UnityEngine.Object.Instantiate(flatMaterial);
+		public Material NewFlatMaterial => UnityEngine.Object.Instantiate(flatMaterial);
 
 		public Material flatMaterial;
+
+		public MapIcon iconPre;
 	}
 }

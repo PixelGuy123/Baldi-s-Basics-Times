@@ -357,6 +357,194 @@ namespace BB_MOD.Extra
 		bool forceUnlock = false;
 	}
 
+	public class ComputerRoomBuilder : RoomBuilder
+	{
+		public override void Setup(LevelBuilder lg, RoomController room, System.Random rng)
+		{
+			base.Setup(lg, room, rng);
+			var buffer = ContentUtilities.CreateBasicCube(new Vector3(9.9f, 1f, 9.9f), "computerTableTex.png");
+			buffer.gameObject.layer = ContentUtilities.defaultIgnoreRaycastLayer;
+			desk = new GameObject("TheLongTable").transform;
+
+			ContentUtilities.AddNavigationCollisionToObject(desk.gameObject, new Vector3(11f, 10f, 11f));
+
+			buffer.SetParent(desk);
+			buffer.localPosition = Vector3.up * 3f;
+
+			var legs = new Transform[] { ContentUtilities.CreateBasicCube(new Vector3(1f, 3f, 1f), "black.png"), 
+				ContentUtilities.CreateBasicCube(new Vector3(1f, 3f, 1f), "black.png"), 
+				ContentUtilities.CreateBasicCube(new Vector3(1f, 3f, 1f), "black.png"), 
+				ContentUtilities.CreateBasicCube(new Vector3(1f, 3f, 1f), "black.png") };
+
+			float multiplier = 3f;
+
+			legs.Do(x => x.SetParent(desk));
+			legs[0].localPosition = new Vector3(desk.localScale.x * multiplier, 1f, desk.localScale.z * multiplier);
+			legs[1].localPosition = new Vector3(-desk.localScale.x * multiplier, 1f, -desk.localScale.z * multiplier);
+			legs[2].localPosition = new Vector3(-desk.localScale.x * multiplier, 1f, desk.localScale.z * multiplier);
+			legs[3].localPosition = new Vector3(desk.localScale.x * multiplier, 1f, -desk.localScale.z * multiplier); // Sets the legs for a corner
+
+			if (ContentManager.instance.TryGetDecorationTransform(room.category, true, "computer", out var comp))
+			{
+				computer = comp;
+			}
+
+			compPoster = ContentManager.instance.CreatePosterObject("ComputerPoster.png");
+
+
+			room.acceptsPosters = false; // Only the computer poster is acceptable!!
+		}
+
+		public override void Build()
+		{
+			base.Build();
+			builder = Builder();
+			StartCoroutine(builder);
+		}
+
+		private IEnumerator Builder()
+		{
+			if (!desk)
+			{
+				Debug.LogWarning("Computer room failed to get desk prefab");
+				building = false;
+				yield break;
+			}
+
+			while (!lg.DoorsFinished) { yield return null; }
+
+			var startDirs = Directions.All();
+
+			if (room.size.x > room.size.z)
+			{
+				startDirs.Remove(Direction.North);
+				startDirs.Remove(Direction.South);
+			}
+			else if (room.size.z > room.size.x)
+			{
+				startDirs.Remove(Direction.East);
+				startDirs.Remove(Direction.West);
+			}
+			TileController corner = null;
+			Direction dir = Direction.Null;
+
+			while (corner == null && startDirs.Count > 0)
+			{
+				int index = cRNG.Next(startDirs.Count);
+				dir = startDirs[index];
+
+				startDirs.RemoveAt(index);
+
+				var tiles = room.GetTilesOfShape(new List<TileShape>() { TileShape.Corner }, true);
+
+				foreach (var tile in tiles)
+				{
+					if (tile.wallDirections.Contains(dir.GetOpposite()))
+					{
+						corner = tile;
+						break;
+					}
+				}
+			}
+
+			if (corner == null || dir == Direction.Null)
+			{
+				Debug.LogWarning("Computer room failed to find a suitable corner");
+				building = false;
+				yield break;
+			}
+
+			var rightDirs = dir.PerpendicularList();
+
+			var rightDir = Direction.Null;
+
+			for (int i = 0; i < rightDirs.Count; i++) 
+			{
+				if (corner.wallDirections.Contains(rightDirs[i]))
+				{
+					rightDir = rightDirs[i].GetOpposite();
+					break;
+				}
+			}
+
+			if (ContentManager.instance.DebugMode)
+			{
+				Debug.Log("COMPUTER ROOM: Current Direction: " + dir);
+				Debug.Log("COMPUTER ROOM: Side Direction: " + rightDir);
+			}
+			
+
+			List<TileController> startingTiles = new List<TileController>();
+			IntVector2 curTile = corner.position;
+
+			while (room.ec.ContainsCoordinates(curTile) && room.ec.TileFromPos(curTile) != null && room.ec.TileFromPos(curTile).TileMatches(room))
+			{
+				
+				startingTiles.Add(room.ec.TileFromPos(curTile + dir.ToIntVector2()));
+				curTile += rightDir.ToIntVector2() * 2;
+			}
+
+			if (ContentManager.instance.DebugMode)
+				startingTiles.ForEach(x => Debug.Log("COMPUTER ROOM: TileStartingPos: " + x.position.GetString()));
+
+			foreach (var tile in startingTiles)
+			{
+				curTile = tile.position;
+				while (room.ec.ContainsCoordinates(curTile) && room.ec.TileFromPos(curTile) != null && room.ec.TileFromPos(curTile).TileMatches(room) && !room.ec.TileFromPos(curTile).wallDirections.Contains(dir)) // Make a 1 tile gap between every table specifically for that
+				{
+
+					if (!room.ec.TileFromPos(curTile).doorHere)
+					{
+						var table = this.PlaceObject_RawPos(desk, room.ec.TileFromPos(curTile).transform.position, dir.ToRotation(), true, forceYPosition: true);
+						if (computer)
+						{
+							var comp = Instantiate(computer);
+							comp.SetParent(table);
+							comp.localPosition = Vector3.up * 5.2f;
+						}
+					}
+
+					curTile += dir.ToIntVector2();
+					yield return null;
+				}
+			}
+
+			var walls = room.GetTilesOfShape(new List<TileShape>() { TileShape.Single, TileShape.Corner }, true).Where(x => x.HasFreeWall).ToList();
+			var posterTile = walls[cRNG.Next(walls.Count)];
+			room.ec.BuildPoster(compPoster, posterTile, posterTile.wallDirections[cRNG.Next(posterTile.wallDirections.Length)]); // Creates a computer poster on a random spot
+
+			List<TileController> machineSpots = new List<TileController>();
+
+			foreach (var tile in room.GetNewTileList())
+			{
+				if (!tile.doorHere && tile.wallDirections.Length > 0 && !tile.containsObject)
+				{
+					machineSpots.Add(tile);
+				}
+			}
+
+			if (machineSpots.Count > 0)
+			{
+				var spot = machineSpots[cRNG.Next(machineSpots.Count)];
+				dir = spot.wallDirections[cRNG.Next(spot.wallDirections.Length)];
+				PrefabInstance.SpawnPrefab<FogMachine>(spot.transform.position + Vector3.up * 5f + dir.ToVector3() * ContentUtilities.TileOffset, dir.ToRotation(), room.ec, false);
+			}
+
+			yield return null;
+
+			building = false;
+			Destroy(desk.gameObject);
+			Destroy(compPoster);
+			yield break;
+		}
+
+		private Transform desk;
+
+		private Transform computer;
+
+		private PosterObject compPoster;
+	}
+
 	// ===================== Special Room Creators ===================================
 
 	public static class CustomSpecialRoom_Extensions

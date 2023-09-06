@@ -1,7 +1,4 @@
-﻿using MTM101BaldAPI;
-using UnityEngine;
-
-namespace BB_MOD.ExtraItems
+﻿namespace BB_MOD.ExtraItems
 {
 	// ------ Item Summary ------
 	// Ringing, calls baldi attention!
@@ -12,7 +9,7 @@ namespace BB_MOD.ExtraItems
 
 		public override bool Use(PlayerManager pm)
 		{
-			ItemSoundHolder.CreateSoundHolder(pm.transform.position, ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("bellNoise"), "Vfx_BEL_Ring", SoundType.Voice, new Color(179, 179, 0)), true, maxDistance:95, destructiveParent: transform);
+			ItemSoundHolder.CreateSoundHolder(pm.transform.position, ContentAssets.GetAsset<SoundObject>("bellNoise"), true, maxDistance:95, destructiveParent: transform);
 
 			pm.ec.MakeNoise(pm.transform.position, 112); // alarm clock noise val
 

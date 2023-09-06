@@ -1,7 +1,6 @@
 ﻿using MTM101BaldAPI;
 using System.Collections;
 using System.Collections.Generic;
-using System.IO;
 using UnityEngine;
 
 namespace BB_MOD.NPCs
@@ -30,9 +29,9 @@ namespace BB_MOD.NPCs
 			renderer = GetComponent<CustomNPCData>().spriteObject;
 
 
-			aud_MustSweep = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("0prize_mustsweep"), "Vfx_0TH_Sweep", SoundType.Voice, new Color(0.8679f, 0.7536f, 0.434f)); // Creates audioClip
+			aud_MustSweep = ContentAssets.GetAsset<SoundObject>("0prize_mustsweep"); // Creates audioClip
 
-			aud_TimeToSweep = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("0prize_timetosweep"), "Vfx_0TH_WannaSweep", SoundType.Voice, new Color(0.8679f, 0.7536f, 0.434f)); // Creates audioClip
+			aud_TimeToSweep = ContentAssets.GetAsset<SoundObject>("0prize_timetosweep"); // Creates audioClip
 
 			home = transform.position;
 			homeTile = ec.TileFromPos(home);

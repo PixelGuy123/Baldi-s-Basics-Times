@@ -1,10 +1,10 @@
 ﻿using BB_MOD.ExtraItems;
 using HarmonyLib;
-using MTM101BaldAPI;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace BB_MOD.ExtraComponents
 {
@@ -86,8 +86,11 @@ namespace BB_MOD.ExtraComponents
 		}
 		public void Unbreak() // Unbreaks the window somehow lol
 		{
-			AccessTools.Field(typeof(Window), "broken").SetValue(window, false);
-			window.Shut();
+			if (IsBroken)
+			{
+				AccessTools.Field(typeof(Window), "broken").SetValue(window, false);
+				window.Shut();
+			}
 		}
 
 		public void CopyFields(WindowExtraFields source)
@@ -111,7 +114,7 @@ namespace BB_MOD.ExtraComponents
 			var component = obj.AddComponent<T>();
 			obj.SetActive(false);
 			component.Setup();
-			obj.name = component.NameForIt();
+			obj.name = namePrefix + component.NameForIt;
 			DontDestroyOnLoad(obj);
 			prefabs.Add(component);
 		}
@@ -129,6 +132,13 @@ namespace BB_MOD.ExtraComponents
 
 			return obj.GetComponent<T>();
 		}
+		public static T SpawnPrefab<T>(Transform pos, EnvironmentController ec, bool autoExecute = true, Vector3 offset = default) where T : PrefabInstance
+		{
+			var prefab = SpawnPrefab<T>(Vector3.zero, default, ec, autoExecute);
+			prefab.transform.SetParent(pos);
+			prefab.transform.localPosition = offset;
+			return prefab;
+		}
 		public static T SpawnPrefab<T>(TileController tile, EnvironmentController ec, bool autoExecute = true) where T : PrefabInstance => SpawnPrefab<T>(tile.transform.position + Vector3.up * 5f, default, ec, autoExecute);
 
 		public static T SpawnPrefab<T>(TileController tile, Quaternion rotation, EnvironmentController ec, bool autoExecute = true) where T : PrefabInstance => SpawnPrefab<T>(tile.transform.position + Vector3.up * 5f, rotation, ec, autoExecute);
@@ -137,7 +147,7 @@ namespace BB_MOD.ExtraComponents
 		{
 		}
 
-		public abstract string NameForIt();
+		public abstract string NameForIt { get; }
 
 		protected virtual void SetReferences(EnvironmentController ec, bool hasRender)
 		{
@@ -149,6 +159,11 @@ namespace BB_MOD.ExtraComponents
 		public virtual void Execute()
 		{
 			gameObject.SetActive(true);
+		}
+
+		public virtual void Despawn()
+		{
+			Destroy(gameObject);
 		}
 		
 		protected void CreateSprite(Material mat = null, Sprite sprite = null)
@@ -176,13 +191,160 @@ namespace BB_MOD.ExtraComponents
 		protected bool AvailableRender => rendererSprite != null;
 
 		private readonly static List<PrefabInstance> prefabs = new List<PrefabInstance>();
+
+		protected const string namePrefix = "CustomObj_";
+	}
+
+	public class StunningStars : PrefabInstance
+	{
+		public override string NameForIt => "StunningStarsEffect";
+
+		public override void Setup()
+		{
+			CreateSprite(ContentUtilities.DefaultBillBoardMaterial, ContentAssets.GetAsset<Sprite>("StunningStars"));
+		}
+
+		public void SetupTarget(Transform target)
+		{
+			targetParent = target;
+			transform.SetParent(target);
+		}
+
+		public override void Execute()
+		{
+			base.Execute();
+			if (targetParent == null)
+			{
+				Despawn();
+				return;
+			}
+
+			transform.localPosition = new Vector3(0f, height, 0f);
+		}
+
+		Transform targetParent = null;
+
+		const float height = 4f;
+	}
+
+	public class FogMachine : PrefabInstance, IItemAcceptor
+	{
+		public override string NameForIt => "FogMachine";
+
+		public bool ItemFits(Items item) => currentEvent & !fixFogEvent && item == acceptedItem;
+
+		public void InsertItem(PlayerManager pm, EnvironmentController ec)
+		{
+			if (currentEvent & !fixFogEvent)
+			{
+				fixFogEvent = true;
+				currentEvent.StopAllCoroutines();
+				currentEvent.End();
+				rendererSprite.sprite = onSprite;
+			}
+		}
+
+		public override void Setup()
+		{
+			ContentUtilities.AddCollisionToSprite(gameObject, transform.right * 9f + Vector3.up * 5f, Vector3.zero);
+			CreateSprite(ContentManager.Prefabs.NewFlatMaterial, onSprite);
+		}
+		private void Update()
+		{
+			if (ec.CurrentEventTypes.Count > 0)
+			{
+				if (!currentEvent)
+				{
+					var rEvent = ec.GetEvent(RandomEventType.Fog);
+					if (rEvent)
+						currentEvent = (FogEvent)rEvent;
+					
+				}
+				else
+					rendererSprite.sprite = fixFogEvent ? onSprite : offSprite;
+			}
+			else
+			{
+				currentEvent = null;
+				fixFogEvent = false;
+				rendererSprite.sprite = onSprite;
+			}
+		}
+
+		bool fixFogEvent = false;
+
+		FogEvent currentEvent = null;
+
+		readonly Sprite onSprite = ContentAssets.GetAsset<Sprite>("fogMachine_ON");
+
+		readonly Sprite offSprite = ContentAssets.GetAsset<Sprite>("fogMachine_OFF");
+
+		readonly Items acceptedItem = ContentManager.instance.customItemEnums.GetItemByName("ScrewDriver");
+	}
+
+	public class StunlyEffect : PrefabInstance
+	{
+		public override string NameForIt => "Stunly\'s Stun Hud";
+
+		public override void Setup()
+		{
+			var img = gameObject.AddComponent<Image>();
+			img.color = Color.white;
+		}
+
+		public override void Execute()
+		{
+			base.Execute();
+
+			
+			StartCoroutine(FadeOut());
+		}
+
+		public void SetupHud(Canvas canvas)
+		{
+			transform.SetParent(canvas.transform);
+			transform.localPosition = Vector3.zero;
+		}
+
+		private IEnumerator FadeOut()
+		{
+			var img = GetComponent<Image>();
+			var alpha = img.color;
+			alpha.a = 1f;
+			img.color = alpha;
+
+			yield return new WaitForSeconds(1f);
+
+			while (alpha.a > 0f)
+			{
+				alpha.a -= 0.05f * ec.EnvironmentTimeScale * Time.deltaTime;
+				img.color = alpha;
+				yield return null;
+			}
+
+			Despawn();
+
+			yield break;
+
+		}
+	}
+
+	public class PlayerModel : PrefabInstance
+	{
+		public override string NameForIt => "PlayerModel";
+
+		public override void Setup()
+		{
+			CreateSprite(ContentUtilities.DefaultBillBoardMaterial, ContentAssets.GetAsset<Sprite>("playerVisual"));
+		}
+
 	}
 
 	public class GumInWall : PrefabInstance
 	{
 		public override void Setup()
 		{
-			CreateSprite(ContentManager.Prefabs.newFlatMaterial, frontSprite);
+			CreateSprite(ContentManager.Prefabs.NewFlatMaterial, frontSprite);
 		}
 		public void SetAsBackObject(GameObject frontalParent)
 		{
@@ -211,7 +373,7 @@ namespace BB_MOD.ExtraComponents
 					transform.localScale = frontParent.transform.localScale;
 					yield return null;
 				}
-				Destroy(gameObject);
+				Despawn();
 				yield break;
 			}
 
@@ -245,14 +407,14 @@ namespace BB_MOD.ExtraComponents
 				yield return null;
 			}
 
-			Destroy(gameObject);
+			Despawn();
 
 			yield break;
 		}
 
-		public override string NameForIt() => "CustomObj_GumInWall";
+		public override string NameForIt => "GumInWall";
 
-		readonly SoundObject splashNoise = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("gumSplash"), "Vfx_GumSplash", SoundType.Effect, new Color(255f, 0f, 255f));
+		readonly SoundObject splashNoise = ContentAssets.GetAsset<SoundObject>("gumSplash");
 
 		readonly Sprite backSprite = ContentAssets.GetAsset<Sprite>("GumInWall_Back");
 

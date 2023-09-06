@@ -21,7 +21,7 @@ namespace BB_MOD.NPCs
 
 			audMan = GetComponent<AudioManager>();
 
-			aud_ForgottenWarning = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("forgotten_warn"), "Vfx_Forgotten_Warning", SoundType.Voice, new Color(43,42,51)); // Creates audioClip
+			aud_ForgottenWarning = ContentAssets.GetAsset<SoundObject>("forgotten_warn"); // Creates audioClip
 		}
 
         private void Update()

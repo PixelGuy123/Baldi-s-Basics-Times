@@ -25,11 +25,11 @@ namespace BB_MOD.NPCs
 
 			for (int i = 0; i < 3; i++)
 			{
-				aud_wandering[i] = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>($"pb_wander{i + 1}"), $"Vfx_PB_Wander{i + 1}", SoundType.Voice, new Color(128f, 128f, 0f));
+				aud_wandering[i] = ContentAssets.GetAsset<SoundObject>($"pb_wander{i + 1}");
 			}
-			aud_spot = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("pb_spot"), "Vfx_PB_Spot", SoundType.Voice, new Color(128f, 128f, 0f));
-			aud_evilLaugh = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("pb_catch"), "Vfx_PB_Catch", SoundType.Voice, new Color(128f, 128f, 0f));
-			aud_stab = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("pb_stab"), "Vfx_PC_stab", SoundType.Voice, new Color(128f, 128f, 0f));
+			aud_spot = ContentAssets.GetAsset<SoundObject>("pb_spot");
+			aud_evilLaugh = ContentAssets.GetAsset<SoundObject>("pb_catch");
+			aud_stab = ContentAssets.GetAsset<SoundObject>("pb_stab");
 			renderer = GetComponent<CustomNPCData>().spriteObject;
 			sprites = GetComponent<CustomNPCData>().sprites;
 		}

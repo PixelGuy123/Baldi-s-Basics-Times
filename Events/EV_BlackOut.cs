@@ -20,8 +20,8 @@ namespace BB_MOD.Events
 			ContentUtilities.CreateNonPositionalAudio(gameObject);
 			audMan.audioDevice = GetComponent<AudioSource>();
 
-			aud_powerOn = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("blackout_on"), "Vfx_EvBO_turnOn", SoundType.Effect, Color.white);
-			aud_powerOut = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("blackout_off"), "Vfx_EvBO_turnOff", SoundType.Effect, Color.white);
+			aud_powerOn = ContentAssets.GetAsset<SoundObject>("blackout_on");
+			aud_powerOut = ContentAssets.GetAsset<SoundObject>("blackout_off");
 		}
 		public override void Begin()
 		{

@@ -1,9 +1,7 @@
 ﻿using HarmonyLib;
 using MTM101BaldAPI;
-using MTM101BaldAPI.AssetManager;
 using System.Collections;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using UnityEngine;
 
@@ -25,16 +23,16 @@ namespace BB_MOD.NPCs
 			navigator.maxSpeed = 0f; // He doesn't need a navigator, like chalkles
 			navigator.SetSpeed(0f);
 			navigator.accel = 0f; // Important variable, if there's no acceleration, nothing can push it
+			navigator.Cc.enabled = false; // Very Important Variable aswell, since it disables the character's forced movement entirely
 
 			// Audio Setup
 
 			audMan = GetComponent<AudioManager>();
 
-			aud_Scream = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("clock_scream"), "Vfx_CC_Scream", SoundType.Voice, new Color(230, 46, 0)); // Not so cool scream
-			aud_Scream.subDuration -= 3f;
-			aud_tick = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("clock_tick"), "Vfx_CC_Tick", SoundType.Voice, new Color(230, 46, 0), 5f);
-			aud_tock = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("clock_tock"), "Vfx_CC_Tack", SoundType.Voice, new Color(230, 46, 0), 5f);
-			aud_frown = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("clock_frown"), "Vfx_CC_Frown", SoundType.Voice, new Color(230, 46, 0), 7f);
+			aud_Scream = ContentAssets.GetAsset<SoundObject>("clock_scream"); // Not so cool scream
+			aud_tick = ContentAssets.GetAsset<SoundObject>("clock_tick");
+			aud_tock = ContentAssets.GetAsset<SoundObject>("clock_tock");
+			aud_frown = ContentAssets.GetAsset<SoundObject>("clock_frown");
 
 			renderer = GetComponent<CustomNPCData>().spriteObject.GetComponent<SpriteRenderer>();
 
