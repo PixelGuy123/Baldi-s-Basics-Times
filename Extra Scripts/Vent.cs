@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace BB_MOD.Extra
+namespace BB_MOD.ExtraComponents
 {
 	public class Vent : MonoBehaviour
 	{

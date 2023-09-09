@@ -1,5 +1,5 @@
 ﻿using BB_MOD.Events;
-using BB_MOD.Extra;
+using BB_MOD.Builders;
 using BB_MOD.ExtraComponents;
 using BB_MOD.ExtraItems;
 using BB_MOD.NPCs;
@@ -1881,7 +1881,7 @@ namespace BB_MOD
 			CreateItem<ITM_Pencil>("PC_Name", "PC_Desc", "Pencil.png", "Pencil.png", "Pencil", 40, 22, 25, ContentUtilities.Array(Floors.F2, Floors.END), 40, ContentUtilities.Array(Floors.F2, Floors.F3), 30, includeOnFieldTrip: true); // FileName3 (Coded by PixelGuy)
 			CreateItem<ITM_ScrewDriver>("SD_Name", "SD_Desc", "screwDriver.png", "screwDriver.png", "ScrewDriver", 110, 25, 15, 110, ContentUtilities.AllFloors, 25, false, false, false, true);
 			CreateItem<ITM_Trap>("BT_Name", "BT_Desc", "TrapOpen.png", "trapSmall.png", "BearTrap", 90, 27, 20, ContentUtilities.Array(Floors.F2, Floors.END), 85, ContentUtilities.AllFloorsExcept(Floors.F1), 15, true, true, false);
-			CreateItem<ITM_Banana>("BN_Name", "BN_Desc", "Banana.png", "Banana.png", "Banana", 50, 15, 15, 25, ContentUtilities.AllFloors, 55);
+			CreateItem<ITM_Banana>("BN_Name", "BN_Desc", "Banana.png", "Banana.png", "Banana", 50, 18, 5, 25, ContentUtilities.AllFloors, 55);
 			CreateItem<ITM_Gum>("GUM_Name", "GUM_Desc", "gum.png", "gum.png", "Gum", 75, 25, 45, 65, ContentUtilities.AllFloors, 35);
 		}
 

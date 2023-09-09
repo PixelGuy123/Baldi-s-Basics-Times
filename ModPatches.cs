@@ -1,8 +1,9 @@
 ﻿using BB_MOD.Events;
-using BB_MOD.Extra;
+using BB_MOD.Builders;
 using BB_MOD.ExtraComponents;
 using BB_MOD.ExtraItems;
 using BB_MOD.NPCs;
+using BB_MOD;
 using HarmonyLib;
 using MonoMod.Utils;
 using MTM101BaldAPI;
@@ -16,7 +17,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace BB_MOD
+namespace BB_MOD_Patches
 {
 
 	[HarmonyPatch(typeof(LevelGenerator), "StartGenerate")]
@@ -994,6 +995,33 @@ namespace BB_MOD
 					{
 						instruction.operand = replacement;
 						success = true; // No more changes needed to instructions
+					}
+					yield return instruction;
+				}
+			}
+		}
+	}
+
+	[HarmonyPatch(typeof(FloodEvent), "Move", MethodType.Enumerator)]
+	internal class FixWhirpoolSpawn
+	{
+		private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+		{
+			bool success = false;
+			int foundBooleans = 0;
+			using (var enumerator = instructions.GetEnumerator())
+			{
+				while (enumerator.MoveNext())
+				{
+					var instruction = enumerator.Current;
+					if (!success && instruction.opcode == OpCodes.Ldc_I4_1)
+					{
+						if (++foundBooleans >= 2) // If it found the second boolean (meaning it is about the object thing), then skip!
+						{
+							success = true;
+							yield return new CodeInstruction(OpCodes.Ldc_I4_0);
+							continue;
+						}
 					}
 					yield return instruction;
 				}

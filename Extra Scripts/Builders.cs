@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-namespace BB_MOD.Extra
+namespace BB_MOD.Builders
 {
 	public delegate void ExtraBuilder(LevelBuilder lg, RoomController room, System.Random rng); // Important delegate, don't remove it.
 	public static class ReplacementBuilders // This class will store every method that is applied for an existent builder (those methods must use the delegate above)

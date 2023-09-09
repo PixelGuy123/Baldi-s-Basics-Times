@@ -4,10 +4,10 @@ using HarmonyLib;
 using UnityEngine;
 using MTM101BaldAPI.AssetManager;
 
-namespace BB_MOD
+namespace BB_MOD.BepInEx
 {
     [BepInPlugin(ModInfo.id, ModInfo.name, ModInfo.version)]
-    public class ExtraContent : BaseUnityPlugin
+    public class BasePlugin : BaseUnityPlugin
     {
 		ConfigEntry<bool> debug;
         void Awake()

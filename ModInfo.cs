@@ -1,4 +1,4 @@
-﻿namespace BB_MOD
+﻿namespace BB_MOD.BepInEx
 {
     public static class ModInfo
     {

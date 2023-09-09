@@ -1,10 +1,10 @@
 ﻿using BB_MOD.ExtraItems;
-using HarmonyLib;
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using System;
+using System.Collections.Generic;
+using System.Collections;
+using HarmonyLib;
 
 namespace BB_MOD.ExtraComponents
 {
@@ -257,8 +257,7 @@ namespace BB_MOD.ExtraComponents
 				foreach (var rEvent in currentEvents)
 				{
 					var currentEvent = ec.GetEvent(rEvent);
-					currentEvent.StopAllCoroutines();
-					currentEvent.End();
+					AccessTools.Field(typeof(RandomEvent), "remainingTime").SetValue(currentEvent, 0f); // Sets the event time to 0, so it naturally ends without any force
 				}
 				rendererSprite.sprite = onSprite;
 				icon.sprite.enabled = false;

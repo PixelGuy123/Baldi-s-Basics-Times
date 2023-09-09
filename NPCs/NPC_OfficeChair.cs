@@ -1,8 +1,6 @@
 ﻿using HarmonyLib;
-using MTM101BaldAPI;
 using System.Collections;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using UnityEngine;
 
@@ -44,7 +42,7 @@ namespace BB_MOD.NPCs
 			audMan.SetLoop(true);
 			audMan.QueueAudio(aud_ChairRoll);
 
-			var tiles = FindMyFacultyTiles(ec.TileFromPos(gameObject.transform.position).room);
+			var tiles = CollectFacultyTiles(ec.TileFromPos(gameObject.transform.position).room, true);
 			targetRoomTile = tiles.ElementAt(Random.Range(0, tiles.Count()));
 
 		}
@@ -56,28 +54,17 @@ namespace BB_MOD.NPCs
 
 		}
 
-		private IEnumerable<TileController> CollectFacultyTilesExcept(RoomController currentRoom)
+		private IEnumerable<TileController> CollectFacultyTiles(RoomController currentRoom, bool onlyMine)
 		{
 			using (var enumerator = AvailableFacultyTiles.GetEnumerator())
 			{
 				while (enumerator.MoveNext())
 				{
-					if (!ReferenceEquals(currentRoom, enumerator.Current.room)) // Only return faculty tiles that are not from current Chair Room
+					if (enumerator.Current.TileMatches(currentRoom) == onlyMine) // Only return faculty tiles that are not from current Chair Room
 						yield return enumerator.Current;
 				}
 			}
-		}
-
-		private IEnumerable<TileController> FindMyFacultyTiles(RoomController currentRoom)
-		{
-			using (var enumerator = AvailableFacultyTiles.GetEnumerator())
-			{
-				while (enumerator.MoveNext())
-				{
-					if (ReferenceEquals(currentRoom, enumerator.Current.room)) // Only return faculty tiles that ARE from current Chair Room
-						yield return enumerator.Current;
-				}
-			}
+			yield break;
 		}
 
 		private void ResetPlayer(bool fullReset = true)
@@ -162,7 +149,7 @@ namespace BB_MOD.NPCs
 					isMovingToRoom = true;
 					audMan.SetLoop(true);
 					audMan.QueueAudio(aud_ChairRoll);
-					var tiles = CollectFacultyTilesExcept(currentRoomController);
+					var tiles = CollectFacultyTiles(currentRoomController, false);
 					targetRoomTile = tiles.ElementAt(Random.Range(0, tiles.Count()));
 
 				}
