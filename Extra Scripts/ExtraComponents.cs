@@ -173,14 +173,8 @@ namespace BB_MOD.ExtraComponents
 				throw new InvalidOperationException($"[{name}] You can't add more than two sprite objects into the same prefab");
 			}
 
-			var obj = new GameObject("Sprite");
-			obj.transform.SetParent(transform);
-			obj.layer = ContentUtilities.defaultBillboardLayer;
-			rendererSprite = obj.AddComponent<SpriteRenderer>();
-			if (mat != null)
-				rendererSprite.material = mat;
-			if (sprite != null)
-				rendererSprite.sprite = sprite;
+			var renderer = ContentUtilities.AddVisualToSprite(transform, sprite, mat);
+			rendererSprite = renderer;
 		}
 		
 
@@ -253,55 +247,52 @@ namespace BB_MOD.ExtraComponents
 	{
 		public override string NameForIt => "FogMachine";
 
-		public bool ItemFits(Items item) => currentEvent & !fixFogEvent && item == acceptedItem;
+		public bool ItemFits(Items item) => currentEvents.Count > 0 & !fixFogEvent && item == acceptedItem;
 
 		public void InsertItem(PlayerManager pm, EnvironmentController ec)
 		{
-			if (currentEvent & !fixFogEvent)
+			if (currentEvents.Count > 0 & !fixFogEvent)
 			{
 				fixFogEvent = true;
-				currentEvent.StopAllCoroutines();
-				currentEvent.End();
+				foreach (var rEvent in currentEvents)
+				{
+					var currentEvent = ec.GetEvent(rEvent);
+					currentEvent.StopAllCoroutines();
+					currentEvent.End();
+				}
 				rendererSprite.sprite = onSprite;
+				icon.sprite.enabled = false;
+				currentEvents.Clear();
 			}
 		}
 
 		public override void Setup()
 		{
 			ContentUtilities.AddCollisionToSprite(gameObject, transform.right * 9f + Vector3.up * 5f, Vector3.zero);
-			CreateSprite(ContentManager.Prefabs.NewFlatMaterial, onSprite);
+			CreateSprite(ContentManager.Prefabs.NewFlatMaterial, offSprite);
 		}
 		private void Update()
 		{
 			if (ec.CurrentEventTypes.Count > 0)
 			{
-				if (!currentEvent)
-				{
-					var rEvent = ec.GetEvent(RandomEventType.Fog);
-					if (rEvent)
-						currentEvent = (FogEvent)rEvent;
-					
-				}
-				else
-					rendererSprite.sprite = fixFogEvent ? onSprite : offSprite;
+				if (currentEvents.Count == 0)
+					currentEvents.AddRange(ec.CurrentEventTypes);
 			}
-			else
-			{
-				currentEvent = null;
-				fixFogEvent = false;
-				rendererSprite.sprite = onSprite;
-			}
+			else if (currentEvents.Count > 0)
+				currentEvents.Clear();
 		}
 
 		bool fixFogEvent = false;
-
-		FogEvent currentEvent = null;
 
 		readonly Sprite onSprite = ContentAssets.GetAsset<Sprite>("fogMachine_ON");
 
 		readonly Sprite offSprite = ContentAssets.GetAsset<Sprite>("fogMachine_OFF");
 
 		readonly Items acceptedItem = ContentManager.instance.customItemEnums.GetItemByName("ScrewDriver");
+
+		readonly List<RandomEventType> currentEvents = new List<RandomEventType>();
+
+		public MapIcon icon;
 	}
 
 	public class StunlyEffect : PrefabInstance
@@ -360,16 +351,23 @@ namespace BB_MOD.ExtraComponents
 			CreateSprite(ContentUtilities.DefaultBillBoardMaterial, ContentAssets.GetAsset<Sprite>("playerVisual"));
 		}
 
+		public override void Execute()
+		{
+			base.Execute();
+			EnvironmentExtraVariables.OnEndGame.AddListener(() => isActive = false); // When the game ends by Baldi, the player model is disabled
+		}
 		public void SetPlayer(PlayerManager player) => targetPlayer = player;
 
 		private void Update()
 		{
 			if (!targetPlayer || !AvailableRender) return;
 
-			rendererSprite.enabled = !targetPlayer.hidden;
+			rendererSprite.enabled = !targetPlayer.hidden & isActive;
 		}
 
 		private PlayerManager targetPlayer;
+
+		bool isActive = true;
 
 	}
 

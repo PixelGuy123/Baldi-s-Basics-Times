@@ -554,7 +554,7 @@ namespace BB_MOD
 
 			foreach (var machine in UnityEngine.Object.FindObjectsOfType<FogMachine>())
 			{
-				ContentManager.instance.AddMapIcon("FogMachine", GetMapGridPosition(machine.transform));
+				machine.icon = ContentManager.instance.AddMapIcon("FogMachine", GetMapGridPosition(machine.transform));
 			}
 
 			foreach (var button in UnityEngine.Object.FindObjectsOfType<GameButton>())
@@ -564,6 +564,15 @@ namespace BB_MOD
 
 
 			return false;
+		}
+	}
+
+	[HarmonyPatch(typeof(CoreGameManager), "EndGame")]
+	internal class EndGameInvoking
+	{
+		private static void Prefix()
+		{
+			EnvironmentExtraVariables.OnEndGame.Invoke();
 		}
 	}
 
@@ -607,8 +616,9 @@ namespace BB_MOD
 			var cafeterias = UnityEngine.Object.FindObjectsOfType<CafeteriaCreator>();
 			WeightedItemObject[] cafeItems = new WeightedItemObject[]
 			{
-				new WeightedItemObject() {selection = ContentUtilities.FindResourceObjectContainingName<ItemObject>("bsoda"), weight = 35 },
-				new WeightedItemObject() {selection = ContentUtilities.FindResourceObjectContainingName<ItemObject>("zesty"), weight = 85 }
+				new WeightedItemObject() {selection = ContentUtilities.FindResourceObjectContainingName<ItemObject>("bsoda"), weight = 45 },
+				new WeightedItemObject() {selection = ContentUtilities.FindResourceObjectContainingName<ItemObject>("zesty"), weight = 85 },
+				new WeightedItemObject() {selection = ContentManager.instance.GetItemByEnum(ContentManager.instance.customItemEnums.GetItemByName("Banana")), weight = 10 }
 			};
 
 			foreach (var cafe in cafeterias)
@@ -1445,7 +1455,7 @@ namespace BB_MOD
 		[HarmonyPrefix]
 		private static void EmptyTexture(RoomController ___room, System.Random ___cRNG)
 		{
-			if (___cRNG.NextDouble() > 0.5d) // If the bigroom is not highCeiling thing, uhm, no.
+			if (___cRNG.NextDouble() > 0.9d) // If the bigroom is not highCeiling thing, uhm, no, but a very low chance because high ceiling is beautiful as heck.
 			{
 				return;
 			}
@@ -1456,7 +1466,7 @@ namespace BB_MOD
 
 		[HarmonyPatch("AfterUpdatingTiles")]
 		[HarmonyPostfix]
-		private static void AddHigherCeilings(CafeteriaCreator __instance, RoomController ___room)
+		private static void AddHigherCeilings(CafeteriaCreator __instance, RoomController ___room, LevelBuilder ___lg)
 		{
 
 			if (___room.lightPre) return; // if there is still decoration, this hasn't been affected
@@ -1475,10 +1485,12 @@ namespace BB_MOD
 				hangingLight.SetParent(__instance.transform);
 				var tile = ___room.ec.TileFromPos(___room.ec.TileFromPos(___room.ec.RealRoomMid(___room)).position - cornerOffset);
 				hangingLight.position = tile.transform.position;
+				___room.ec.GenerateLight(tile, ___lg.ld.standardLightColor, ___lg.ld.standardLightStrength);
 
 				hangingLight = UnityEngine.Object.Instantiate(light);
 				hangingLight.SetParent(__instance.transform);
 				tile = ___room.ec.TileFromPos(___room.ec.TileFromPos(___room.ec.RealRoomMid(___room)).position + cornerOffset);
+				___room.ec.GenerateLight(tile, ___lg.ld.standardLightColor, ___lg.ld.standardLightStrength);
 				hangingLight.position = tile.transform.position; // Adds hanging lights twice
 			}
 

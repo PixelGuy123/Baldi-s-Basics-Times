@@ -15,5 +15,14 @@
 	{"key":"Vfx_PC_stab","value":"*Stab*"},
 	{"key":"SD_Name","value":"Screw Driver"},
 	{"key":"SD_Desc","value":"Screw Driver\nFixes machines from the Computer Room, they can break anytime!"},
-	{"key":"Vfx_SD_screw","value":"*Screwing*"}
+	{"key":"Vfx_SD_screw","value":"*Screwing*"},
+	{"key":"BT_Name","value":"Bear Trap"},
+	{"key":"BT_Desc","value":"Bear Trap\nSomeone took this from an old Camping area... It is dangerous!"},
+	{"key":"Vfx_BT_catch","value":"*CLANG!*"},
+	{"key":"BN_Name","value":"Banana"},
+	{"key":"BN_Desc","value":"Banana\nThey can be slippery but it's a life saving item! Just put into the floor and let the fun happens!"},
+	{"key":"Vfx_BN_slip","value":"*SLIP*"},
+	{"key":"GUM_Name","value":"Gum"},
+	{"key":"GUM_Desc","value":"Gum\nBeans sometimes drop his secret weapon, so why not sell it here? Might be useful and delicious!"},
+	{"key":"Vfx_GUM_spit","value":"*SPIT*"}
 ]}

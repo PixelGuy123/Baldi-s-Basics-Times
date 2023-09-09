@@ -15,6 +15,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.Audio;
+using UnityEngine.Events;
 using UnityEngine.Networking;
 using static BB_MOD.ContentAssets;
 using static BB_MOD.ContentManager;
@@ -419,6 +420,7 @@ namespace BB_MOD
 			isEndGame = false;
 			playerFOV = 0f;
 			overlapFOVModifier = false;
+			OnEndGame.RemoveAllListeners();
 		}
 
 		/// <summary>
@@ -430,6 +432,7 @@ namespace BB_MOD
 			forceDisableSubtitles = !turn;
 		}
 
+		public static UnityEvent OnEndGame = new UnityEvent();
 		public static void EndGamePhase() => isEndGame = true;
 
 		public static bool IsPlayerOnLibrary
@@ -995,30 +998,52 @@ namespace BB_MOD
 			};
 		}
 
-		public static void AddNavigationCollisionToObject(GameObject obj, Vector3 obstacleSize)
+		public static SpriteRenderer AddVisualToSprite(Transform transform, Sprite sprite = null, Material mat = null)
 		{
-			if (obj.GetComponent<NavMeshObstacle>()) return; // Stops it from adding twice
+			var obj = new GameObject("Sprite");
+			obj.transform.SetParent(transform);
+			obj.layer = defaultBillboardLayer;
+
+			var rendererSprite = obj.AddComponent<SpriteRenderer>();
+
+			if (mat != null)
+				rendererSprite.material = mat;
+			if (sprite != null)
+				rendererSprite.sprite = sprite;
+
+			return rendererSprite;
+		}
+
+		public static NavMeshObstacle AddNavigationCollisionToObject(GameObject obj, Vector3 obstacleSize)
+		{
+			if (obj.GetComponent<NavMeshObstacle>()) 
+				return obj.GetComponent<NavMeshObstacle>(); // Stops it from adding twice
 
 			var obs = obj.AddComponent<NavMeshObstacle>();
 			obs.carving = true;
 			obs.size = obstacleSize;
 			obs.center = new Vector3(0f, obj.transform.position.y, 0f);
+			return obs;
 		}
 
-		public static void AddCollisionToSprite(GameObject obj, Vector3 boxSize, Vector3 center)
+		public static BoxCollider AddCollisionToSprite(GameObject obj, Vector3 boxSize, Vector3 center)
 		{
-			if (obj.GetComponent<BoxCollider>()) return; // Stops it from adding twice
+			if (obj.GetComponent<BoxCollider>())
+				return obj.GetComponent<BoxCollider>(); // Stops it from adding twice
 
 			var collision = obj.AddComponent<BoxCollider>();
 			collision.center = center;
 			collision.size = boxSize;
+			return collision;
 		}
 
-		public static void AddCollisionToSprite(GameObject obj, Vector3 boxSize, Vector3 center, Vector3 obstacleSize)
+		public static void AddCollisionToSprite(GameObject obj, Vector3 boxSize, Vector3 center, Vector3 obstacleSize, out BoxCollider collider, out NavMeshObstacle obstacle)
 		{
-			if (!obj.GetComponent<BoxCollider>()) AddCollisionToSprite(obj, boxSize, center); // If don't exist, add it
-			AddNavigationCollisionToObject(obj, obstacleSize);
+			collider = AddCollisionToSprite(obj, boxSize, center); // If don't exist, add it
+			obstacle = AddNavigationCollisionToObject(obj, obstacleSize);
 		}
+
+		public static void AddCollisionToSprite(GameObject obj, Vector3 boxSize, Vector3 center, Vector3 obstacleSize) => AddCollisionToSprite(obj, boxSize, center, obstacleSize, out _, out _);
 
 
 		public static GameObject AddBasicBuffer(Transform tsf, string name = "Buffer")
@@ -1486,9 +1511,9 @@ namespace BB_MOD
 
 			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "ForgottenWarning.wav"), "forgotten_warn", false, "Vfx_Forgotten_Warning", SoundType.Voice, new Color(43, 42, 51)); // Forgotten Bell Noise
 
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "drum_music.wav"), "letsdrum_music", true, "Vfx_DRUM_Music", SoundType.Voice, new Color(0.25f, 0, 2f)); // Lets Drum Audios
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "drum_wannadrum.wav"), "letsdrum_wannadrum", false, "Vfx_DRUM_LetsDrum", SoundType.Voice, new Color(0.25f, 0, 2f));
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "drum_lovetodrum.wav"), "letsdrum_DRUM", true, "Vfx_DRUM_Annoyence", SoundType.Voice, new Color(0.25f, 0, 2f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "drum_music.wav"), "letsdrum_music", true, "Vfx_DRUM_Music", SoundType.Voice, new Color(0.3476f, 0, 0.6992f)); // Lets Drum Audios
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "drum_wannadrum.wav"), "letsdrum_wannadrum", false, "Vfx_DRUM_LetsDrum", SoundType.Voice, new Color(0.3476f, 0, 0.6992f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "drum_lovetodrum.wav"), "letsdrum_DRUM", true, "Vfx_DRUM_Annoyence", SoundType.Voice, new Color(0.3476f, 0, 0.6992f));
 
 			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "MGS_Throw.wav"), "MGS_magic", false, "Vfx_MGS_Magic", SoundType.Voice, new Color(0f, 0f, 0.0065f)); // Magical Student Throw Noise
 
@@ -1525,6 +1550,17 @@ namespace BB_MOD
 			AddSoundObject(Path.Combine(modPath, "Audio", "item", "gps_beep.wav"), "gpsBeepNoise", false, "Vfx_GPS_Beep", SoundType.Effect, new Color(153, 153, 153)); // The beep heard when enabling the Global Positional Displayer
 			AddSoundObject(Path.Combine(modPath, "Audio", "item", "prs_unbox.wav"), "presentUnboxing", false, "Vfx_PRS_Unbox", SoundType.Effect, new Color(77, 77, 255));
 			AddSoundObject(Path.Combine(modPath, "Audio", "item", "sd_screw.wav"), "screwing", true, "Vfx_SD_screw", SoundType.Effect, new Color(0.8984f, 0.8984f, 0f));
+
+			AddSpriteAsset(Path.Combine(modPath, "Textures", "item", "TrapOpen.png"), 45, "trapOpen"); // Bear Trap Assets
+			AddSpriteAsset(Path.Combine(modPath, "Textures", "item", "TrapClose.png"), 45, "trapClosed"); // Bear Trap Assets
+			AddSoundObject(Path.Combine(modPath, "Audio", "item", "trap_catch.wav"), "trapCatch", true, "Vfx_BT_catch", SoundType.Effect, Color.white);
+
+			AddSpriteAsset(Path.Combine(modPath, "Textures", "item", "Banana.png"), 25, "banana");
+			AddSoundObject(Path.Combine(modPath, "Audio", "item", "banana_slip.wav"), "bananaSlip", true, "Vfx_BN_slip", SoundType.Effect, Color.yellow);
+
+			AddSpriteAsset(Path.Combine(modPath, "Textures", "item", "beans_gumwad.png"), 25, "gum_ball");
+			AddSpriteAsset(Path.Combine(modPath, "Textures", "item", "gum_grounded.png"), 25, "gum_gummed");
+			AddSoundObject(Path.Combine(modPath, "Audio", "item", "gum_spit.wav"), "gumSpit", true, "Vfx_GUM_spit", SoundType.Effect, new Color(0.9960f, 0.5f, 0.8710f)); // Gum Spit for Gum Item duh
 
 			// Events Assets
 
@@ -1844,6 +1880,9 @@ namespace BB_MOD
 			CreateItem<ITM_GPS>("GPS_Name", "GPS_Desc", "gps.png", "gpsSmall.png", "GPS", 70, 20, 25, ContentUtilities.Array(Floors.F2, Floors.END), 245, ContentUtilities.Array(Floors.F2, Floors.F3), 30, includeOnPartyEvent: true, includeOnFieldTrip: true); // PixelGuy
 			CreateItem<ITM_Pencil>("PC_Name", "PC_Desc", "Pencil.png", "Pencil.png", "Pencil", 40, 22, 25, ContentUtilities.Array(Floors.F2, Floors.END), 40, ContentUtilities.Array(Floors.F2, Floors.F3), 30, includeOnFieldTrip: true); // FileName3 (Coded by PixelGuy)
 			CreateItem<ITM_ScrewDriver>("SD_Name", "SD_Desc", "screwDriver.png", "screwDriver.png", "ScrewDriver", 110, 25, 15, 110, ContentUtilities.AllFloors, 25, false, false, false, true);
+			CreateItem<ITM_Trap>("BT_Name", "BT_Desc", "TrapOpen.png", "trapSmall.png", "BearTrap", 90, 27, 20, ContentUtilities.Array(Floors.F2, Floors.END), 85, ContentUtilities.AllFloorsExcept(Floors.F1), 15, true, true, false);
+			CreateItem<ITM_Banana>("BN_Name", "BN_Desc", "Banana.png", "Banana.png", "Banana", 50, 15, 15, 25, ContentUtilities.AllFloors, 55);
+			CreateItem<ITM_Gum>("GUM_Name", "GUM_Desc", "gum.png", "gum.png", "Gum", 75, 25, 45, 65, ContentUtilities.AllFloors, 35);
 		}
 
 
@@ -1911,9 +1950,9 @@ namespace BB_MOD
 		}
 
 
-		private WeightedItemObject CreateItem<I>(string itemNameKey, string itemDescKey, string largeSpriteFile, string smallSpriteFile, string itemName, int shopPrice, int itemCost, int spawnWeight, Floors[] spawnFloors, int largerPixelsPerUnit, Floors[] shoppingFloors, int shoppingWeight, bool includeOnMysteryRoom = false, bool includeOnFieldTrip = false, bool includeOnPartyEvent = false) where I : Item
+		private WeightedItemObject CreateItem<I>(string itemNameKey, string itemDescKey, string largeSpriteFile, string smallSpriteFile, string itemName, int shopPrice, int itemCost, int spawnWeight, Floors[] spawnFloors, int largerPixelsPerUnit, Floors[] shoppingFloors, int shoppingWeight, bool includeOnMysteryRoom = false, bool includeOnFieldTrip = false, bool includeOnPartyEvent = false, bool unlockDoors = false) where I : Item
 		{
-			var item = CreateItem<I>(itemNameKey, itemDescKey, largeSpriteFile, smallSpriteFile, itemName, shopPrice, itemCost, spawnWeight, largerPixelsPerUnit, shoppingFloors, shoppingWeight, includeOnMysteryRoom, includeOnFieldTrip, includeOnPartyEvent);
+			var item = CreateItem<I>(itemNameKey, itemDescKey, largeSpriteFile, smallSpriteFile, itemName, shopPrice, itemCost, spawnWeight, largerPixelsPerUnit, shoppingFloors, shoppingWeight, includeOnMysteryRoom, includeOnFieldTrip, includeOnPartyEvent, unlockDoors);
 			allNewItems[allNewItems.Count - 1].OverwriteAvailableFloors(spawnFloors);
 			return item;
 		}
@@ -2335,7 +2374,7 @@ namespace BB_MOD
 			DuplicateSpecialRoom("BasketBallArea", ContentUtilities.Array(Floors.F3), 90);
 
 			CreateSpecialRoom<ForestArea, ForestAreaBuilder, ForestAreaFunction>("ForestArea", 65, true, ContentUtilities.Array(Floors.F2), new IntVector2(12, 12), new IntVector2(16, 16), acceptExits:false ,wallTex:GetAsset<Texture2D>("treeWall"), floorTex:ContentUtilities.FindResourceObject<PlaygroundSpecialRoom>().Room.floorTex); // PixelGuy
-			DuplicateSpecialRoom("ForestArea", ContentUtilities.Array(Floors.F3), 100);
+			DuplicateSpecialRoom("ForestArea", ContentUtilities.Array(Floors.F3), 110);
 
 
 		}
@@ -3410,6 +3449,8 @@ namespace BB_MOD
 			}
 			return events;
 		}
+
+		public ItemObject GetItemByEnum(Items item) => allNewItems.Find(x => x.Object.selection.itemType == item).Object.selection;
 
 		public List<WeightedItemObject> GetItems(Floors floor)
 		{

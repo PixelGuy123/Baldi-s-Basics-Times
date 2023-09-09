@@ -878,14 +878,18 @@ namespace BB_MOD.Extra
 				basketHoop = obj;
 				ContentUtilities.AddCollisionToSprite(obj.gameObject, new Vector3(4f, 15f, 4f), new Vector3(2f, 5f, -1f), new Vector3(4f, 15f, 4f)); // Creates a collider to the sprite
 			}
-
+			GameObject buffer;
 			if (ContentManager.instance.TryGetDecorationTransform(room.category, true, "basketLotsOfBalls", out Transform obj2))
 			{
+				buffer = ContentUtilities.AddBasicBuffer(obj2);
+				ContentUtilities.AddCollisionToSprite(buffer, new Vector3(3f, 5f, 3f), Vector3.zero);
 				basketBalls = obj2;
 			}
 
 			if (ContentManager.instance.TryGetDecorationTransform(room.category, true, "BaldiBall", out Transform obj3))
 			{
+				buffer = ContentUtilities.AddBasicBuffer(obj3);
+				ContentUtilities.AddCollisionToSprite(buffer, new Vector3(3f, 5f, 3f), Vector3.zero);
 				BALDIBBALL = obj3;
 			}
 
@@ -925,8 +929,6 @@ namespace BB_MOD.Extra
 
 			if (basketBalls)
 			{
-				var collider = basketBalls.gameObject.AddComponent<BoxCollider>(); // Temporary collision for it to avoid spawning too close to walls
-				collider.size = new Vector3(3f, 1f, 3f);
 				var spawner = this.CreateSpawner(ContentUtilities.Array(
 					new WeightedTransform() { selection = basketBalls, weight = 100 },
 					new WeightedTransform() { selection = BALDIBBALL, weight = 25 }
@@ -937,7 +939,7 @@ namespace BB_MOD.Extra
 
 				foreach (var balls in spawner.ObjectsSpawned)
 				{
-					Destroy(balls.GetComponent<BoxCollider>());
+					Destroy(balls.transform.Find("Buffer").gameObject);
 				}
 			}
 
