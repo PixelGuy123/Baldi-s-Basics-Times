@@ -6,18 +6,14 @@ using BB_MOD.NPCs;
 using HarmonyLib;
 using MTM101BaldAPI;
 using MTM101BaldAPI.AssetManager;
-using Rewired.UI.ControlMapper;
-using Steamworks;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using TMPro;
 using UnityEngine;
 using UnityEngine.AI;
-using UnityEngine.Analytics;
 using UnityEngine.Audio;
 using UnityEngine.Networking;
 using static BB_MOD.ContentAssets;
@@ -431,7 +427,7 @@ namespace BB_MOD
 		/// <param name="turn"></param>
 		public static void TurnSubtitles(bool turn)
 		{
-				forceDisableSubtitles = !turn;
+			forceDisableSubtitles = !turn;
 		}
 
 		public static void EndGamePhase() => isEndGame = true;
@@ -453,7 +449,25 @@ namespace BB_MOD
 
 		public static List<MathMachine> completedMachines = new List<MathMachine>();
 
-		public static List<IntVector2> elevatorTilePositions = new List<IntVector2>();
+		public static Dictionary<IntVector2, Direction> elevatorTilePositions = new Dictionary<IntVector2, Direction>();
+
+		public static Dictionary<IntVector2, Direction> ElevatorCenterPositions
+		{
+			get
+			{
+				var elevators = new Dictionary<IntVector2, Direction>();
+				int i = 0;
+				foreach (var pos in elevatorTilePositions)
+				{
+					if (i % 3 == 0) // Gets only the center based on the pattern
+					{
+						elevators.Add(pos.Key, pos.Value);
+					}
+					i++;
+				}
+				return elevators;
+			}
+		}
 
 		private static bool forceDisableSubtitles = false;
 
@@ -473,14 +487,14 @@ namespace BB_MOD
 				if (overlapFOVModifier)
 					return;
 
-				if (value < -60f)
+				if (value < minFOV)
 				{
-					playerFOV = -59f;
+					playerFOV = minFOV;
 					return;
 				}
-				if (value > 200f)
+				if (value > maxFOV)
 				{
-					playerFOV = 200f;
+					playerFOV = maxFOV;
 					return;
 				}
 				playerFOV = value;
@@ -489,14 +503,14 @@ namespace BB_MOD
 
 		private static void ForceSetFOV(float fov)
 		{
-			if (fov < -60f)
+			if (fov < minFOV)
 			{
-				playerFOV = -59f;
+				playerFOV = minFOV;
 				return;
 			}
-			if (fov > 200f)
+			if (fov > maxFOV)
 			{
-				playerFOV = 200f;
+				playerFOV = maxFOV;
 				return;
 			}
 			playerFOV = fov;
@@ -511,7 +525,7 @@ namespace BB_MOD
 			}
 			overlapFOVModifier = true;
 			ForceSetFOV(fovOffset);
-			while (fovOffset > 0.1f)
+			while (Mathf.Abs(fovOffset - endingFOV) > 0.1f)
 			{
 				fovOffset += (endingFOV - fovOffset) / divider;
 				ForceSetFOV(fovOffset);
@@ -522,7 +536,33 @@ namespace BB_MOD
 			yield break;
 		}
 
+		public static IEnumerator SmoothFOVSlide(float divider, float endingFOV = 0f)
+		{
+			float fovOffset = playerFOV;
+			if (fovOffset.Compare(endingFOV))
+			{
+				yield break;
+			}
+			overlapFOVModifier = true;
+			ForceSetFOV(fovOffset);
+			while (Mathf.Abs(fovOffset - endingFOV) > 0.1f)
+			{
+				fovOffset += (endingFOV - fovOffset) / divider;
+				ForceSetFOV(fovOffset);
+				yield return null;
+			}
+			ForceSetFOV(endingFOV);
+
+			overlapFOVModifier = false;
+
+			yield break;
+		}
+
 		private static float playerFOV = 0f;
+
+		const float maxFOV = 140f;
+
+		const float minFOV = -50f;
 
 		// Internal Generator Custom Variables >> Should not be touched in any means
 
@@ -690,10 +730,10 @@ namespace BB_MOD
 			}
 		}
 
-		public static Texture2D EmptyTexture(int width, int height)
+		public static Texture2D SolidTexture(int width, int height, Color color)
 		{
 			var emptyTex = new Texture2D(width, height);
-			var clearColor = Color.clear;
+			var clearColor = color;
 			Color[] transparentColors = new Color[width * height];
 
 			for (int i = 0; i < transparentColors.Length; i++)
@@ -706,6 +746,7 @@ namespace BB_MOD
 
 			return emptyTex;
 		}
+		public static Texture2D EmptyTexture(int width, int height) => SolidTexture(width, height, Color.clear);
 
 		/// <summary>
 		/// Create a basic textured cube object. <paramref name="textureFile"/> refers to png files inside "Textures" folder and must be 256x256 by default
@@ -853,7 +894,7 @@ namespace BB_MOD
 			spawner.SetRange(ec.RealRoomMin(room), ec.RealRoomMax(room));
 			spawner.transform.SetParent(room.transform);
 			AccessTools.Field(typeof(RandomObjectSpawner), "prefab").SetValue(spawner, array);
-			AccessTools.Field(typeof(RandomObjectSpawner), "rotate").SetValue(spawner, true);
+			AccessTools.Field(typeof(RandomObjectSpawner), "rotate").SetValue(spawner, rotateIncrement > 0f);
 			AccessTools.Field(typeof(RandomObjectSpawner), "rotationIncrement").SetValue(spawner, rotateIncrement);
 			AccessTools.Field(typeof(RandomObjectSpawner), "center").SetValue(spawner, center);
 			AccessTools.Field(typeof(RandomObjectSpawner), "minCount").SetValue(spawner, minAmount);
@@ -979,6 +1020,14 @@ namespace BB_MOD
 			AddNavigationCollisionToObject(obj, obstacleSize);
 		}
 
+
+		public static GameObject AddBasicBuffer(Transform tsf, string name = "Buffer")
+		{
+			var obj = new GameObject(name);
+			obj.transform.SetParent(tsf);
+			return obj;
+		}
+
 		public static void CoverAllWalls(this TileController tile)
 		{
 			foreach (Direction wall in tile.wallDirections)
@@ -1002,7 +1051,7 @@ namespace BB_MOD
 				wallArray[i] = wallTex;
 			}
 
-			CreateOpenAreaForSpecialRoom(roomCreator, room, wallArray, ceilingTex, height, hasRoof);
+			CreateOpenAreaForSpecialRoom(roomCreator, room, wallArray, ceilingTex, hasRoof);
 		}
 
 		/// <summary>
@@ -1013,13 +1062,11 @@ namespace BB_MOD
 		/// <param name="height"></param>
 		/// <param name="wallTex"></param>
 		/// <param name="ceilingTex"></param>
-		public static void CreateOpenAreaForSpecialRoom(this SpecialRoomCreator roomCreator, RoomController room, Texture2D[] wallTex, Texture2D ceilingTex, int height, bool hasRoof = true)
+		public static void CreateOpenAreaForSpecialRoom(this SpecialRoomCreator roomCreator, RoomController room, Texture2D[] wallTex, Texture2D ceilingTex, bool hasRoof = true)
 		{
 			try
 			{
-				// Some throwers
-				if (height <= 1) throw new ArgumentException($"Invalid height to open area for the special room \"{roomCreator.name}\", must be higher than 1");
-				if (wallTex.Length < height || wallTex.Length > height) throw new InvalidOperationException($"The wall tex array length doesn\'t match with the set height (length: {wallTex.Length} || height: {height})");
+				int height = wallTex.Length;
 
 				// End of throwers
 
@@ -1041,11 +1088,13 @@ namespace BB_MOD
 				Vector3 rotation = new Vector3(90f, 0f, 90f);
 				var dirs = new Direction[] { Direction.South, Direction.West, Direction.North, Direction.East }; // This order gives a reversed square sequence
 
-				var mat = UnityEngine.Object.Instantiate(FindResourceObjectContainingName<Material>("ActualTileFloor")); // Uses a material of single texture that doesn't use atlas
+				var ogMat = FindResourceObjectContainingName<Material>("ActualTileFloor");
+				Material mat; // Uses a material of single texture that doesn't use atlas
 				int curSize = room.size.z;
 
 				for (int y = 0; y < height; y++) // Creates the extra walls
 				{
+					mat = UnityEngine.Object.Instantiate(ogMat); // Always instance it to use a different material for each one
 					mat.mainTexture = wallTex[y];
 					for (int z = 0; z < 4; z++)
 					{
@@ -1067,6 +1116,7 @@ namespace BB_MOD
 
 				if (!hasRoof) return;
 
+				mat = UnityEngine.Object.Instantiate(ogMat);
 				mat.mainTexture = ceilingTex;
 				ogPos.y -= 5f;
 				sidePos = ogPos;
@@ -1088,8 +1138,65 @@ namespace BB_MOD
 				Debug.LogWarning($"Failed to create an area for the special room: {roomCreator.name}");
 			}
 		}
+		/// <summary>
+		/// Creates a Moveable Audio Source (like Conveyor's noise), the <paramref name="minDistance"/> and <paramref name="maxDistance"/> is the volume
+		/// </summary>
+		/// <param name="box"></param>
+		/// <param name="minDistance"></param>
+		/// <param name="maxDistance"></param>
+		/// <returns></returns>
+		public static VA_AudioSource CreateMoveableAudioSource(this SpecialRoomCreator room, VA_Box box, out AudioManager manager, float minDistance = 20f, float maxDistance = 40f)
+		{
+			var party = FindResourceObject<PartyEvent>();
+			var source = UnityEngine.Object.Instantiate((VA_AudioSource)AccessTools.Field(typeof(PartyEvent), "partyAudioPre").GetValue(party));
+			source.Shapes.Add(box);
+
+			source.name = "CustomAudioSource";
+
+			var audioSource = source.GetComponent<AudioSource>();
+			audioSource.minDistance = minDistance;
+			audioSource.maxDistance = maxDistance;
+
+			if (source.GetComponent<AudioManager>())
+			{
+				manager = source.GetComponent<AudioManager>();
+			}
+			else
+			{
+				manager = source.gameObject.AddComponent<AudioManager>();
+			}
+
+			manager.audioDevice = audioSource;
+			source.transform.SetParent(room.transform);
+
+			return source;
+		}
+		/// <summary>
+		/// Creates a VA_Box that is used by VA_AudioSource to create a moveable audio source
+		/// </summary>
+		/// <param name="center"></param>
+		/// <param name="boxSize"></param>
+		/// <param name="collider"></param>
+		/// <returns></returns>
+		public static VA_Box CreateSourceBox(Vector3 center, Vector3 boxSize, BoxCollider collider = null, Transform parent = null)
+		{
+			var box = new GameObject("VA_Box").AddComponent<VA_Box>();
+
+			if (parent)
+			{
+				box.transform.SetParent(parent);
+			}
+
+			box.Center = center;
+			box.Size = boxSize;
+			box.BoxCollider = collider;
+			
+			return box;
+		}
 
 		public static T[] Array<T>(params T[] vals) => vals;
+
+		public static WeightedTransform GetWeightedTransform(Transform transform, int weight) => new WeightedTransform() { selection = transform, weight = weight };
 
 
 		public static IntVector2 Right
@@ -1156,6 +1263,8 @@ namespace BB_MOD
 		public const float LightHeight = 9f;
 		public static RoomCategory SpecialRoomEnum => instance.customRoomEnums[0];
 
+		public static RoomCategory[] SpecialRoomEnum_Array => Array(instance.customRoomEnums[0]);
+
 		public static Door SwingingDoor => FindResourceObjectWithName<SwingDoor>("Door_Swinging"); // MUST Return the swinging door
 
 		public const float TileOffset = 4.9f;
@@ -1163,6 +1272,12 @@ namespace BB_MOD
 		public const int defaultBillboardLayer = 9;
 
 		public const int defaultIgnoreRaycastLayer = 2;
+		/// <summary>
+		/// Returns an instanced gumOverlay
+		/// </summary>
+		public static GameObject GumOverlay => UnityEngine.Object.Instantiate(FindResourceObject<Gum>().transform.Find("GumOverlay").gameObject);
+
+		public const string BillBoardMaskTextureName = "Texture2D_0ebe02d67a8a4acb8705243366af66aa";
 	}
 
 	/// <summary>
@@ -1242,12 +1357,16 @@ namespace BB_MOD
 		/// <param name="soundType"></param>
 		/// <param name="subtitleColor"></param>
 		/// <param name="subLength"></param>
-		public static void AddSoundObject(string path, string assetName, bool useDifferentMethod, string subtitleKey, SoundType soundType, Color subtitleColor, float subLength = -1f)
+		public static void AddSoundObject(string path, string assetName, bool useDifferentMethod, string subtitleKey, SoundType soundType, Color subtitleColor, float subLength = -1f, bool hasSubtitle = true)
 		{
 			CheckParameters(path, assetName);
 
 			if (!soundObjects.ContainsKey(assetName))
-				soundObjects.Add(assetName, ObjectCreatorHandlers.CreateSoundObject(useDifferentMethod ? ContentUtilities.GetAudioClip(path) : AssetManager.AudioClipFromFile(path), subtitleKey, soundType, subtitleColor, subLength));
+			{
+				var sound = ObjectCreatorHandlers.CreateSoundObject(useDifferentMethod ? ContentUtilities.GetAudioClip(path) : AssetManager.AudioClipFromFile(path), subtitleKey, soundType, subtitleColor, subLength);
+				sound.subtitle = hasSubtitle;
+				soundObjects.Add(assetName, sound);
+			}
 		}
 		/// <summary>
 		/// Creates an LoopingSoundObject by multiple AudioClips from <paramref name="paths"/> and adds into the database, the <paramref name="useDifferentMethod"/> is a temporary parameter, highly recommended if you are going to make looping audios
@@ -1395,6 +1514,9 @@ namespace BB_MOD
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "StunningStars.png"), 25, "StunningStars");
 			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "stunly_stun.wav"), "stunly_stun", true, "Vfx_Stunly_Stun", SoundType.Effect, new Color(0.5f, 0f, 0f)); // Stunly's Stun
 
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "leapy_jump.wav"), "leapy_leap", true, "Vfx_Leapy_Leap", SoundType.Effect, new Color(0f, 0.3984f, 0f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "leapy_stomp.wav"), "leapy_stomp", true, "Vfx_Leapy_Stomp", SoundType.Effect, new Color(0f, 0.3984f, 0f));
+
 
 
 			// ITEM Assets
@@ -1412,7 +1534,13 @@ namespace BB_MOD
 
 			// Special Room Assets
 
+			AddTextureAsset(Path.Combine(modPath, "Textures", "schooltext", "treeWall.png"), "treeWall"); // Forest tree wall
+			AddTextureAsset(Path.Combine(modPath, "Textures", "schooltext", "nightSky.png"), "nightSky"); // Forest sky
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "Crickets.wav"), "cricketsAmbience", true, "", SoundType.Effect, Color.white, hasSubtitle:false);
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "fire.wav"), "fireNoises", true, "Vfx_FireNoise", SoundType.Effect, new Color(0.9960f, 0.6367f, 0.1015f)); // Fire Noises
+			AddSpriteAsset(Path.Combine(modPath, "Textures", "darkOverlay.png"), 1, "darkOverlay");
 
+			AddTextureAsset(Path.Combine(modPath, "Textures", "schooltext", "wallFadeInBlack.png"), "fadeWall"); // For cafeteria
 
 			// Misc Assets
 
@@ -1465,6 +1593,11 @@ namespace BB_MOD
 
 			AddTextureAsset(Path.Combine(modPath, "Textures", "officeDoor_Open.png"), "officeDoorOpen"); // Office door textures
 			AddTextureAsset(Path.Combine(modPath, "Textures", "officeDoor_Closed.png"), "officeDoorClosed");
+
+			AddSpriteAsset(Path.Combine(modPath, "Textures", "grounded.png"), 35, "groundedEffect"); // Grounded Effect from Leapy
+
+			AddSpriteAsset(Path.Combine(modPath, "Textures", "ExitSignSprite.png"), 35, "exitSign"); // Exit Sign
+			AddTextureAsset(Path.Combine(modPath, "Textures", "ExitSign_LightMap.png"), "exitSign_lightMap"); // Exit Sign LightMap
 
 		}
 
@@ -1530,6 +1663,7 @@ namespace BB_MOD
 			CreateNPC<Robocam>("Robocam", 65, ContentUtilities.Array("robocam.png"), false, false, 10f, 0f, "pri_robocam.png", "PST_Robocam_Name", "PST_Robocam_Name_Desc", ContentUtilities.Array(Floors.F3, Floors.END), enterRooms: false); // JDvideosPR
 			CreateNPC<PencilBoy>("Pencil Boy", 50, ContentUtilities.Array("pb_angry.png", "pb_angrySpot.png", "pb_happy.png"), false, false, 65f, -1.75f, "pri_pb.png", "PST_PB_Name", "PST_PB_Desc", ContentUtilities.Array(Floors.F2, Floors.END), ContentUtilities.Array(RoomCategory.Hall, RoomCategory.Test), enterRooms: false, capsuleRadius: 2.6f);
 			CreateNPC<Stunly>("Stunly", 60, ContentUtilities.Array("Stunly.png"), false, false, 34, -1.35f, "pri_stunly.png", "PST_Stunly_Name", "PST_Stunly_Desc", ContentUtilities.AllFloors, enterRooms: false);
+			CreateNPC<Leapy>("Leapy", 75, ContentUtilities.Array("leapy_1.png", "leapy_2.png", "leapy_3.png"), false, false, 25f, -1f, "pri_leapy.png", "PST_Leapy_Name", "PST_Leapy_Desc", ContentUtilities.AllFloorsExcept(Floors.F1), false, false, true, true);
 
 
 			// Replacement NPCs here
@@ -1687,6 +1821,7 @@ namespace BB_MOD
 		// includeOnMysteryRoom (Optional, disabled by default) > if item should be included on mystery room (uses the same weight used for world spawn), doesn't matter the floor, if there's mystery room, it'll spawn
 		// includeOnFieldTrip (Optional, disabled by default) > if item should be included on Field Trip (uses the same weight used for world spawn), ^^ same applies for field trips
 		// includeOnParty (Optional, disabled by default) > If item is also included on Party Event (uses the same weight used for world spawn), ^^ same applies
+		// unlockDoors (Optional, disabled by default) >  If the item is able of unlocking doors (Requires a script to work, use the ScrewDriver code as reference!)
 
 		public void SetupItemWeights()
 		{
@@ -1708,11 +1843,11 @@ namespace BB_MOD
 			CreateItem<ITM_Bell>("BEL_Name", "BEL_Desc", "bell.png", "bell.png", "Bell", 30, 25, 25, ContentUtilities.AllFloors, 125, ContentUtilities.AllFloors, 45, includeOnFieldTrip: true); // PixelGuy
 			CreateItem<ITM_GPS>("GPS_Name", "GPS_Desc", "gps.png", "gpsSmall.png", "GPS", 70, 20, 25, ContentUtilities.Array(Floors.F2, Floors.END), 245, ContentUtilities.Array(Floors.F2, Floors.F3), 30, includeOnPartyEvent: true, includeOnFieldTrip: true); // PixelGuy
 			CreateItem<ITM_Pencil>("PC_Name", "PC_Desc", "Pencil.png", "Pencil.png", "Pencil", 40, 22, 25, ContentUtilities.Array(Floors.F2, Floors.END), 40, ContentUtilities.Array(Floors.F2, Floors.F3), 30, includeOnFieldTrip: true); // FileName3 (Coded by PixelGuy)
-			CreateItem<ITM_ScrewDriver>("SD_Name", "SD_Desc", "screwDriver.png", "screwDriver.png", "ScrewDriver", 110, 25, 15, 110, ContentUtilities.AllFloors, 25, false, false, false);
+			CreateItem<ITM_ScrewDriver>("SD_Name", "SD_Desc", "screwDriver.png", "screwDriver.png", "ScrewDriver", 110, 25, 15, 110, ContentUtilities.AllFloors, 25, false, false, false, true);
 		}
 
 
-		private WeightedItemObject CreateItem<I>(string itemNameKey, string itemDescKey, string largeSpriteFile, string smallSpriteFile, string itemName, int shopPrice, int itemCost, int spawnWeight, int largerPixelsPerUnit, Floors[] shoppingFloors, int shoppingWeight, bool includeOnMysteryRoom = false, bool includeOnFieldTrip = false, bool includeOnPartyEvent = false) where I : Item
+		private WeightedItemObject CreateItem<I>(string itemNameKey, string itemDescKey, string largeSpriteFile, string smallSpriteFile, string itemName, int shopPrice, int itemCost, int spawnWeight, int largerPixelsPerUnit, Floors[] shoppingFloors, int shoppingWeight, bool includeOnMysteryRoom = false, bool includeOnFieldTrip = false, bool includeOnPartyEvent = false, bool unlockDoors = false) where I : Item
 		{
 			Items cEnum = EnumExtensions.ExtendEnum<Items>(itemName);
 			customItemEnums.Add(cEnum);
@@ -1733,6 +1868,11 @@ namespace BB_MOD
 				};
 				allItems.Add(weightedItem);
 				allNewItems.Add(new GenericObjectHolder<WeightedItemObject>(weightedItem, ContentUtilities.AllFloors));
+
+				if (unlockDoors)
+				{
+					unlockDoorItems.Add(cEnum);
+				}
 
 				if (shoppingFloors.Length > 0 && (shoppingFloors[0] != Floors.None || shoppingFloors.Length > 1))
 				{
@@ -2180,7 +2320,7 @@ namespace BB_MOD
 
 			CreateRoomBuilder<ComputerRoomBuilder>("ComputerBuilder", 50, "computerRoom", ContentUtilities.AllFloors, true, ContentUtilities.Array(CreateRawSchoolTexture("computerRoomCeiling.png")), 
 				ContentUtilities.Array(CreateRawSchoolTexture("computerRoomWall.png")), 
-				ContentUtilities.Array(CreateRawSchoolTexture("computerRoomFloor.png")), "computerDoorOpened.png", "computerDoorClosed.png", new Color(0f, 0f, 0.5976f));
+				ContentUtilities.Array(CreateRawSchoolTexture("computerRoomFloor.png")), "computerDoorOpened.png", "computerDoorClosed.png", new Color(0f, 0f, 0.5976f)); // PixelGuy
 
 			// Note: if you want to create custom lights for the room, you can always use CreateExtraDecoration_Raw, and if you want to keep the original, you include ContentUtilities.LightPrefab on the array
 
@@ -2191,8 +2331,11 @@ namespace BB_MOD
 
 			// New Special Rooms
 
-			CreateSpecialRoom<BasketBallArea, BasketBallBuilder, RuleFreeZone>("BasketBallArea", 75, true, ContentUtilities.Array(Floors.F2, Floors.END), new IntVector2(11, 15), new IntVector2(13, 19), stickToHalls:false, wallTex: GetAsset<Texture2D>("defaultSaloonTexture"), ceilingTex: GetAsset<Texture2D>("defaultSaloonTexture"), floorTex: CreateRawTexture("basketBallArea_Floor.png"));
+			CreateSpecialRoom<BasketBallArea, BasketBallBuilder, RuleFreeZone>("BasketBallArea", 75, true, ContentUtilities.Array(Floors.F2, Floors.END), new IntVector2(11, 15), new IntVector2(13, 19), stickToHalls:false, wallTex: GetAsset<Texture2D>("defaultSaloonTexture"), ceilingTex: GetAsset<Texture2D>("defaultSaloonTexture"), floorTex: CreateRawTexture("basketBallArea_Floor.png")); // PixelGuy
 			DuplicateSpecialRoom("BasketBallArea", ContentUtilities.Array(Floors.F3), 90);
+
+			CreateSpecialRoom<ForestArea, ForestAreaBuilder, ForestAreaFunction>("ForestArea", 65, true, ContentUtilities.Array(Floors.F2), new IntVector2(12, 12), new IntVector2(16, 16), acceptExits:false ,wallTex:GetAsset<Texture2D>("treeWall"), floorTex:ContentUtilities.FindResourceObject<PlaygroundSpecialRoom>().Room.floorTex); // PixelGuy
+			DuplicateSpecialRoom("ForestArea", ContentUtilities.Array(Floors.F3), 100);
 
 
 		}
@@ -2532,14 +2675,19 @@ namespace BB_MOD
 			if (!addedExtraContent[1]) // Extra Decorations Here
 			{
 				addedExtraContent[1] = true;
-				CreateExtraDecoration("lightBulb.png", 100, 50, ContentUtilities.Array(RoomCategory.Faculty), true);
+				CreateExtraDecoration("lightBulb.png", 100, 50, ContentUtilities.Array(RoomCategory.Faculty), true, true, Vector3.up * 6.7f);
+				CreateExtraDecoration("lamp.png", 1, 20, ContentUtilities.Array(RoomCategory.Faculty), true, true, Vector3.up * 3.8f);
 				CreateExtraDecoration("sink.png", 1, 60, ContentUtilities.Array(customRoomEnums.GetRoomByName("bathroom")), true, true);
-				CreateExtraDecoration("basketHoop.png", 1, 6, ContentUtilities.Array(ContentUtilities.SpecialRoomEnum), true, true, new Vector3(0f, 15f, 0f));
-				CreateExtraDecoration("basketLotsOfBalls.png", 1, 60, ContentUtilities.Array(ContentUtilities.SpecialRoomEnum), true, true, new Vector3(0f, 3f, 0f));
-				CreateExtraDecoration("BaldiBall.png", 1, 25, ContentUtilities.Array(ContentUtilities.SpecialRoomEnum), true, true, new Vector3(0f, 1.9f, 0f));
+				CreateExtraDecoration("basketHoop.png", 1, 6, ContentUtilities.SpecialRoomEnum_Array, true, true, Vector3.up * 15f);
+				CreateExtraDecoration("basketLotsOfBalls.png", 1, 60, ContentUtilities.SpecialRoomEnum_Array, true, true, Vector3.up * 3f);
+				CreateExtraDecoration("BaldiBall.png", 1, 25, ContentUtilities.SpecialRoomEnum_Array, true, true, Vector3.up * 1.9f);
 				CreateExtraDecoration("computer.png", 1, 25, ContentUtilities.Array(customRoomEnums.GetRoomByName("computerRoom")), true);
+				CreateExtraDecoration("forestTree.png", 1, 6, ContentUtilities.SpecialRoomEnum_Array, true, true, Vector3.up * 14.5f);
+				CreateExtraDecoration("forestTreeEasterEgg.png", 1, 6, ContentUtilities.SpecialRoomEnum_Array, true, true, Vector3.up * 14.5f); // Easter Egg!
+				CreateExtraDecoration("FireStatic.png", 1, 19, ContentUtilities.SpecialRoomEnum_Array, true, true, Vector3.up * 2f);
+				CreateExtraDecoration("cafeHangingLight.png", 1, 18, ContentUtilities.SpecialRoomEnum_Array, true, true, Vector3.up * 40f);
 
-				CreateExtraDecoration<FireObject>("SchoolFire.png", 1, 25, ContentUtilities.Array(RoomCategory.Null), true, true, new Vector3(0f, -2.4f, 0f));
+				CreateExtraDecoration<FireObject>("SchoolFire.png", 1, 25, ContentUtilities.Array(RoomCategory.Null), true, true, Vector3.down * 2.4f);
 			}
 			if (!addedExtraContent[2]) // Extra Schoolhouse Themes here
 			{
@@ -2557,15 +2705,18 @@ namespace BB_MOD
 				addedExtraContent[4] = true;
 				PrefabInstance.CreateInstance<GumInWall>();
 				PrefabInstance.CreateInstance<StunningStars>();
+				PrefabInstance.CreateInstance<GroundedEffect>();
 				PrefabInstance.CreateInstance<StunlyEffect>();
 				PrefabInstance.CreateInstance<PlayerModel>();
 				PrefabInstance.CreateInstance<FogMachine>();
+				PrefabInstance.CreateInstance<ExitSign>();
 			}
 			if (!addedExtraContent[5])
 			{
 				addedExtraContent[5] = true;
 				CreateMapIcon("FogMachine", "fogMachineIcon.png", 22f);
 				CreateMapIcon("mathNotebookIcon", "hiddenNotebookIcon.png", 22f);
+				CreateMapIcon("buttonIcon", "buttonIcon.png", 22f);
 			}
 		}
 
@@ -3643,6 +3794,10 @@ namespace BB_MOD
 		private bool usedFieldTrip = false;
 
 		private readonly List<WeightedItemObject> allItems = new List<WeightedItemObject>();
+
+		readonly List<Items> unlockDoorItems = new List<Items>() { Items.DetentionKey };
+
+		public bool CanItemUnlockDoors(Items item) => unlockDoorItems.Contains(item);
 
 		public bool DebugMode { get; set; }
 

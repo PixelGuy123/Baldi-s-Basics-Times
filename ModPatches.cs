@@ -6,7 +6,6 @@ using BB_MOD.NPCs;
 using HarmonyLib;
 using MonoMod.Utils;
 using MTM101BaldAPI;
-using Steamworks;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -406,7 +405,7 @@ namespace BB_MOD
 			for (int i = 0; i < __instance.Ec.Npcs.Count; i++) // Destroy any other Baldi available
 			{
 				var npc = __instance.Ec.Npcs[i];
-				if (npc.Character != Character.Baldi & (!npc.GetComponent<CustomNPCData>() || npc.GetComponent<CustomNPCData>().isReplacing != Character.Baldi)) 
+				if (npc.Character != Character.Baldi & (!npc.GetComponent<CustomNPCData>() || npc.GetComponent<CustomNPCData>().isReplacing != Character.Baldi))
 				{
 					npc.Despawn();
 					i--;
@@ -428,12 +427,12 @@ namespace BB_MOD
 			var colPosition = new Vector3(elevator.ColliderGroup.transform.position.x, 5f, elevator.ColliderGroup.transform.position.z);
 
 			var mod = new MovementModifier(Vector3.zero, 0f);
-				 
+
 			foreach (var player in __instance.Ec.Players)
 			{
 				if (player)
 				{
-					player.transform.position = colPosition - elevator.dir.ToVector3() * 10f;
+					player.transform.position = colPosition - (elevator.dir.ToVector3() * 10f);
 					player.GetComponent<ActivityModifier>().moveMods.Add(mod);
 					player.GetComponent<ItemManager>().enabled = false;
 				}
@@ -441,12 +440,12 @@ namespace BB_MOD
 
 			var camera = new GameObject("LeCutsceneCamera", typeof(Camera)).GetComponent<Camera>();
 			camera.transform.position = colPosition;
-			camera.transform.LookAt(colPosition - elevator.dir.ToVector3() * 10f);
+			camera.transform.LookAt(colPosition - (elevator.dir.ToVector3() * 10f));
 			camera.enabled = true;
 
 			if (leBaldi != null)
 			{
-				leBaldi.transform.position = colPosition + elevator.dir.ToVector3() * 10f;
+				leBaldi.transform.position = colPosition + (elevator.dir.ToVector3() * 10f);
 			}
 
 			__instance.StartCoroutine(CutsceneMoment(camera, elevator.transform.Find("Elevator").GetComponent<ElevatorDoor>(), __instance, leBaldi.transform ?? null));
@@ -503,8 +502,8 @@ namespace BB_MOD
 			Shader.SetGlobalColor("_SkyboxColor", Color.black);
 			Singleton<MusicManager>.Instance.StopFile();
 
-			cam.transform.position = ogPos + Vector3.up * 20f;
-			cam.transform.LookAt(cam.transform.position + Vector3.up * 5f);
+			cam.transform.position = ogPos + (Vector3.up * 20f);
+			cam.transform.LookAt(cam.transform.position + (Vector3.up * 5f));
 
 			time = 4f;
 
@@ -528,7 +527,7 @@ namespace BB_MOD
 	internal class AddIconsPatch
 	{
 		private static bool Prefix(Map map, EnvironmentController ___ec) // Add your custom icons here
-			// Replacing the old ApplyMap to add a custom item inside the notebook thing
+																		 // Replacing the old ApplyMap to add a custom item inside the notebook thing
 		{
 			Transform GetMapGridPosition(Transform pos) => map.tiles[IntVector2.GetGridPosition(pos.transform.position).x, IntVector2.GetGridPosition(pos.transform.position).z].transform; // If you want to add into a map tile, just use this directly
 
@@ -542,7 +541,7 @@ namespace BB_MOD
 			foreach (Notebook notebook in ___ec.notebooks)
 			{
 				if (notebook.activity && !notebook.activity.GetType().Equals(typeof(NoActivity))) // If it is not a NoActivity Notebook
-					ContentManager.instance.AddMapIcon("mathNotebookIcon", GetMapGridPosition(notebook.transform));
+					notebook.icon = ContentManager.instance.AddMapIcon("mathNotebookIcon", GetMapGridPosition(notebook.transform));
 				else
 					notebook.icon = UnityEngine.Object.Instantiate(notebook.iconPre, GetMapGridPosition(notebook.transform));
 			}
@@ -550,9 +549,17 @@ namespace BB_MOD
 			{
 				pickup.icon = UnityEngine.Object.Instantiate(pickup.iconPre, GetMapGridPosition(pickup.transform));
 			}
+
+			// Custom Stuff Here
+
 			foreach (var machine in UnityEngine.Object.FindObjectsOfType<FogMachine>())
 			{
 				ContentManager.instance.AddMapIcon("FogMachine", GetMapGridPosition(machine.transform));
+			}
+
+			foreach (var button in UnityEngine.Object.FindObjectsOfType<GameButton>())
+			{
+				ContentManager.instance.AddMapIcon("buttonIcon", GetMapGridPosition(button.transform));
 			}
 
 
@@ -650,12 +657,20 @@ namespace BB_MOD
 				}
 			}
 
+			foreach (var elevator in EnvironmentExtraVariables.ElevatorCenterPositions)
+			{
+				var pos = ec.TileFromPos(elevator.Key + elevator.Value.ToIntVector2()).transform.position;
+				var exit = PrefabInstance.SpawnPrefab<ExitSign>(new Vector3(pos.x, 9f, pos.z), default, ec);
+			}
+
 			ContentManager.instance.TurnDecorations(false);
 
 			if (ContentManager.instance.DebugMode)
 			{
 				__instance.CompleteMapOnReady();
 			}
+
+
 		}
 
 		[HarmonyPatch("Initialize")]
@@ -666,7 +681,8 @@ namespace BB_MOD
 			{
 				if (player) // If the player even exist, since it is an array
 				{
-					PrefabInstance.SpawnPrefab<PlayerModel>(player.transform, __instance.Ec, offset: Vector3.down * 1.2f);
+					var playerModel = PrefabInstance.SpawnPrefab<PlayerModel>(player.transform, __instance.Ec, offset: Vector3.down * 1.2f);
+					playerModel.SetPlayer(player);
 				}
 			}
 		}
@@ -1090,10 +1106,10 @@ namespace BB_MOD
 	{
 		private static void Prefix(IntVector2 pos, Direction dir)
 		{
-			EnvironmentExtraVariables.elevatorTilePositions.Add(pos);
+			EnvironmentExtraVariables.elevatorTilePositions.Add(pos, dir);
 			foreach (var direction in dir.PerpendicularList())
 			{
-				EnvironmentExtraVariables.elevatorTilePositions.Add(pos + direction.ToIntVector2()); // Adds the 2 tiles that are missed from the method
+				EnvironmentExtraVariables.elevatorTilePositions.Add(pos + direction.ToIntVector2(), dir); // Adds the 2 tiles that are missed from the method
 			}
 		}
 	}
@@ -1406,10 +1422,12 @@ namespace BB_MOD
 		}
 	}
 
-	[HarmonyPatch(typeof(CafeteriaCreator), "AfterUpdatingTiles")]
-	internal class WindowsForCafeteria
+	[HarmonyPatch(typeof(CafeteriaCreator))]
+	internal class CafeteriaPatches
 	{
-		private static void Prefix(CafeteriaCreator __instance, System.Random ___cRNG, LevelBuilder ___lg)
+		[HarmonyPatch("AfterUpdatingTiles")]
+		[HarmonyPrefix]
+		private static void Windows(CafeteriaCreator __instance, System.Random ___cRNG, LevelBuilder ___lg)
 		{
 			var window = ContentManager.instance.AllWindows[0].Object;
 			window.windowPre.gameObject.SetActive(true);
@@ -1421,6 +1439,50 @@ namespace BB_MOD
 				}
 			}
 			window.windowPre.gameObject.SetActive(false);
+		}
+
+		[HarmonyPatch("Initialize")]
+		[HarmonyPrefix]
+		private static void EmptyTexture(RoomController ___room, System.Random ___cRNG)
+		{
+			if (___cRNG.NextDouble() > 0.5d) // If the bigroom is not highCeiling thing, uhm, no.
+			{
+				return;
+			}
+
+			___room.ceilingTex = ContentUtilities.EmptyTexture(256, 256);
+			___room.lightPre = null;
+		}
+
+		[HarmonyPatch("AfterUpdatingTiles")]
+		[HarmonyPostfix]
+		private static void AddHigherCeilings(CafeteriaCreator __instance, RoomController ___room)
+		{
+
+			if (___room.lightPre) return; // if there is still decoration, this hasn't been affected
+
+			// Add high ceiling for cafeteria
+			Texture2D wall = ___room.wallTex;
+
+			__instance.CreateOpenAreaForSpecialRoom(___room, ContentUtilities.Array(wall, wall, wall, wall, wall, wall, ContentAssets.GetAsset<Texture2D>("fadeWall")), ContentUtilities.SolidTexture(256, 256, Color.black));
+
+			__instance.FixElevatorTiles(UnityEngine.Object.Instantiate(ContentManager.Prefabs.specialRoomPre.Room.ceilingTex));
+
+			if (ContentManager.instance.TryGetDecorationTransform(___room.category, true, "cafeHangingLight", out var light))
+			{
+				IntVector2 cornerOffset = ___room.size.x > ___room.size.z ? new IntVector2(2, 0) : new IntVector2(0, 2);
+				var hangingLight = UnityEngine.Object.Instantiate(light);
+				hangingLight.SetParent(__instance.transform);
+				var tile = ___room.ec.TileFromPos(___room.ec.TileFromPos(___room.ec.RealRoomMid(___room)).position - cornerOffset);
+				hangingLight.position = tile.transform.position;
+
+				hangingLight = UnityEngine.Object.Instantiate(light);
+				hangingLight.SetParent(__instance.transform);
+				tile = ___room.ec.TileFromPos(___room.ec.TileFromPos(___room.ec.RealRoomMid(___room)).position + cornerOffset);
+				hangingLight.position = tile.transform.position; // Adds hanging lights twice
+			}
+
+
 		}
 	}
 
@@ -1440,7 +1502,7 @@ namespace BB_MOD
 		[HarmonyPostfix]
 		private static void CenterRareItem(System.Random ___cRNG, RoomController ___room)
 		{
-			___room.ec.CreateItem(___room, WeightedItemObject.ControlledRandomSelection(ContentManager.instance.GlobalItems.ToArray(), ___cRNG), ___room.ec.RealRoomMid(___room) + Vector3.up * 5f);
+			___room.ec.CreateItem(___room, WeightedItemObject.ControlledRandomSelection(ContentManager.instance.GlobalItems.ToArray(), ___cRNG), ___room.ec.RealRoomMid(___room) + (Vector3.up * 5f));
 		}
 	}
 
@@ -1830,15 +1892,15 @@ namespace BB_MOD
 					var instruction = enumerator.Current;
 					if (!foundMethod && instruction.Is(OpCodes.Call, hide))
 						foundMethod = true;
-					
+
 					else if (!addedContent && foundMethod)
 					{
 						addedContent = true;
 						yield return Transpilers.EmitDelegate<Action>(() =>
 						{
-							var pos = other.transform.position - gum.transform.forward * 0.2f;
+							var pos = other.transform.position - (gum.transform.forward * 0.2f);
 							pos.y = 4.7f;
-							var backPos = pos + gum.transform.forward * 0.02f;
+							var backPos = pos + (gum.transform.forward * 0.02f);
 
 							var back = PrefabInstance.SpawnPrefab<GumInWall>(backPos, Quaternion.Inverse(gum.transform.rotation), gum.ec, false);
 							back.SetAsBackObject(PrefabInstance.SpawnPrefab<GumInWall>(pos, Quaternion.Inverse(gum.transform.rotation), gum.ec).gameObject);
@@ -1854,6 +1916,22 @@ namespace BB_MOD
 		private static Gum gum;
 
 		private static Collider other;
+	}
+
+	[HarmonyPatch(typeof(SubtitleController), "PositionSub")]
+
+	internal class SubtitleFix // Basically changes the sub distance based on the FOV change
+	{
+		private static void Prefix(SubtitleController __instance, out float __state)
+		{
+			__state = __instance.distance;
+			__instance.distance = Mathf.Max(1f, __instance.distance - (EnvironmentExtraVariables.PlayerAdditionalFOV * 2f));
+		}
+
+		private static void Postfix(SubtitleController __instance, float __state)
+		{
+			__instance.distance = __state;
+		}
 	}
 
 

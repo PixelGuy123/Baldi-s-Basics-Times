@@ -1,5 +1,6 @@
 ﻿using BB_MOD.ExtraComponents;
 using HarmonyLib;
+using UnityEngine.UI;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -34,21 +35,35 @@ namespace BB_MOD.Extra
 		{
 			if (rng.NextDouble() < 0.5d) return;
 
+			WeightedTransform[] lights = new WeightedTransform[2];
+
 			if (!ContentManager.instance.TryGetDecorationTransform(RoomCategory.Faculty, true, "lightBulb", out Transform obj))
 			{
 				Debug.LogWarning("Failed to spawn light bulbs because the transform hasn\'t been found");
 				return;
 			}
 
+			lights[0] = ContentUtilities.GetWeightedTransform(obj, 50);
+
+			if (!ContentManager.instance.TryGetDecorationTransform(RoomCategory.Faculty, true, "lamp", out Transform obj2))
+			{
+				Debug.LogWarning("Failed to spawn lamps because the transform hasn\'t been found");
+				return;
+			}
+
+			lights[1] = ContentUtilities.GetWeightedTransform(obj2, 50);
+
 			var tiles = room.GetTilesOfShape(ContentUtilities.Array(TileShape.Corner).ToList(), true);
+
+			var lamp = WeightedTransform.ControlledRandomSelection(lights, rng);
 
 			if (tiles.Count > 0)
 			{
 				foreach (var tile in tiles)
 				{
-					var newObj = UnityEngine.Object.Instantiate(obj, tile.transform);
-					newObj.transform.localPosition = new Vector3(0f, 6.7f, 0f);
-					EnvironmentExtraVariables.CreateLighting(tile, Mathf.Clamp(lg.ld.standardLightStrength - 8, 5, lg.ld.standardLightStrength)); // If you want to create a structure that makes lighting, USE THIS METHOD!!
+					var newObj = UnityEngine.Object.Instantiate(lamp, tile.transform);
+					ContentUtilities.AddCollisionToSprite(newObj.gameObject, new Vector3(2.5f, 10f, 2.5f), Vector3.zero, new Vector3(2.5f, 10f, 2.5f));
+					EnvironmentExtraVariables.CreateLighting(tile, Mathf.Max(5, lg.ld.standardLightStrength - 8)); // If you want to create a structure that makes lighting, USE THIS METHOD!!
 				}
 			}
 
@@ -562,7 +577,7 @@ namespace BB_MOD.Extra
 
 				foreach (var tilePos in EnvironmentExtraVariables.elevatorTilePositions)
 				{
-					var tile = room.Room.ec.TileFromPos(tilePos);
+					var tile = room.Room.ec.TileFromPos(tilePos.Key);
 					if (ReferenceEquals(tile.room, room.Room))
 						tiles.Add(tile); // Adds the tile to the list to replace the ceiling later
 					
@@ -644,6 +659,215 @@ namespace BB_MOD.Extra
 		readonly Door doorPre = ContentUtilities.SwingingDoor;
 	}
 
+	public class ForestArea : SpecialRoomCreator // Use the BasketBallArea classes as reference for your own special room
+	{
+		public override void Initialize(EnvironmentController ec)
+		{
+			base.Initialize(ec);
+			lg.AddSpecialRoomToExpand(room);
+
+		}
+		public override void BeforeUpdatingTiles()
+		{
+			base.BeforeUpdatingTiles();
+			SetDoorsForOppositeSides(doorPre);
+			for (int i = 0; i < 2; i++)
+			{
+				lg.AddRandomDoor(room, doorPre, false, true);
+			}
+
+			room.acceptsPosters = false; // Nuh uh
+
+		}
+		public override void AfterUpdatingTiles()
+		{
+			base.AfterUpdatingTiles();
+
+			this.CreateOpenAreaForSpecialRoom(room, ContentAssets.GetAsset<Texture2D>("nightSky"), ContentAssets.GetAsset<Texture2D>("nightSky"), 6); // Creates the beautiful huge walls of the special room (only for higherCeilings!)
+
+			lg.IntegrateRoomBuilder(room, GetComponent<ForestAreaBuilder>());
+
+			room.functionObject.GetComponent<ForestAreaFunction>().Initialize(room);
+
+			var box = room.functionObject.AddComponent<VA_Box>();
+			box.BoxCollider = room.functionObject.GetComponent<BoxCollider>();
+			this.CreateMoveableAudioSource(box, out var audio, 30f, 50f);
+			audio.QueueAudio(ContentAssets.GetAsset<SoundObject>("cricketsAmbience"));
+			audio.SetLoop(true);
+			
+
+		}
+
+		readonly Door doorPre = ContentUtilities.SwingingDoor;
+	}
+
+	public class ForestAreaBuilder : RoomBuilder
+	{
+		public override void Setup(LevelBuilder lg, RoomController room, System.Random rng)
+		{
+			base.Setup(lg, room, rng);
+			GameObject buffer;
+			if (ContentManager.instance.TryGetDecorationTransform(room.category, true, "forestTree", out var obj))
+			{
+				buffer = ContentUtilities.AddBasicBuffer(obj);
+				ContentUtilities.AddCollisionToSprite(buffer, new Vector3(2.8f, 10f, 2.8f), Vector3.zero, new Vector3(3.7f, 10f, 3.7f));
+				forestTrees[0] = new WeightedTransform() { selection = obj, weight = 100 };
+			}
+
+			if (ContentManager.instance.TryGetDecorationTransform(room.category, true, "forestTreeEasterEgg", out var obj2))
+			{
+				buffer = ContentUtilities.AddBasicBuffer(obj2);
+				ContentUtilities.AddCollisionToSprite(buffer, new Vector3(2.8f, 10f, 2.8f), Vector3.zero, new Vector3(3.7f, 10f, 3.7f));
+				forestTrees[1] = new WeightedTransform() { selection = obj2, weight = 1};
+			}
+
+			if (ContentManager.instance.TryGetDecorationTransform(room.category, true, "FireStatic", out var fire))
+			{
+				ContentUtilities.AddCollisionToSprite(fire.gameObject, new Vector3(3.5f, 10f, 3.5f), Vector3.zero, new Vector3(4.5f, 10f, 4.5f));
+				this.fire = fire;
+			}
+
+		}
+
+		public override void Build()
+		{
+			base.Build();
+			builder = Builder();
+			StartCoroutine(builder);
+		}
+
+		private IEnumerator Builder()
+		{
+			if (forestTrees.Any(x => !x.selection))
+			{
+				building = false;
+				Debug.LogWarning("Forest Tree failed to spawn trees because they don\'t exist");
+				yield break;
+			}
+
+			List<TileController> reservedTiles = new List<TileController>();
+
+			Vector3 firePos = room.ec.RealRoomMid(room);
+			TileController fireTile = room.ec.TileFromPos(firePos);
+
+			reservedTiles.Add(fireTile);
+
+			var fireObj = this.PlaceObject_RawPos(fire, firePos, default, true, false, true);
+			ContentUtilities.CreateMusicManager(fireObj.gameObject, 20f, 40f, ContentAssets.GetAsset<SoundObject>("fireNoises"));
+
+			room.ec.GenerateLight(fireTile, new Color(0.9960f, 0.5f, 0f), Mathf.Max(3, lg.ld.standardLightStrength / 2)); // Orange Color
+
+			int max = Mathf.Max(room.size.x, room.size.z) * 3;
+
+			var spawner = this.CreateSpawner(forestTrees, Mathf.Max(1, max - 1), max, false, 0);
+
+			spawner.StartSpawner(room.ec, cRNG); // Always remember of putting this, bruuuh
+
+			while (!spawner.Finished) { yield return null; }
+
+			DarkRoom(reservedTiles);
+
+			building = false;
+			yield break;
+		}
+
+		private void DarkRoom(List<TileController> reservedTiles)
+		{
+			foreach (var tile in room.GetNewTileList())
+			{
+				if (!reservedTiles.Contains(tile))
+					room.ec.GenerateLight(tile, lg.ld.standardLightColor, 0); // No light, just a dark room
+			}
+		}
+
+		readonly WeightedTransform[] forestTrees = new WeightedTransform[2];
+		Transform fire;
+	}
+
+	public class ForestAreaFunction : RoomFunction
+	{
+		public override void Initialize(RoomController room)
+		{
+			base.Initialize(room);
+			active = true;
+			overlay = ContentUtilities.GumOverlay; // Gets the gum overlay
+			overlay.name = "Forest_DarkOverlay";
+			overlay.transform.SetParent(transform);
+			overlay.transform.Find("Image").GetComponent<Image>().sprite = ContentAssets.GetAsset<Sprite>("darkOverlay");
+		}
+
+		private void OnTriggerEnter(Collider other)
+		{
+			if (other.tag == "NPC" && other.isTrigger)
+			{
+				var looker = other.GetComponent<Looker>();
+				if (looker)
+				{
+					npcs.Add(looker, looker.distance);
+					looker.distance = 20f;
+				}
+			}
+			if (other.tag == "Player")
+			{
+				playerManagers.Add(other.GetComponent<PlayerManager>());
+			}
+		}
+
+		private void OnTriggerExit(Collider other)
+		{
+			if (other.tag == "NPC" && other.isTrigger)
+			{
+				var looker = other.GetComponent<Looker>();
+				if (looker && npcs.ContainsKey(looker))
+				{
+					looker.distance = npcs[looker];
+					npcs.Remove(looker);
+				}
+			}
+			if (other.tag == "Player")
+			{
+				playerManagers.Remove(other.GetComponent<PlayerManager>());
+			}
+		}
+
+		private void Update()
+		{
+			if (!active) return;
+
+			bool overlayEnabled = playerManagers.Count > 0;
+			overlay.SetActive(overlayEnabled);
+			
+
+			if (!overlayEnabled && hasPlayers)
+			{
+				if (sequence != null) StopCoroutine(sequence);
+				sequence = StartCoroutine(EnvironmentExtraVariables.SmoothFOVSlide(4f)); // Starts from current fov and goes for there
+			}
+			else if (overlayEnabled)
+			{
+				if (!EnvironmentExtraVariables.SmoothFOVActive)
+				{
+					sequence = StartCoroutine(EnvironmentExtraVariables.SmoothFOVSlide(4f, -30f));
+				}
+			}
+
+			hasPlayers = overlayEnabled;
+		}
+
+		GameObject overlay;
+
+		readonly Dictionary<Looker, float> npcs = new Dictionary<Looker, float>();
+
+		Coroutine sequence = null;
+
+		bool active = false;
+
+		bool hasPlayers = false;
+
+		readonly List<PlayerManager> playerManagers = new List<PlayerManager>();
+	}
+
+
 	public class BasketBallBuilder : RoomBuilder
 	{
 		public override void Setup(LevelBuilder lg, RoomController room, System.Random rng)
@@ -684,18 +908,18 @@ namespace BB_MOD.Extra
 				if (room.size.x > room.size.z)
 				{
 					pos.x += ((room.size.x / 2) - 3) * 10f;
-					_ = this.PlaceObject_RawPos(basketHoop, pos, default);
+					this.PlaceObject_RawPos(basketHoop, pos, default);
 					pos = ogPos;
 					pos.x -= ((room.size.x / 2) - 3) * 10f;
-					_ = this.PlaceObject_RawPos(basketHoop, pos, default);
+					this.PlaceObject_RawPos(basketHoop, pos, default);
 				}
 				else
 				{
 					pos.z += ((room.size.z / 2) - 3) * 10f;
-					_ = this.PlaceObject_RawPos(basketHoop, pos, default);
+					this.PlaceObject_RawPos(basketHoop, pos, default);
 					pos = ogPos;
 					pos.z -= ((room.size.z / 2) - 3) * 10f;
-					_ = this.PlaceObject_RawPos(basketHoop, pos, default);
+					this.PlaceObject_RawPos(basketHoop, pos, default);
 				}
 			}
 
@@ -706,7 +930,7 @@ namespace BB_MOD.Extra
 				var spawner = this.CreateSpawner(ContentUtilities.Array(
 					new WeightedTransform() { selection = basketBalls, weight = 100 },
 					new WeightedTransform() { selection = BALDIBBALL, weight = 25 }
-					), 5, 7, false);
+					), 5, 7, false, 0f);
 				spawner.StartSpawner(lg.Ec, cRNG);
 
 				while (!spawner.Finished) { yield return null; }

@@ -7,7 +7,7 @@
 	{"key":"PST_HapH_Desc","value":"Nothing's more celebratory than Happy Holidays itself! Always celebrating holidays and coming with surprises!"},
 	{"key":"Vfx_SI_BaldiHere","value":"Hey Baldi (Hey Baldi)! Over Here (Here)!"},
 	{"key":"PST_SI_Name","value":"Super Intendent"},
-	{"key":"PST_SI_Desc","value":"If <b>they</b> see any student sneaking out of their classes, <b>They</b> will always alert Professor Baldi about the unfortunate student!"},
+	{"key":"PST_SI_Desc","value":"\"No unfortune students are safe from <b>our</b> watch, no one is leaving the classrooms earlier!\""},
 	{"key":"Vfx_Forgotten_Warning","value":"*Weird bell-like sound*"},
 	{"key":"PST_Forgotten_Name","value":"Forgotten"},
 	{"key":"PST_Forgotten_Name_Desc","value":"If it sees you, try not to get grabbed if it' is going in your direction."},
@@ -45,5 +45,9 @@
 	{"key":"Vfx_Cumulo_PAH","value":"*PAH*"},
 	{"key":"PST_Stunly_Name","value":"Stunly"},
 	{"key":"PST_Stunly_Desc","value":"A snail-like person with such ugliness that is enough for a <b>stunning effect</b>, he abuses of it and stuns anyone!"},
-	{"key":"Vfx_Stunly_Stun","value":"*Stun*"}
+	{"key":"Vfx_Stunly_Stun","value":"*Stun*"},
+	{"key":"PST_Leapy_Name","value":"Leapy"},
+	{"key":"PST_Leapy_Desc","value":"Such a happy frog, always leaping and <b>stomping</b> the unfortune ones. What a poor vision frog!"},
+	{"key":"Vfx_Leapy_Stomp","value":"*Stomping*"},
+	{"key":"Vfx_Leapy_Leap","value":"*Leaping*"}
 ]}

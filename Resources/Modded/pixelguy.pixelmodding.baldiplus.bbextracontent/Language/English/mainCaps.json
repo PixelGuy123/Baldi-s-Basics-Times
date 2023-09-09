@@ -1,5 +1,6 @@
 {"items":[
 	{"key":"Vfx_VentNoise","value":"*Vent Noises*"},
 	{"key":"Vfx_GumSplash","value":"*Splash!*"},
-	{"key":"Vfx_WindowHit","value":"*Hit*"}
+	{"key":"Vfx_WindowHit","value":"*Hit*"},
+	{"key":"Vfx_FireNoise","value":"*Fire Burning*"}
 ]}

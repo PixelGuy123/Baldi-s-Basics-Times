@@ -16,7 +16,7 @@ namespace BB_MOD.NPCs
 			// Audio Setup
 
 			audMan = GetComponent<AudioManager>(); // Highly important to set the audMan to the component, so the field refers to it
-			// aud_SomeAudioField = ObjectCreatorHandlers.CreateSoundObject(ContentAssets.GetAsset<AudioClip>("AudioAssetName"), "Vfx_AudioSubtitle", SoundType.Voice, new Color(43,42,51)); // Creates an SoundObject for the npc
+			// aud_SomeAudioField = ContentAssets.GetAsset<SoundObject>("soundName"); // Gets a SoundObject for the npc
 
 		}
 

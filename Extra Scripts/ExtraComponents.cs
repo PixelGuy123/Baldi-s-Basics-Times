@@ -40,7 +40,7 @@ namespace BB_MOD.ExtraComponents
 
 		public Func<Items, StandardDoor, bool> ItemFittingFunction { get => itemFitFunc; }
 
-		private Func<Items, StandardDoor, bool> itemFitFunc = new Func<Items, StandardDoor, bool>((_, _2) => true);
+		private Func<Items, StandardDoor, bool> itemFitFunc = new Func<Items, StandardDoor, bool>((item, _2) => ContentManager.instance.CanItemUnlockDoors(item));
 	}
 
 	public class FireObject : MonoBehaviour
@@ -201,7 +201,7 @@ namespace BB_MOD.ExtraComponents
 
 		public override void Setup()
 		{
-			CreateSprite(ContentUtilities.DefaultBillBoardMaterial, ContentAssets.GetAsset<Sprite>("StunningStars"));
+			CreateSprite(ContentUtilities.DefaultBillBoardMaterial, ContentAssets.GetAsset<Sprite>(TextureName));
 		}
 
 		public void SetupTarget(Transform target)
@@ -219,12 +219,34 @@ namespace BB_MOD.ExtraComponents
 				return;
 			}
 
-			transform.localPosition = new Vector3(0f, height, 0f);
+			transform.localPosition = new Vector3(0f, Height, 0f);
 		}
 
 		Transform targetParent = null;
 
-		const float height = 4f;
+		protected virtual float Height => 4f;
+
+		protected virtual string TextureName => "StunningStars";
+	}
+
+	public class GroundedEffect : StunningStars
+	{
+		public override string NameForIt => "GroundedEffect";
+		protected override string TextureName => "groundedEffect";
+		protected override float Height => -2.8f;
+	}
+
+	public class ExitSign : PrefabInstance
+	{
+		public override string NameForIt => "ExitSign";
+
+		public override void Setup()
+		{
+			var mat = ContentUtilities.DefaultBillBoardMaterial;
+			mat.SetTexture(ContentUtilities.BillBoardMaskTextureName, ContentAssets.GetAsset<Texture2D>("exitSign_lightMap"));
+
+			CreateSprite(mat, ContentAssets.GetAsset<Sprite>("exitSign"));
+		}
 	}
 
 	public class FogMachine : PrefabInstance, IItemAcceptor
@@ -337,6 +359,17 @@ namespace BB_MOD.ExtraComponents
 		{
 			CreateSprite(ContentUtilities.DefaultBillBoardMaterial, ContentAssets.GetAsset<Sprite>("playerVisual"));
 		}
+
+		public void SetPlayer(PlayerManager player) => targetPlayer = player;
+
+		private void Update()
+		{
+			if (!targetPlayer || !AvailableRender) return;
+
+			rendererSprite.enabled = !targetPlayer.hidden;
+		}
+
+		private PlayerManager targetPlayer;
 
 	}
 
