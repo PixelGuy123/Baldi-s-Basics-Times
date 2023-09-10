@@ -1,7 +1,7 @@
 ---
 name: Bug report
 about: Create a report about an NPC, Item or event you suspect to be giving errors
-title: ''
+title: "[BUG REPORT] - (title)"
 labels: ''
 assignees: ''
 
