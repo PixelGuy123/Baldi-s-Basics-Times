@@ -39,7 +39,7 @@ namespace BB_MOD.ExtraItems
 				hasCatched = true;
 				if (component && !component.moveMods.Contains(mod))
 				{
-					mod.movementAddend = other.transform.forward * speed;
+					mod.movementAddend = Singleton<CoreGameManager>.Instance.GetCamera(other.GetComponent<PlayerManager>().playerNumber).transform.forward * speed;
 					component.moveMods.Add(mod);
 				}
 				StartCoroutine(Timer(component));

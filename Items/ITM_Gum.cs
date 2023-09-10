@@ -40,7 +40,7 @@ namespace BB_MOD.ExtraItems
 			ItemSoundHolder.CreateSoundHolder(pm.transform, aud_spit, false, 70, 71);
 
 			transform.position = pm.transform.position;
-			transform.rotation = pm.transform.rotation;
+			transform.rotation = Singleton<CoreGameManager>.Instance.GetCamera(pm.playerNumber).transform.rotation; // Must always be by the camera, so backward shooting works aswell
 
 			return true;
 		}
