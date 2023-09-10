@@ -64,6 +64,7 @@ namespace BB_MOD.Builders
 					var newObj = UnityEngine.Object.Instantiate(lamp, tile.transform);
 					ContentUtilities.AddCollisionToSprite(newObj.gameObject, new Vector3(2.5f, 10f, 2.5f), Vector3.zero, new Vector3(2.5f, 10f, 2.5f));
 					EnvironmentExtraVariables.CreateLighting(tile, Mathf.Max(5, lg.ld.standardLightStrength - 8)); // If you want to create a structure that makes lighting, USE THIS METHOD!!
+					tile.containsObject = true;
 				}
 			}
 

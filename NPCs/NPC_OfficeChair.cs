@@ -50,7 +50,7 @@ namespace BB_MOD.NPCs
 		{
 			base.Initialize();
 			// Get all corners of every single faculty room
-			ec.rooms.Where(x => x.category == RoomCategory.Office || x.category == RoomCategory.Faculty).Do(x => AvailableFacultyTiles.AddRange(x.GetNewTileList().Where(s => s.wallDirections.Length >= 2)));
+			ec.rooms.Where(x => x.category == RoomCategory.Office || x.category == RoomCategory.Faculty).Do(x => AvailableFacultyTiles.AddRange(x.AllTilesNoGarbage(false, false).Where(s => s.wallDirections.Length >= 2)));
 
 		}
 
