@@ -503,8 +503,8 @@ namespace BB_MOD_Patches
 			Shader.SetGlobalColor("_SkyboxColor", Color.black);
 			Singleton<MusicManager>.Instance.StopFile();
 
-			cam.transform.position = ogPos + (Vector3.up * 20f);
-			cam.transform.LookAt(cam.transform.position + (Vector3.up * 5f));
+			cam.transform.position = ogPos + (Vector3.down * 20f);
+			cam.transform.LookAt(cam.transform.position + (Vector3.down * 5f));
 
 			time = 4f;
 
@@ -814,8 +814,7 @@ namespace BB_MOD_Patches
 				__instance.StartCoroutine(EnvironmentExtraVariables.SmoothFOVSequence(75f, 14f, EnvironmentExtraVariables.PlayerAdditionalFOV));
 				for (int i = 0; i < ___ec.CurrentEventTypes.Count; i++)
 				{
-					___ec.GetEvent(___ec.CurrentEventTypes[i]).End();
-					i--;
+					AccessTools.Field(typeof(RandomEvent), "remainingTime").SetValue(___ec.GetEvent(___ec.CurrentEventTypes[i]), 0f);
 				}
 				___ec.StopAllCoroutines();
 
