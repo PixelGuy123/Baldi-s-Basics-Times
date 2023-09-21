@@ -6,6 +6,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using BB_MOD_Patches;
 
 namespace BB_MOD.Builders
 {
@@ -594,16 +595,15 @@ namespace BB_MOD.Builders
 
 				// Makes a new texture atlas for the tiles
 
-				Color[] array;
-				array = MaterialModifier.GetColorsForTileTexture(room.Room.floorTex, 256);
-				textureAtlas.SetPixels(0, 0, 256, 256, array);
-				array = MaterialModifier.GetColorsForTileTexture(room.Room.wallTex, 256);
-				textureAtlas.SetPixels(256, 256, 256, 256, array);
-				array = MaterialModifier.GetColorsForTileTexture(ceilingTex, 256);
-				textureAtlas.SetPixels(0, 256, 256, 256, array);
+				textureAtlas.SetPixels(0, 0, 256, 256, MaterialModifier.GetColorsForTileTexture(room.Room.floorTex, 256));
+				textureAtlas.SetPixels(256, 256, 256, 256, MaterialModifier.GetColorsForTileTexture(room.Room.wallTex, 256));
+				textureAtlas.SetPixels(0, 256, 256, 256, MaterialModifier.GetColorsForTileTexture(ceilingTex, 256));
 				textureAtlas.Apply();
+
 				var baseMat = UnityEngine.Object.Instantiate(room.Room.baseMat); // Instantiates the material used by room
 				baseMat.SetTexture("_MainTex", textureAtlas);
+
+				room.Room.posterMat = baseMat; // Fixes the ceiling thing... but posters won't appear in elevator walls anymore.... at least for *most* special custom rooms
 
 				foreach (var tile in tiles)
 				{
@@ -626,6 +626,7 @@ namespace BB_MOD.Builders
 		public override void Initialize(EnvironmentController ec)
 		{
 			base.Initialize(ec);
+			AfterGen.QueueElevatorFix(this, ContentAssets.GetAsset<Texture2D>("defaultSaloonTexture")); // Put this in Initialize() if your special room has higher ceilings (if you want your elevator to have ceiling aswell)
 			lg.AddSpecialRoomToExpand(room);
 			
 		}
@@ -643,8 +644,6 @@ namespace BB_MOD.Builders
 		{
 			base.AfterUpdatingTiles();
 
-			this.FixElevatorTiles(ContentAssets.GetAsset<Texture2D>("defaultSaloonTexture")); // Note, this MUST BE HERE ON "AfterUpdatingTiles()" IF YOUR ROOM HAS HIGHER CEILING, SO ELEVATOR SUPPORTS THE TEXTURE FROM IT
-
 			this.CreateOpenAreaForSpecialRoom(room, ContentAssets.GetAsset<Texture2D>("defaultSaloonTexture"), ContentAssets.GetAsset<Texture2D>("defaultSaloonTexture"), 5); // Creates the beautiful huge walls of the special room (only for higherCeilings!)
 
 			lg.IntegrateRoomBuilder(room, GetComponent<BasketBallBuilder>());
@@ -653,6 +652,7 @@ namespace BB_MOD.Builders
 			{
 				room.ec.GenerateLight(tile, lg.ld.standardLightColor, lg.ld.standardLightStrength);
 			}
+
 
 			room.functionObject.GetComponent<RuleFreeZone>().Initialize(room);
 		}

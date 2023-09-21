@@ -7,6 +7,6 @@
 
         public const string name = "Baldi\'s Basics Times";
 
-        public const string version = "1.0.0";
+        public const string version = "1.0.0.1";
     }
 }

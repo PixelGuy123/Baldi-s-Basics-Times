@@ -519,29 +519,9 @@ namespace BB_MOD
 			playerFOV = fov;
 		}
 
-		public static IEnumerator SmoothFOVSequence(float offset, float divider, float endingFOV = 0f)
+		public static IEnumerator SmoothFOVSlide(float divider, float endingFOV = 0f, float offset = 0f)
 		{
-			float fovOffset = endingFOV + offset;
-			if (fovOffset.Compare(endingFOV))
-			{
-				yield break;
-			}
-			overlapFOVModifier = true;
-			ForceSetFOV(fovOffset);
-			while (Mathf.Abs(fovOffset - endingFOV) > 0.1f)
-			{
-				fovOffset += (endingFOV - fovOffset) / divider;
-				ForceSetFOV(fovOffset);
-				yield return null;
-			}
-			ForceSetFOV(fovOffset);
-			overlapFOVModifier = false;
-			yield break;
-		}
-
-		public static IEnumerator SmoothFOVSlide(float divider, float endingFOV = 0f)
-		{
-			float fovOffset = playerFOV;
+			float fovOffset = playerFOV + offset;
 			if (fovOffset.Compare(endingFOV))
 			{
 				yield break;
@@ -1626,6 +1606,7 @@ namespace BB_MOD
 
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "fogMachineFront_ON.png"), 25, "fogMachine_ON"); // Fog Machine
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "fogMachineFront_OFF.png"), 25, "fogMachine_OFF");
+			AddSpriteAsset(Path.Combine(modPath, "Textures", "fogMachineFront_NoEv.png"), 25, "fogMachine_NOEV");
 
 			AddTextureAsset(Path.Combine(modPath, "Textures", "officeDoor_Open.png"), "officeDoorOpen"); // Office door textures
 			AddTextureAsset(Path.Combine(modPath, "Textures", "officeDoor_Closed.png"), "officeDoorClosed");
@@ -1634,6 +1615,11 @@ namespace BB_MOD
 
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "ExitSignSprite.png"), 35, "exitSign"); // Exit Sign
 			AddTextureAsset(Path.Combine(modPath, "Textures", "ExitSign_LightMap.png"), "exitSign_lightMap"); // Exit Sign LightMap
+
+			for (int i = 1; i <= 2; i++)
+			{
+				AddSpriteAsset(Path.Combine(modPath, "Textures", $"balDance{i}.png"), 30, $"balDance{i}");
+			}
 
 		}
 
@@ -2213,8 +2199,8 @@ namespace BB_MOD
 			CreateSchoolTexture("woodenFloor.png", ContentUtilities.Array(Floors.F3), SchoolTextType.Floor, existOnFaculties:true, roomsOnly:true); // tsu
 			CreateSchoolTexture("whiteClassFloor.png", ContentUtilities.AllFloors, SchoolTextType.Floor, existOnClassrooms:true, roomsOnly:true); // tsu
 			CreateSchoolTexture("sanduCeiling.png", ContentUtilities.Array(Floors.F3), SchoolTextType.Ceiling); // tsu
-			CreateSchoolTexture("sequencedWall_1.png", ContentUtilities.Array(Floors.F1, Floors.F2), SchoolTextType.Wall, existOnClassrooms:true); // tsu
-			CreateSchoolTexture("sequencedWall_2.png", ContentUtilities.Array(Floors.F1, Floors.F2), SchoolTextType.Wall, existOnClassrooms: true); // tsu
+			CreateSchoolTexture("sequencedWall_1.png", ContentUtilities.Array(Floors.F1, Floors.F2), SchoolTextType.Wall, existOnClassrooms:true, weight:80); // tsu
+			CreateSchoolTexture("sequencedWall_2.png", ContentUtilities.Array(Floors.F1, Floors.F2), SchoolTextType.Wall, existOnClassrooms: true, weight: 80); // tsu
 
 		}
 
@@ -2739,6 +2725,10 @@ namespace BB_MOD
 				CreateCustomWindow("ClassicWindow.png", "ClassicWindow_Broken.png", "ClassicWindow_Mask.png", false, false, false, Array.Empty<RoomCategory>(), Array.Empty<Floors>());
 				CreateCustomWindow("MetalWindow.png", string.Empty, string.Empty, true, false, true, ContentUtilities.Array(RoomCategory.Office), ContentUtilities.AllFloors);
 			}
+			SetupBasicPrefabs();
+		}
+		public void SetupBasicPrefabs()
+		{
 			if (!addedExtraContent[4]) // Here you can put interesting prefabs that are saved on DontDestroyOnLoad, they are useful for npcs, since they are only loaded once and has a simple Execute() method and can evict further gameplay lag since they are generated in the generation state
 			{
 				addedExtraContent[4] = true;
@@ -2749,6 +2739,7 @@ namespace BB_MOD
 				PrefabInstance.CreateInstance<PlayerModel>();
 				PrefabInstance.CreateInstance<FogMachine>();
 				PrefabInstance.CreateInstance<ExitSign>();
+				PrefabInstance.CreateInstance<BaldiGoesAway>();
 			}
 			if (!addedExtraContent[5])
 			{

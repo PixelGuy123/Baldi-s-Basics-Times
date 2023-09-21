@@ -38,19 +38,21 @@ namespace BB_MOD.NPCs
 			sprites = GetComponent<CustomNPCData>().sprites;
 
 			// Makes chair move to the best corner
-			isMovingToRoom = true;
+			
 			audMan.SetLoop(true);
 			audMan.QueueAudio(aud_ChairRoll);
 
 			var tiles = CollectFacultyTiles(ec.TileFromPos(gameObject.transform.position).room, true);
+			isMovingToRoom = true;
 			targetRoomTile = tiles.ElementAt(Random.Range(0, tiles.Count()));
+			
 
 		}
 		public override void Initialize()
 		{
 			base.Initialize();
 			// Get all corners of every single faculty room
-			ec.rooms.Where(x => x.category == RoomCategory.Office || x.category == RoomCategory.Faculty).Do(x => AvailableFacultyTiles.AddRange(x.AllTilesNoGarbage(false, false).Where(s => s.wallDirections.Length >= 2)));
+			ec.rooms.Where(x => x.category == RoomCategory.Office || x.category == RoomCategory.Faculty).Do(x => AvailableFacultyTiles.AddRange(x.AllTilesNoGarbage(false, false).Where(s => s.shape == TileShape.Single || s.shape == TileShape.Corner)));
 
 		}
 

@@ -25,8 +25,6 @@ namespace BB_MOD_Patches
 	{
 		private static void Prefix(LevelGenerator __instance)
 		{
-			EnvironmentExtraVariables.ResetVariables();
-
 			var sceneObject = Singleton<CoreGameManager>.Instance.sceneObject;
 			Floors currentFloor = sceneObject.levelTitle.ToFloorIdentifier();
 			bool accessedFloor = ContentManager.instance.HasAccessedFloor(currentFloor);
@@ -256,6 +254,15 @@ namespace BB_MOD_Patches
 		}
 	}
 
+	[HarmonyPatch(typeof(GameInitializer), "Initialize")]
+	internal class ResettingVariables
+	{
+		private static void Prefix()
+		{
+			EnvironmentExtraVariables.ResetVariables();
+		}
+	}
+
 	[HarmonyPatch(typeof(LevelGenerator), "Generate", MethodType.Enumerator)]
 	internal class ChangeSomeGenParameters // Second Main Patch that does some special changes inside the generator
 	{
@@ -398,7 +405,7 @@ namespace BB_MOD_Patches
 		[HarmonyPrefix]
 		private static bool LeCutsceneFinale(MainGameManager __instance)
 		{
-			if (EnvironmentExtraVariables.currentFloor != Floors.F3 || !AfterGen.finalElevator)
+			if (EnvironmentExtraVariables.currentFloor != Floors.F3 || !AfterGen.finalElevator || Singleton<CoreGameManager>.Instance.currentMode != Mode.Main) // Fixes the Free mode softlocking
 				return true;
 
 			GameObject leBaldi = null; // Puts le Baldi in front of elevator for final scene
@@ -579,7 +586,7 @@ namespace BB_MOD_Patches
 
 
 	[HarmonyPatch(typeof(BaseGameManager))]
-	internal class AfterGen
+	public class AfterGen
 	{
 		[HarmonyPatch("EnterExit")]
 		[HarmonyPrefix]
@@ -602,17 +609,25 @@ namespace BB_MOD_Patches
 		[HarmonyPrefix]
 		private static void PostGen(int ___levelNo, BaseGameManager __instance)
 		{
+
+			if (ContentManager.instance.DebugMode) // Important stuff before the generation stuff lol
+			{
+				__instance.CompleteMapOnReady();
+			}
 			var ec = __instance.Ec;
-			var rng = EnvironmentExtraVariables.lb.controlledRNG;
-
-			var currentFloor = EnvironmentExtraVariables.currentFloor;
-
-			ContentManager.instance.LockAccessedFloor(currentFloor); // On the end of the patch, so the features aren't applied twice
+			
 
 			StandardDoor_ExtraFunctions.AssignDoorsToTheFunction(ec);
 			WindowExtraFields.AssignWindowsToTheFunction();
 
 			ContentManager.instance.DestroyTempDecorations(); // Destroys left garbage
+			var currentFloor = EnvironmentExtraVariables.currentFloor;
+
+			ContentManager.instance.TurnDecorations(false);
+
+			if (currentFloor == Floors.None) return; // Fixes the crash on challenge, since it's an invalid floor
+			var rng = EnvironmentExtraVariables.lb.controlledRNG;
+			ContentManager.instance.LockAccessedFloor(currentFloor); // On the end of the patch, so the features aren't applied twice
 
 			var cafeterias = UnityEngine.Object.FindObjectsOfType<CafeteriaCreator>();
 			WeightedItemObject[] cafeItems = new WeightedItemObject[]
@@ -671,18 +686,24 @@ namespace BB_MOD_Patches
 			foreach (var elevator in EnvironmentExtraVariables.ElevatorCenterPositions)
 			{
 				var pos = ec.TileFromPos(elevator.Key + elevator.Value.ToIntVector2()).transform.position;
-				var exit = PrefabInstance.SpawnPrefab<ExitSign>(new Vector3(pos.x, 9f, pos.z), default, ec);
+				PrefabInstance.SpawnPrefab<ExitSign>(new Vector3(pos.x, 9f, pos.z), default, ec);
 			}
 
-			ContentManager.instance.TurnDecorations(false);
-
-			if (ContentManager.instance.DebugMode)
+			foreach (var room in queuedElevatorsForFixing)
 			{
-				__instance.CompleteMapOnReady();
+				room.Key.FixElevatorTiles(room.Value);
 			}
-
+			queuedElevatorsForFixing.Clear();
 
 		}
+
+		public static void QueueElevatorFix(SpecialRoomCreator room, Texture2D ceiling)
+		{
+			if (!queuedElevatorsForFixing.ContainsKey(room))
+				queuedElevatorsForFixing.Add(room, ceiling);
+		}
+
+		private static Dictionary<SpecialRoomCreator, Texture2D> queuedElevatorsForFixing = new Dictionary<SpecialRoomCreator, Texture2D>();
 
 		[HarmonyPatch("Initialize")]
 		[HarmonyPostfix]
@@ -715,7 +736,7 @@ namespace BB_MOD_Patches
 					Singleton<MusicManager>.Instance.QueueFile(ContentAssets.GetAsset<LoopingSoundObject>("SchoolEscapeSong"), true); // Normal Escape Sequence
 					sound = ContentAssets.GetAsset<SoundObject>("BaldiNormalEscape");
 				}
-				__instance.StartCoroutine(EnvironmentExtraVariables.SmoothFOVSequence(25f, 7.5f, EnvironmentExtraVariables.PlayerAdditionalFOV));
+				__instance.StartCoroutine(EnvironmentExtraVariables.SmoothFOVSlide(7.5f, EnvironmentExtraVariables.PlayerAdditionalFOV, 25f));
 				sound.subtitle = false; // No subtitles.
 				if (mainMode)
 					ItemSoundHolder.CreateSoundHolder(Singleton<CoreGameManager>.Instance.GetPlayer(0).transform, sound, false, maxDistance: 100f);
@@ -811,7 +832,7 @@ namespace BB_MOD_Patches
 				elevatorGates[1].GetComponent<MeshRenderer>().material.mainTexture = gateTexs[0];
 				elevatorGates[2].GetComponent<MeshRenderer>().material.mainTexture = gateTexs[2];
 
-				__instance.StartCoroutine(EnvironmentExtraVariables.SmoothFOVSequence(75f, 14f, EnvironmentExtraVariables.PlayerAdditionalFOV));
+				__instance.StartCoroutine(EnvironmentExtraVariables.SmoothFOVSlide(14f, EnvironmentExtraVariables.PlayerAdditionalFOV, 75f));
 				for (int i = 0; i < ___ec.CurrentEventTypes.Count; i++)
 				{
 					AccessTools.Field(typeof(RandomEvent), "remainingTime").SetValue(___ec.GetEvent(___ec.CurrentEventTypes[i]), 0f);
@@ -1300,6 +1321,19 @@ namespace BB_MOD_Patches
 		}
 	}
 
+	[HarmonyPatch(typeof(MainModeButtonController), "OnEnable")]
+	internal class RemoveChallenge
+	{
+		private static void Prefix(MainModeButtonController __instance)
+		{
+			__instance.transform.Find("Challenge").gameObject.SetActive(false); // Disables challenge button
+			var pos = __instance.transform.Find("FieldTrips").position;
+			__instance.transform.Find("FieldTrips").position = new Vector3(0, pos.y, pos.z);
+
+			ContentUtilities.FindResourceObjectWithName<StandardMenuButton>("Medium").gameObject.SetActive(false); // Disable medium endless
+		}
+	}
+
 
 	// ---- Basic NPC Startup ----
 
@@ -1547,6 +1581,29 @@ namespace BB_MOD_Patches
 
 	// Gameplay Patches
 
+	[HarmonyPatch(typeof(HappyBaldi))]
+	internal class ByeAnimation
+	{
+		[HarmonyPatch("Activate")]
+		[HarmonyPostfix]
+		private static void AfterLeaving(HappyBaldi __instance, ref SpriteRenderer ___sprite)
+		{
+			if (Singleton<CoreGameManager>.Instance.currentMode != Mode.Free) return;
+
+			__instance.StartCoroutine(WaitToBaldiDisappear(___sprite, __instance));
+
+			IEnumerator WaitToBaldiDisappear(SpriteRenderer baldiRenderer, HappyBaldi baldi) // Waits specifically to baldi despawn so this second baldi can just kick in
+			{
+				while (baldiRenderer.enabled) { yield return null; }
+
+				PrefabInstance.SpawnPrefab<BaldiGoesAway>(baldi.transform.position, default, baldi.Ec);
+
+				yield break;
+			}
+			
+		}
+	}
+
 	[HarmonyPatch(typeof(ITM_GrapplingHook), "Update")]
 
 	internal class BreakWindowsFromGrap
@@ -1772,12 +1829,12 @@ namespace BB_MOD_Patches
 			return AccessTools.FirstMethod(typeof(BeltBuilder), x => x.Name == "Build" && x.IsPrivate);
 		}
 
-		private static void Prefix(BeltManager beltManager)
+		private static void Postfix(BeltManager beltManager)
 		{
 			var speedField = AccessTools.Field(typeof(BeltManager), "speed");
 			float speed = (float)speedField.GetValue(beltManager);
 			int constantValue = Singleton<CoreGameManager>.Instance.sceneObject.levelNo * 2;
-			speed += EnvironmentExtraVariables.lb.controlledRNG.Next(-1 * constantValue, 1 * constantValue); // Sets a random speed for the conveyor
+			speed += EnvironmentExtraVariables.lb.controlledRNG.Next(-constantValue, constantValue); // Sets a random speed for the conveyor
 			beltManager.SetSpeed(speed);
 			EnvironmentExtraVariables.belts.Add(beltManager, speed); // Stores the belt manager for public use
 		}
@@ -1937,6 +1994,8 @@ namespace BB_MOD_Patches
 						addedContent = true;
 						yield return Transpilers.EmitDelegate<Action>(() =>
 						{
+							if (EnvironmentExtraVariables.currentFloor == Floors.None) return;
+
 							var pos = other.transform.position - (gum.transform.forward * 0.2f);
 							pos.y = 4.7f;
 							var backPos = pos + (gum.transform.forward * 0.02f);

@@ -120,21 +120,35 @@ namespace BB_MOD.ExtraComponents
 		}
 		public static T SpawnPrefab<T>(Vector3 pos, Quaternion rotation, EnvironmentController ec, bool autoExecute = true) where T : PrefabInstance
 		{
-			var prefab = prefabs.Find(x => x.GetType().Equals(typeof(T)));
-			var obj = Instantiate(prefab);
-			obj.gameObject.SetActive(true);
-			obj.transform.SetParent(ec.transform);
-			obj.transform.position = pos;
-			obj.transform.rotation = rotation;
-			obj.GetComponent<T>().SetReferences(ec, prefab.AvailableRender);
-			if (autoExecute)
-				obj.GetComponent<T>().Execute();
+			try
+			{
+				if (EnvironmentExtraVariables.currentFloor == Floors.None)
+					throw new OperationCanceledException();
 
-			return obj.GetComponent<T>();
+				var prefab = prefabs.Find(x => x.GetType().Equals(typeof(T)));
+				var obj = Instantiate(prefab);
+				obj.gameObject.SetActive(true);
+				obj.transform.SetParent(ec.transform);
+				obj.transform.position = pos;
+				obj.transform.rotation = rotation;
+				obj.GetComponent<T>().SetReferences(ec, prefab.AvailableRender);
+				if (autoExecute)
+					obj.GetComponent<T>().Execute();
+
+				return obj.GetComponent<T>();
+			}
+			catch
+			{
+				Debug.LogWarning("Failed to create the prefab: " + typeof(T) + ", returning null");
+				return null;
+			}
 		}
 		public static T SpawnPrefab<T>(Transform pos, EnvironmentController ec, bool autoExecute = true, Vector3 offset = default) where T : PrefabInstance
 		{
 			var prefab = SpawnPrefab<T>(Vector3.zero, default, ec, autoExecute);
+			if (prefab == null)
+				return null;
+
 			prefab.transform.SetParent(pos);
 			prefab.transform.localPosition = offset;
 			return prefab;
@@ -187,6 +201,45 @@ namespace BB_MOD.ExtraComponents
 		private readonly static List<PrefabInstance> prefabs = new List<PrefabInstance>();
 
 		protected const string namePrefix = "CustomObj_";
+	}
+
+	public class BaldiGoesAway : PrefabInstance
+	{
+		public override string NameForIt => "BaldiGoesAwayLol";
+
+		public override void Setup()
+		{
+			CreateSprite(ContentUtilities.DefaultBillBoardMaterial, animation[0]);
+		}
+
+		public override void Execute()
+		{
+			base.Execute();
+			bye = true;
+		}
+
+		private void Update()
+		{
+			if (!bye) return;
+
+			animationTimer += 25f * ec.EnvironmentTimeScale * Time.deltaTime;
+			animationTimer %= animation.Length;
+			rendererSprite.sprite = animation[Mathf.FloorToInt(animationTimer)];
+
+			byeSpeed += 0.5f * ec.EnvironmentTimeScale * Time.deltaTime;
+			transform.position += Vector3.up * byeSpeed;
+
+			if (transform.position.y > 60f)
+				Despawn();
+		}
+
+		float animationTimer = 0f;
+
+		float byeSpeed = 0f;
+
+		bool bye = false;
+
+		readonly Sprite[] animation = new Sprite[] { ContentAssets.GetAsset<Sprite>("balDance1"), ContentAssets.GetAsset<Sprite>("balDance2") };
 	}
 
 	public class StunningStars : PrefabInstance
@@ -268,17 +321,23 @@ namespace BB_MOD.ExtraComponents
 		public override void Setup()
 		{
 			ContentUtilities.AddCollisionToSprite(gameObject, transform.right * 9f + Vector3.up * 5f, Vector3.zero);
-			CreateSprite(ContentManager.Prefabs.NewFlatMaterial, offSprite);
+			CreateSprite(ContentManager.Prefabs.NewFlatMaterial, noEvSprite);
 		}
 		private void Update()
 		{
 			if (ec.CurrentEventTypes.Count > 0)
 			{
 				if (currentEvents.Count == 0)
+				{
 					currentEvents.AddRange(ec.CurrentEventTypes);
+					rendererSprite.sprite = offSprite;
+				}
 			}
 			else if (currentEvents.Count > 0)
+			{
 				currentEvents.Clear();
+				rendererSprite.sprite = noEvSprite;
+			}
 		}
 
 		bool fixFogEvent = false;
@@ -286,6 +345,8 @@ namespace BB_MOD.ExtraComponents
 		readonly Sprite onSprite = ContentAssets.GetAsset<Sprite>("fogMachine_ON");
 
 		readonly Sprite offSprite = ContentAssets.GetAsset<Sprite>("fogMachine_OFF");
+
+		readonly Sprite noEvSprite = ContentAssets.GetAsset<Sprite>("fogMachine_NOEV");
 
 		readonly Items acceptedItem = ContentManager.instance.customItemEnums.GetItemByName("ScrewDriver");
 
