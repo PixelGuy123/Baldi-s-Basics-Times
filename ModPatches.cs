@@ -942,7 +942,7 @@ namespace BB_MOD_Patches
 	internal class SetupVentBuilder
 	{
 		[HarmonyPrefix]
-		private static void MakeVents(ref Transform ___ventCornerPre, ref Transform ___ventStriaghtPre, ref Transform ___ventTPre, out GameObject __state) // Setting Vent Builder Transforms (Apparently, they don't exist on main game)
+		private static void MakeVents(ref Transform ___ventCornerPre, ref Transform ___ventStriaghtPre, ref Transform ___ventTPre, out GameObject[] __state) // Setting Vent Builder Transforms (Apparently, they don't exist on main game)
 		{
 			var obj = GameObject.CreatePrimitive(PrimitiveType.Cube);
 			obj.name = "Vent";
@@ -950,7 +950,7 @@ namespace BB_MOD_Patches
 			Material ventMat = UnityEngine.Object.Instantiate(ContentUtilities.FindResourceObjectContainingName<Material>("vent"));
 			ventMat.mainTexture = ContentAssets.GetAsset<Texture2D>("ventAtlasText");
 
-			obj.transform.localScale = new Vector3(4f, 2f, 4f);
+			obj.transform.localScale = new Vector3(9.9f, 2f, 9.9f);
 
 			Vector2[] mesh = obj.GetComponent<MeshFilter>().mesh.uv;
 			mesh = ContentUtilities.ConvertSideToTexture(0, 0, 256, 256, 512, 258, 0, mesh); // Took me a long time to figure out this lol (Pro Tip: CodeMonkey tutorials are useful)
@@ -976,23 +976,68 @@ namespace BB_MOD_Patches
 			obj.AddComponent<Vent>();
 			obj.SetActive(false);
 
-			__state = obj;
+			var obj2 = UnityEngine.Object.Instantiate(obj);
+
+			obj2.name = "StraightVent";
+
+			obj2.transform.localScale = new Vector3(4f, 2f, 10f);
+
+			mesh = ContentUtilities.ConvertSideToTexture(0, 0, 256, 256, 512, 258, 8, mesh);
+			mesh = ContentUtilities.ConvertSideToTexture(0, 0, 256, 256, 512, 258, 12, mesh);
+
+			obj2.GetComponent<MeshFilter>().mesh.uv = mesh;
+
+			__state = ContentUtilities.Array(obj, obj2);
 
 
 
 			___ventCornerPre = obj.transform;
-			___ventStriaghtPre = obj.transform;
+			___ventStriaghtPre = obj2.transform;
 			___ventTPre = obj.transform;
 
 		}
 		[HarmonyPostfix]
-		private static void MakeVentsPositionsALittleBetter(System.Random cRng, GameObject __state) // as the method name suggests
+		private static void MakeVentsPositionsALittleBetter(System.Random cRng, GameObject[] __state) // as the method name suggests
 		{
 			var vents = ContentUtilities.FindObjectsContainingName<Vent>("clone", true);
 			vents.Do(x => x.gameObject.SetActive(true));
-			vents.Do(x => x.transform.localPosition = new Vector3(cRng.Next(2) == 0 ? (float)cRng.NextDouble() * 2f : (float)cRng.NextDouble() * -2f, 9f, cRng.Next(2) == 0 ? (float)cRng.NextDouble() * 2f : (float)cRng.NextDouble() * -2f)); // Random value between -5 and 5 as x and z offset
-			UnityEngine.Object.Destroy(__state);
+			vents.Do(x => x.transform.localPosition = Vector3.up * 9f);
+			vents.DoIf(x => x.name.Contains("Straight"), x => x.TurnVent(false, true));
+			__state.Do(x => UnityEngine.Object.Destroy(x));
 
+		}
+
+		[HarmonyTranspiler]
+		private static IEnumerable<CodeInstruction> RemoveStupidConditions(IEnumerable<CodeInstruction> instructions) // Fixes the vent builder to not just generate a single goofy ah ah vent
+		{
+
+			void SetNopes(ref List<CodeInstruction> list, int startingOffset, int endingOffset, int curIdx)
+			{
+				for (int i = startingOffset; i <= endingOffset; i++)
+				{
+					list[curIdx + i] = new CodeInstruction(OpCodes.Nop);
+				}
+			}
+
+			var whatToRemove = AccessTools.Field(typeof(TileController), "containsObject");
+
+			var insts = instructions.ToList();
+
+			int index = insts.FindIndex(x => x.Is(OpCodes.Ldfld, whatToRemove));
+
+			if (index > -1) // Removes the first one
+			{
+				SetNopes(ref insts, -1, 1, index);
+			}
+
+			index = insts.FindLastIndex(x => x.Is(OpCodes.Ldfld, whatToRemove));
+
+			if (index > -1) // Removes the second one
+			{
+				SetNopes(ref insts, -3, 1, index);
+			}
+
+			return insts.AsEnumerable();
 		}
 	}
 

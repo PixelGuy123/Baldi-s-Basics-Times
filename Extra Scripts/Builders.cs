@@ -580,7 +580,7 @@ namespace BB_MOD.Builders
 				foreach (var tilePos in EnvironmentExtraVariables.elevatorTilePositions)
 				{
 					var tile = room.Room.ec.TileFromPos(tilePos.Key);
-					if (ReferenceEquals(tile.room, room.Room))
+					if (tile.TileMatches(room.Room))
 						tiles.Add(tile); // Adds the tile to the list to replace the ceiling later
 					
 				}
@@ -600,17 +600,12 @@ namespace BB_MOD.Builders
 				textureAtlas.SetPixels(0, 256, 256, 256, MaterialModifier.GetColorsForTileTexture(ceilingTex, 256));
 				textureAtlas.Apply();
 
-				var baseMat = UnityEngine.Object.Instantiate(room.Room.baseMat); // Instantiates the material used by room
-				baseMat.SetTexture("_MainTex", textureAtlas);
-
-				room.Room.posterMat = baseMat; // Fixes the ceiling thing... but posters won't appear in elevator walls anymore.... at least for *most* special custom rooms
-
 				foreach (var tile in tiles)
 				{
 					if (ContentManager.instance.DebugMode)
 						Debug.Log("Tiles fixed: " + tile.position.x + "," + tile.position.z);
 
-					tile.SetBase(baseMat); // Sets the base back with new texture atlas
+					tile.mesh.material.mainTexture = textureAtlas; // Only sets the texture, not the material itself (must fix now this issue)
 				}
 			}
 			catch (Exception e)

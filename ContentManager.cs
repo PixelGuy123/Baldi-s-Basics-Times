@@ -2201,6 +2201,7 @@ namespace BB_MOD
 			CreateSchoolTexture("sanduCeiling.png", ContentUtilities.Array(Floors.F3), SchoolTextType.Ceiling); // tsu
 			CreateSchoolTexture("sequencedWall_1.png", ContentUtilities.Array(Floors.F1, Floors.F2), SchoolTextType.Wall, existOnClassrooms:true, weight:80); // tsu
 			CreateSchoolTexture("sequencedWall_2.png", ContentUtilities.Array(Floors.F1, Floors.F2), SchoolTextType.Wall, existOnClassrooms: true, weight: 80); // tsu
+			CreateSchoolTexture("graySandCeiling.png", ContentUtilities.AllFloorsExcept(Floors.F1), SchoolTextType.Ceiling, weight: 70);
 
 		}
 

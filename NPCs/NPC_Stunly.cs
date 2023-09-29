@@ -236,7 +236,7 @@ namespace BB_MOD.NPCs
 
 		private readonly List<StunningStars> stars = new List<StunningStars>();
 
-		private readonly MovementModifier moveMod = new MovementModifier(Vector3.zero, 0f);
+		private readonly MovementModifier moveMod = new MovementModifier(Vector3.zero, 0.4f);
 
 		float wannaStunCooldown = 0f;
 

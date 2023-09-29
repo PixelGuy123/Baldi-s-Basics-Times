@@ -1,5 +1,4 @@
-﻿using MTM101BaldAPI;
-using System.Collections;
+﻿using System.Collections;
 using UnityEngine;
 
 namespace BB_MOD.NPCs
@@ -11,7 +10,7 @@ namespace BB_MOD.NPCs
     public class MagicalStudent : NPC
     {
 
-		private void SetupMagicObject() // This will probably be replaced later on with a PrefabInstance for sake's of optimization (even though it doesn't really lag at all)
+		private void SetupMagicObject()
 		{
 			var obj = new GameObject("Magic", typeof(StudentMagic), typeof(SphereCollider));
 			var renderer = ContentUtilities.DefaultRenderer;
