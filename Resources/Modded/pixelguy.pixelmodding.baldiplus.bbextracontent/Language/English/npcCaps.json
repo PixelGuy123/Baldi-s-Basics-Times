@@ -49,5 +49,9 @@
 	{"key":"PST_Leapy_Name","value":"Leapy"},
 	{"key":"PST_Leapy_Desc","value":"Such a happy frog, always leaping and <b>stomping</b> the unfortune ones. What a poor vision frog!"},
 	{"key":"Vfx_Leapy_Stomp","value":"*Stomping*"},
-	{"key":"Vfx_Leapy_Leap","value":"*Leaping*"}
+	{"key":"Vfx_Leapy_Leap","value":"*Leaping*"},
+	{"key":"PST_Wch_Name","value":"The Watcher"},
+	{"key":"PST_Wch_Desc","value":"A shy watcher that... watches hallways, for such good comedy, he swaps people's positions.. such a good prank!"},
+	{"key":"Vfx_Wch_Idle","value":"*Watching*"},
+	{"key":"Vfx_Wch_See","value":"*Screeching*"}
 ]}

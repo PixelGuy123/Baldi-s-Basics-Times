@@ -980,7 +980,7 @@ namespace BB_MOD_Patches
 
 			obj2.name = "StraightVent";
 
-			obj2.transform.localScale = new Vector3(4f, 2f, 10f);
+			obj2.transform.localScale = new Vector3(4f, 2f, 11f);
 
 			mesh = ContentUtilities.ConvertSideToTexture(0, 0, 256, 256, 512, 258, 8, mesh);
 			mesh = ContentUtilities.ConvertSideToTexture(0, 0, 256, 256, 512, 258, 12, mesh);
@@ -1225,7 +1225,6 @@ namespace BB_MOD_Patches
 		private static void Prefix() // Basically iterates by randomly choosing a replacement NPC, then gets the array of the NPC and searches for the npc it replaces (random npc from array)
 		{
 
-
 			System.Random rng = new System.Random(Singleton<CoreGameManager>.Instance.Seed());
 
 			// Extra Stuff
@@ -1255,7 +1254,8 @@ namespace BB_MOD_Patches
 
 			// Npc Replacement here
 
-			var replacementNPCs = ContentManager.instance.GetNPCs(Singleton<CoreGameManager>.Instance.sceneObject.levelTitle.ToFloorIdentifier(), true);
+			var replacementNPCs = ContentManager.instance.GetNPCs(Singleton<CoreGameManager>.Instance.sceneObject.levelTitle.ToFloorIdentifier(), true, true);
+
 			if (replacementNPCs.Count == 0) // In case no replacement NPCs exist
 				return;
 

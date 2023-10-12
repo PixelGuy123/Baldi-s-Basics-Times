@@ -642,10 +642,11 @@ namespace BB_MOD
 		/// Creates a non positional audio for set <paramref name="obj"/>
 		/// </summary>
 		/// <param name="obj"></param>
-		public static void CreateNonPositionalAudio(GameObject obj)
+		public static AudioSource CreateNonPositionalAudio(GameObject obj)
 		{
 			CreatePositionalAudio(obj, 20, 30, out AudioSource source, out _);
 			source.spatialBlend = 0f;
+			return source;
 		}
 
 		/// <summary>
@@ -688,12 +689,13 @@ namespace BB_MOD
 		/// <param name="maxDistance"></param>
 		/// <param name="clip"></param>
 		/// <param name="supportDoppler"></param>
-		public static void CreateMusicManager(GameObject obj, float minDistance, float maxDistance, SoundObject clip, bool supportDoppler = false) // Creates a music like playtime does
+		public static AudioManager CreateMusicManager(GameObject obj, float minDistance, float maxDistance, SoundObject clip, bool supportDoppler = false) // Creates a music like playtime does
 		{
 			CreatePositionalAudio(obj, minDistance, maxDistance, out _, out AudioManager musicAudMan, supportDoppler);
 			musicAudMan.maintainLoop = true;
 			musicAudMan.SetLoop(true);
 			musicAudMan.QueueAudio(clip);
+			return musicAudMan;
 		}
 
 		public static AudioClip GetAudioClip(string path) // This will temporarily replace the AssetManager.AudioClipFromFile() method, since the method is adding a 1 second delay on the end of the file, making it literally unable to be a loop
@@ -1470,6 +1472,7 @@ namespace BB_MOD
 		// Make sure to comment on the side of the code from what "content" does it belong to or what is it referring to, for organization.
 		// Example: AddAudioAsset(...)  // NPC Office Chair | An audio that office chair will use when running through the hallways
 		// If you want the content to load any of the assets, you can always use ContentAssets.GetAsset()
+		// Sound Object Tip: Color struct uses the 8 bit color pallete, so always divide the rgb values by 256!
 
 		public void SetupAssetData()
 		{
@@ -1521,6 +1524,9 @@ namespace BB_MOD
 
 			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "leapy_jump.wav"), "leapy_leap", true, "Vfx_Leapy_Leap", SoundType.Effect, new Color(0f, 0.3984f, 0f));
 			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "leapy_stomp.wav"), "leapy_stomp", true, "Vfx_Leapy_Stomp", SoundType.Effect, new Color(0f, 0.3984f, 0f));
+
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "WCH_ambience.wav"), "wch_idle", true, "Vfx_Wch_Idle", SoundType.Voice, new Color(0.3984375f, 0.3984375f, 0.59765625f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "WCH_see.wav"), "wch_see", true, "Vfx_Wch_See", SoundType.Voice, new Color(0.3984375f, 0.3984375f, 0.59765625f));
 
 
 
@@ -1686,6 +1692,7 @@ namespace BB_MOD
 			CreateNPC<PencilBoy>("Pencil Boy", 50, ContentUtilities.Array("pb_angry.png", "pb_angrySpot.png", "pb_happy.png"), false, false, 65f, -1.75f, "pri_pb.png", "PST_PB_Name", "PST_PB_Desc", ContentUtilities.Array(Floors.F2, Floors.END), ContentUtilities.Array(RoomCategory.Hall, RoomCategory.Test), enterRooms: false, capsuleRadius: 2.6f);
 			CreateNPC<Stunly>("Stunly", 60, ContentUtilities.Array("Stunly.png"), false, false, 34, -1.35f, "pri_stunly.png", "PST_Stunly_Name", "PST_Stunly_Desc", ContentUtilities.AllFloors, enterRooms: false);
 			CreateNPC<Leapy>("Leapy", 75, ContentUtilities.Array("leapy_1.png", "leapy_2.png", "leapy_3.png"), false, false, 25f, -1f, "pri_leapy.png", "PST_Leapy_Name", "PST_Leapy_Desc", ContentUtilities.AllFloorsExcept(Floors.F1), false, false, true, true);
+			CreateNPC<Watcher>("Watcher", 999, ContentUtilities.Array("Watcher.png"), false, false, 34f, 0f, "pri_watcher.png", "PST_Wch_Name", "PST_Wch_Desc", ContentUtilities.AllFloors, true, false, true, true, forceSpawn:true);
 
 
 			// Replacement NPCs here
@@ -2202,6 +2209,9 @@ namespace BB_MOD
 			CreateSchoolTexture("sequencedWall_1.png", ContentUtilities.Array(Floors.F1, Floors.F2), SchoolTextType.Wall, existOnClassrooms:true, weight:80); // tsu
 			CreateSchoolTexture("sequencedWall_2.png", ContentUtilities.Array(Floors.F1, Floors.F2), SchoolTextType.Wall, existOnClassrooms: true, weight: 80); // tsu
 			CreateSchoolTexture("graySandCeiling.png", ContentUtilities.AllFloorsExcept(Floors.F1), SchoolTextType.Ceiling, weight: 70);
+			CreateSchoolTexture("green_rustyCeiling.png", ContentUtilities.AllFloorsExcept(Floors.F1), SchoolTextType.Ceiling, false, false, false, 100); // Jofitzy
+			CreateSchoolTexture("white_rustyCeiling.png", ContentUtilities.AllFloorsExcept(Floors.F1), SchoolTextType.Ceiling, false, false, false, 100); // Jofitzy
+			CreateSchoolTexture("redMosaicCarpet.png", ContentUtilities.AllFloorsExcept(Floors.F2), SchoolTextType.Floor, roomsOnly:true, existOnClassrooms:true, weight:80); // Jofitzy
 
 		}
 
@@ -2719,6 +2729,8 @@ namespace BB_MOD
 			{
 				addedExtraContent[2] = true;
 				CreateSchoolHouseMusic("mus_NewSchool.wav", ContentUtilities.AllFloorsExcept(Floors.F3));
+				CreateSchoolHouseMusic("mus_NewSchool1.wav", Floors.F1); // Bsidekid
+				CreateSchoolHouseMusic("mus_NewSchool2.wav", Floors.F3);
 			}
 			if (!addedExtraContent[3])
 			{
@@ -3387,14 +3399,14 @@ namespace BB_MOD
 			return roomDatas.Any(x => x.Rooms.Contains(target));
 		}
 
-		public List<WeightedNPC> GetNPCs(Floors floor, bool onlyReplacementNPCs = false)
+		public List<WeightedNPC> GetNPCs(Floors floor, bool onlyReplacementNPCs = false, bool forceGet = false)
 		{
 			var npcs = new List<WeightedNPC>();
 			for (int i = 0; i < allNpcs.Count; i++)
 			{
-				if (allNpcs[i].ReturnObjectIfAvailable(floor, out var npc)) // Check whether the npc is from said floor and if it is a replacement NPC or not
+				if (allNpcs[i].ReturnObjectIfAvailable(floor, out var npc, !onlyReplacementNPCs) || (allNpcs[i].IsObjectFromFloor(floor) && forceGet)) // Check whether the npc is from said floor and if it is a replacement NPC or not
 				{
-					if ((!onlyReplacementNPCs && npc.selection.gameObject.GetComponent<CustomNPCData>().replacementCharacters.Length == 0) || (npc.selection.gameObject.GetComponent<CustomNPCData>().replacementCharacters.Length > 0 && onlyReplacementNPCs))
+					if (npc.selection.gameObject.GetComponent<CustomNPCData>().replacementCharacters.Length > 0 == onlyReplacementNPCs)
 						npcs.Add(npc);
 				}
 			}
