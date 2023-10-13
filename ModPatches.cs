@@ -32,6 +32,8 @@ namespace BB_MOD_Patches
 			EnvironmentExtraVariables.ec = __instance.Ec;
 			EnvironmentExtraVariables.lb = __instance;
 
+			EnvironmentExtraVariables.SetVariables();
+
 			// Setting Special Room
 
 			if (!ContentManager.Prefabs.specialRoomPre)
@@ -695,6 +697,25 @@ namespace BB_MOD_Patches
 			}
 			queuedElevatorsForFixing.Clear();
 
+			var chance = 5f;
+			foreach (var locker in ContentUtilities.FindObjectsContainingName<MeshRenderer>("locker").Where(x => !x.GetComponent<HideableLocker>())) // Make green lockers
+			{
+				var random = rng.NextDouble() * 100f;
+				if (random > chance)
+				{
+					chance += (float)random;
+					locker.materials[1].SetTexture("_MainTex", ContentAssets.GetAsset<Texture2D>("greenLocker"));
+					locker.material.SetColor("_TextureColor", Color.green);
+					var green = locker.gameObject.AddComponent<GreenLocker>();
+
+					if (rng.NextDouble() > 0.25d)
+					{
+						green.MakeMeDecoy();
+						locker.materials[1].SetTexture("_MainTex", ContentAssets.GetAsset<Texture2D>("d_greenLocker"));
+					}
+				}
+			}
+
 		}
 
 		public static void QueueElevatorFix(SpecialRoomCreator room, Texture2D ceiling)
@@ -703,7 +724,7 @@ namespace BB_MOD_Patches
 				queuedElevatorsForFixing.Add(room, ceiling);
 		}
 
-		private static Dictionary<SpecialRoomCreator, Texture2D> queuedElevatorsForFixing = new Dictionary<SpecialRoomCreator, Texture2D>();
+		private readonly static Dictionary<SpecialRoomCreator, Texture2D> queuedElevatorsForFixing = new Dictionary<SpecialRoomCreator, Texture2D>();
 
 		[HarmonyPatch("Initialize")]
 		[HarmonyPostfix]
@@ -980,12 +1001,15 @@ namespace BB_MOD_Patches
 
 			obj2.name = "StraightVent";
 
-			obj2.transform.localScale = new Vector3(4f, 2f, 11f);
+			obj2.transform.localScale = new Vector3(4f, 2f, 10f);
 
-			mesh = ContentUtilities.ConvertSideToTexture(0, 0, 256, 256, 512, 258, 8, mesh);
-			mesh = ContentUtilities.ConvertSideToTexture(0, 0, 256, 256, 512, 258, 12, mesh);
+			var justACube = GameObject.CreatePrimitive(PrimitiveType.Cube);
+
+			mesh = justACube.GetComponent<MeshFilter>().mesh.uv;
 
 			obj2.GetComponent<MeshFilter>().mesh.uv = mesh;
+
+			UnityEngine.Object.Destroy(justACube);
 
 			__state = ContentUtilities.Array(obj, obj2);
 
@@ -1851,7 +1875,7 @@ namespace BB_MOD_Patches
 		private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions) // Removes the instruction that disables the sprite
 		{
 			var list = new List<CodeInstruction>(instructions);
-			int index = list.IndexAt(x => x.opcode == OpCodes.Ldarg_0);
+			int index = list.FindIndex(x => x.opcode == OpCodes.Ldarg_0);
 			for (int i = 0; i < 5; i++)
 			{
 				list.RemoveAt(index);
@@ -1878,8 +1902,7 @@ namespace BB_MOD_Patches
 		{
 			var speedField = AccessTools.Field(typeof(BeltManager), "speed");
 			float speed = (float)speedField.GetValue(beltManager);
-			int constantValue = Singleton<CoreGameManager>.Instance.sceneObject.levelNo * 2;
-			speed += EnvironmentExtraVariables.lb.controlledRNG.Next(-constantValue, constantValue); // Sets a random speed for the conveyor
+			speed += EnvironmentExtraVariables.lb.controlledRNG.Next(-EnvironmentExtraVariables.MaxConveyorSpeedOffset, EnvironmentExtraVariables.MaxConveyorSpeedOffset); // Sets a random speed for the conveyor
 			beltManager.SetSpeed(speed);
 			EnvironmentExtraVariables.belts.Add(beltManager, speed); // Stores the belt manager for public use
 		}
@@ -1901,10 +1924,18 @@ namespace BB_MOD_Patches
 	internal class BlackoutEventPatch_MathMachine
 	{
 		[HarmonyPrefix]
+		[HarmonyPatch("Start")]
+		private static void MoreQuestions(ref int ___totalProblems)
+		{
+			___totalProblems = UnityEngine.Random.Range(EnvironmentExtraVariables.MaxNewProblems[0], EnvironmentExtraVariables.MaxNewProblems[1] + 1);
+		}
+
+		[HarmonyPrefix]
 		[HarmonyPatch("Completed")]
-		private static void RegisterMachine(MathMachine __instance)
+		private static void RegisterMachine(MathMachine __instance, AudioManager ___audMan)
 		{
 			EnvironmentExtraVariables.completedMachines.Add(__instance);
+			___audMan.PlaySingle(ContentAssets.GetAsset<SoundObject>("baldi_WOW"));
 		}
 		[HarmonyPrefix]
 		[HarmonyPatch("Clicked")]
@@ -2074,6 +2105,23 @@ namespace BB_MOD_Patches
 		private static void Postfix(SubtitleController __instance, float __state)
 		{
 			__instance.distance = __state;
+		}
+	}
+
+	[HarmonyPatch(typeof(FarmTripManager), "Initialize")]
+	internal class AddSheepsBEEH // Add sheeps duh
+	{
+		private static void Prefix(ref List<FarmAnimalType> ___animalTypes, ref List<FarmAnimalType> ___potentialTypes)
+		{
+			if (!___animalTypes.Contains(FarmAnimalType.Sheep))
+			{
+				___animalTypes.Add(FarmAnimalType.Sheep);
+			}
+
+			if (!___potentialTypes.Contains(FarmAnimalType.Sheep))
+			{
+				___potentialTypes.Add(FarmAnimalType.Sheep);
+			}
 		}
 	}
 

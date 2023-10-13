@@ -19,6 +19,7 @@ using UnityEngine.Events;
 using UnityEngine.Networking;
 using static BB_MOD.ContentAssets;
 using static BB_MOD.ContentManager;
+using static UnityEngine.Rendering.DebugUI;
 
 // -------------------- PRO TIP ----------------------
 // Recommended using UnityExplorer to debug your item, event or npc. It's a very useful tool
@@ -423,6 +424,34 @@ namespace BB_MOD
 			OnEndGame.RemoveAllListeners();
 		}
 
+		public static void SetVariables()
+		{
+			switch (currentFloor)
+			{
+				case Floors.F1:
+					MaxConveyorSpeedOffset = 2;
+					MaxNewProblems[0] = 1;
+					MaxNewProblems[1] = 1;
+					break;
+				case Floors.F2:
+					MaxConveyorSpeedOffset = 4;
+					MaxNewProblems[0] = 1;
+					MaxNewProblems[1] = 2;
+					break;
+				case Floors.F3:
+					MaxConveyorSpeedOffset = 2;
+					MaxNewProblems[0] = 2;
+					MaxNewProblems[1] = 4;
+					break;
+				case Floors.END:
+					MaxConveyorSpeedOffset = 3;
+					MaxNewProblems[0] = 1;
+					MaxNewProblems[1] = 2;
+					break;
+				
+			}
+		}
+
 		/// <summary>
 		/// Turn the subtitles off or on
 		/// </summary>
@@ -489,34 +518,16 @@ namespace BB_MOD
 			{
 				if (overlapFOVModifier)
 					return;
-
-				if (value < minFOV)
-				{
-					playerFOV = minFOV;
-					return;
-				}
-				if (value > maxFOV)
-				{
-					playerFOV = maxFOV;
-					return;
-				}
-				playerFOV = value;
+				
+				playerFOV = FOVCheck(value);
 			}
 		}
 
+		static float FOVCheck(float fov) => fov < minFOV ? minFOV : fov > maxFOV ? maxFOV : fov;
+
 		private static void ForceSetFOV(float fov)
 		{
-			if (fov < minFOV)
-			{
-				playerFOV = minFOV;
-				return;
-			}
-			if (fov > maxFOV)
-			{
-				playerFOV = maxFOV;
-				return;
-			}
-			playerFOV = fov;
+			playerFOV = FOVCheck(fov);
 		}
 
 		public static IEnumerator SmoothFOVSlide(float divider, float endingFOV = 0f, float offset = 0f)
@@ -541,11 +552,18 @@ namespace BB_MOD
 			yield break;
 		}
 
+		public static void RandomFOV(float min = minFOV, float max = maxFOV) => PlayerAdditionalFOV = UnityEngine.Random.Range(min, max);
+
 		private static float playerFOV = 0f;
 
-		const float maxFOV = 140f;
+		public const float maxFOV = 113f;
 
-		const float minFOV = -50f;
+		public const float minFOV = -50f;
+
+		// Some custom attributes for each level that are set up by the environment
+		public static int[] MaxNewProblems { get; private set; } = new int[2];
+		
+		public static int MaxConveyorSpeedOffset { get; private set; }
 
 		// Internal Generator Custom Variables >> Should not be touched in any means
 
@@ -1292,7 +1310,7 @@ namespace BB_MOD
 	/// </summary>
 	public static class ContentAssets
 	{
-		public static void ClearAssetBase()
+		internal static void ClearAssetBase()
 		{
 			audios.Clear();
 			textures.Clear();
@@ -1307,7 +1325,7 @@ namespace BB_MOD
 		/// <param name="path"></param>
 		/// <param name="assetName"></param>
 		/// <exception cref="ArgumentException"></exception>
-		public static void AddTextureAsset(string path, string assetName)
+		internal static void AddTextureAsset(string path, string assetName)
 		{
 			CheckParameters(path, assetName);
 
@@ -1322,7 +1340,7 @@ namespace BB_MOD
 		/// <param name="path"></param>
 		/// <param name="assetName"></param>
 		/// /// <exception cref="ArgumentException"></exception>
-		public static void AddSpriteAsset(string path, int pixelsPerUnit, string assetName, Vector2 center)
+		internal static void AddSpriteAsset(string path, int pixelsPerUnit, string assetName, Vector2 center)
 		{
 			CheckParameters(path, assetName);
 
@@ -1338,7 +1356,7 @@ namespace BB_MOD
 		/// <param name="path"></param>
 		/// <param name="assetName"></param>
 		/// /// <exception cref="ArgumentException"></exception>
-		public static void AddSpriteAsset(string path, int pixelsPerUnit, string assetName) => AddSpriteAsset(path, pixelsPerUnit, assetName, new Vector2(0.5f, 0.5f));
+		internal static void AddSpriteAsset(string path, int pixelsPerUnit, string assetName) => AddSpriteAsset(path, pixelsPerUnit, assetName, new Vector2(0.5f, 0.5f));
 
 		/// <summary>
 		/// Creates an audio from <paramref name="path"/> and adds into the database, the <paramref name="useDifferentMethod"/> is a temporary parameter, highly recommended if you are going to make looping audios
@@ -1346,7 +1364,7 @@ namespace BB_MOD
 		/// <param name="path"></param>
 		/// <param name="assetName"></param>
 		/// /// <exception cref="ArgumentException"></exception>
-		public static void AddAudioAsset(string path, string assetName, bool useDifferentMethod)
+		internal static void AddAudioAsset(string path, string assetName, bool useDifferentMethod)
 		{
 			CheckParameters(path, assetName);
 
@@ -1364,7 +1382,7 @@ namespace BB_MOD
 		/// <param name="soundType"></param>
 		/// <param name="subtitleColor"></param>
 		/// <param name="subLength"></param>
-		public static void AddSoundObject(string path, string assetName, bool useDifferentMethod, string subtitleKey, SoundType soundType, Color subtitleColor, float subLength = -1f, bool hasSubtitle = true)
+		internal static void AddSoundObject(string path, string assetName, bool useDifferentMethod, string subtitleKey, SoundType soundType, Color subtitleColor, float subLength = -1f, bool hasSubtitle = true)
 		{
 			CheckParameters(path, assetName);
 
@@ -1381,7 +1399,7 @@ namespace BB_MOD
 		/// <param name="paths"></param>
 		/// <param name="assetName"></param>
 		/// <param name="useDifferentMethod"></param>
-		public static void AddLoopingSoundObject (string assetName, bool useDifferentMethod, AudioMixerGroup mixer, params string[] paths)
+		internal static void AddLoopingSoundObject (string assetName, bool useDifferentMethod, AudioMixerGroup mixer, params string[] paths)
 		{
 			CheckParameters(paths, assetName);
 			if (!loopingSoundObjects.ContainsKey(assetName))
@@ -1402,7 +1420,7 @@ namespace BB_MOD
 		/// <param name="paths"></param>
 		/// <param name="assetName"></param>
 		/// <param name="useDifferentMethod"></param>
-		public static void AddLoopingSoundObject(string assetName, bool useDifferentMethod, params string[] paths) => AddLoopingSoundObject(assetName, useDifferentMethod, ContentUtilities.FindResourceObjectWithName<AudioMixerGroup>("Master"), paths);
+		internal static void AddLoopingSoundObject(string assetName, bool useDifferentMethod, params string[] paths) => AddLoopingSoundObject(assetName, useDifferentMethod, ContentUtilities.FindResourceObjectWithName<AudioMixerGroup>("Master"), paths);
 
 		private static void CheckParameters(string path, string assetName)
 		{
@@ -1461,7 +1479,7 @@ namespace BB_MOD
 				selection = x
 			}));
 			int nothingIdx = allItems.IndexAt(x => x.selection.name == "Nothing");
-			if (nothingIdx >= 0 && nothingIdx < allItems.Count)
+			if (nothingIdx >= 0)
 				allItems.RemoveAt(nothingIdx);
 		}
 
@@ -1527,6 +1545,8 @@ namespace BB_MOD
 
 			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "WCH_ambience.wav"), "wch_idle", true, "Vfx_Wch_Idle", SoundType.Voice, new Color(0.3984375f, 0.3984375f, 0.59765625f));
 			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "WCH_see.wav"), "wch_see", true, "Vfx_Wch_See", SoundType.Voice, new Color(0.3984375f, 0.3984375f, 0.59765625f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "WCH_angered.wav"), "wch_angry", true, "Vfx_Wch_Angry", SoundType.Voice, new Color(0.3984375f, 0.3984375f, 0.59765625f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "WCH_teleport.wav"), "wch_tp", true, "Vfx_Wch_Teleport", SoundType.Voice, new Color(0.3984375f, 0.3984375f, 0.59765625f));
 
 
 
@@ -1578,7 +1598,8 @@ namespace BB_MOD
 
 			AddTextureAsset(Path.Combine(modPath, "Textures", "ventAtlas.png"), "ventAtlasText"); // Texture used by the vent
 
-			AddSoundObject(Path.Combine(modPath, "Audio", "ventNoise.wav"), "ventNoises", true, "Vfx_VentNoise", SoundType.Effect, Color.white); // Vent Noises
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "ventNoise.wav"), "ventNoises", true, "Vfx_VentNoise", SoundType.Effect, Color.white); // Vent Noises
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "lockerNoise.wav"), "lockerNoise", true, "Vfx_Locker_SLAM", SoundType.Effect, Color.white);
 
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "balExplode.png"), 29, "balExploding");
 
@@ -1624,8 +1645,16 @@ namespace BB_MOD
 
 			for (int i = 1; i <= 2; i++)
 			{
-				AddSpriteAsset(Path.Combine(modPath, "Textures", $"balDance{i}.png"), 30, $"balDance{i}");
+				AddSpriteAsset(Path.Combine(modPath, "Textures", $"balDance{i}.png"), 30, $"balDance{i}"); // Baldi dances away in free mode
 			}
+
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "BAL_Wow.wav"), "baldi_WOW", true, "Vfx_Bal_WOW", SoundType.Effect, Color.green); // WOW
+
+			AddTextureAsset(Path.Combine(modPath, "Textures", "greenLocker.png"), "greenLocker"); // Green locker textures
+			AddTextureAsset(Path.Combine(modPath, "Textures", "greenLocker_open.png"), "greenLocker_open");
+			AddTextureAsset(Path.Combine(modPath, "Textures", "decoy_greenLocker.png"), "d_greenLocker");
+			AddTextureAsset(Path.Combine(modPath, "Textures", "decoy_greenLocker_open1.png"), "d_greenLocker_open1");
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "HA_HA.wav"), "HA_HA", true, "Vfx_Locker_HAHA", SoundType.Voice, Color.white);
 
 		}
 
@@ -1692,7 +1721,7 @@ namespace BB_MOD
 			CreateNPC<PencilBoy>("Pencil Boy", 50, ContentUtilities.Array("pb_angry.png", "pb_angrySpot.png", "pb_happy.png"), false, false, 65f, -1.75f, "pri_pb.png", "PST_PB_Name", "PST_PB_Desc", ContentUtilities.Array(Floors.F2, Floors.END), ContentUtilities.Array(RoomCategory.Hall, RoomCategory.Test), enterRooms: false, capsuleRadius: 2.6f);
 			CreateNPC<Stunly>("Stunly", 60, ContentUtilities.Array("Stunly.png"), false, false, 34, -1.35f, "pri_stunly.png", "PST_Stunly_Name", "PST_Stunly_Desc", ContentUtilities.AllFloors, enterRooms: false);
 			CreateNPC<Leapy>("Leapy", 75, ContentUtilities.Array("leapy_1.png", "leapy_2.png", "leapy_3.png"), false, false, 25f, -1f, "pri_leapy.png", "PST_Leapy_Name", "PST_Leapy_Desc", ContentUtilities.AllFloorsExcept(Floors.F1), false, false, true, true);
-			CreateNPC<Watcher>("Watcher", 999, ContentUtilities.Array("Watcher.png"), false, false, 34f, 0f, "pri_watcher.png", "PST_Wch_Name", "PST_Wch_Desc", ContentUtilities.AllFloors, true, false, true, true, forceSpawn:true);
+			CreateNPC<Watcher>("Watcher", 80, ContentUtilities.Array("Watcher.png"), false, false, 34f, 0f, "pri_watcher.png", "PST_Wch_Name", "PST_Wch_Desc", ContentUtilities.Array(Floors.F3), true, false, true, true, forceSpawn: true);
 
 
 			// Replacement NPCs here
@@ -1876,6 +1905,7 @@ namespace BB_MOD
 			CreateItem<ITM_Trap>("BT_Name", "BT_Desc", "TrapOpen.png", "trapSmall.png", "BearTrap", 90, 27, 20, ContentUtilities.Array(Floors.F2, Floors.END), 85, ContentUtilities.AllFloorsExcept(Floors.F1), 15, true, true, false);
 			CreateItem<ITM_Banana>("BN_Name", "BN_Desc", "Banana.png", "Banana.png", "Banana", 50, 18, 5, 25, ContentUtilities.AllFloors, 55);
 			CreateItem<ITM_Gum>("GUM_Name", "GUM_Desc", "gum.png", "gum.png", "Gum", 75, 25, 45, 65, ContentUtilities.AllFloors, 35);
+			CreateItem<ITM_LockPick>("LPC_Name", "LPC_Desc", "lockpick.png", "lockpick.png", "Lockpick", 75, 26, 10, 75, Array.Empty<Floors>(), 1, true, unlockDoors:true);
 		}
 
 
@@ -3748,7 +3778,7 @@ namespace BB_MOD
 
 		public List<Character> customNPCEnums = new List<Character>();
 
-		private readonly List<Character> staticNpcs = new List<Character>() { Character.Chalkles, Character.Bully };
+		private readonly HashSet<Character> staticNpcs = new HashSet<Character>() { Character.Chalkles, Character.Bully };
 
 		public bool IsNpcStatic(Character npc) => staticNpcs.Contains(npc);
 

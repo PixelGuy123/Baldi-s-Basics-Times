@@ -20,7 +20,7 @@ namespace BB_MOD.ExtraItems
 
 			ItemSoundHolder.CreateSoundHolder(pm.transform.position, ContentAssets.GetAsset<SoundObject>("presentUnboxing"), false, destructiveParent:transform);
 
-			pm.itm.SetItem(WeightedItemObject.RandomSelection(ContentManager.instance.GlobalItems.Where(x => x.selection.itemType != itemEnum && x.selection.itemType != Items.None).ToArray()), pm.itm.selectedItem);
+			pm.itm.SetItem(WeightedItemObject.RandomSelection(ContentManager.instance.GlobalItems.Where(x => x.selection.itemType != itemEnum).ToArray()), pm.itm.selectedItem);
 
 			return false;
 		}

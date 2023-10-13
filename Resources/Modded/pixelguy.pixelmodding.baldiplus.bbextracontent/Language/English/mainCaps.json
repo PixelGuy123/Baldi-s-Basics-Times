@@ -2,5 +2,8 @@
 	{"key":"Vfx_VentNoise","value":"*Vent Noises*"},
 	{"key":"Vfx_GumSplash","value":"*Splash!*"},
 	{"key":"Vfx_WindowHit","value":"*Hit*"},
-	{"key":"Vfx_FireNoise","value":"*Fire Burning*"}
+	{"key":"Vfx_FireNoise","value":"*Fire Burning*"},
+	{"key":"Vfx_Bal_WOW","value":"*WOOOOOOOOOW*"},
+	{"key":"Vfx_Locker_SLAM","value":"*SLAM*"},
+	{"key":"Vfx_Locker_HAHA","value":"HA HA"}
 ]}

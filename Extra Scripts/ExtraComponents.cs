@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections;
 using HarmonyLib;
+using System.Linq;
 
 namespace BB_MOD.ExtraComponents
 {
@@ -41,6 +42,87 @@ namespace BB_MOD.ExtraComponents
 		public Func<Items, StandardDoor, bool> ItemFittingFunction { get => itemFitFunc; }
 
 		private Func<Items, StandardDoor, bool> itemFitFunc = new Func<Items, StandardDoor, bool>((item, _2) => ContentManager.instance.CanItemUnlockDoors(item));
+	}
+
+	public class GreenLocker : MonoBehaviour, IItemAcceptor
+	{
+		private void Start()
+		{
+			ContentUtilities.CreatePositionalAudio(gameObject, 30, 60, out _, out AudioManager aud);
+			audMan = aud;
+			renderer = GetComponent<MeshRenderer>();
+
+			// Setupping Textures
+		}
+		public void MakeMeDecoy()
+		{
+			decoy = true;
+		}
+
+		public bool ItemFits(Items item)
+		{
+			return !beenUsed && item == targetItm;
+		}
+
+		public void InsertItem(PlayerManager player, EnvironmentController ec)
+		{
+			beenUsed = true;
+			audMan.PlaySingle(slam);
+
+			player.RuleBreak("Lockers", guiltTime);
+			if (decoy)
+				StartCoroutine(HAHASequence(player));
+			else
+			{
+				player.ec.MakeNoise(transform.position, 78);
+				renderer?.materials[1].SetTexture("_MainTex", texs[1]);
+				player.itm.SetItem(WeightedItemObject.RandomSelection(ContentManager.instance.GlobalItems.Where(x => x.selection.itemType != targetItm).ToArray()), player.itm.selectedItem);
+			}
+		}
+
+		private IEnumerator HAHASequence(PlayerManager player)
+		{
+			audMan.PlaySingle(HA_HA);
+			player.ec.MakeNoise(transform.position, 84);
+			renderer?.materials[1].SetTexture("_MainTex", texs[3]);
+			StealItems(itemsToSteal, player);
+
+			while (audMan.IsPlaying) { yield return null; }
+
+			audMan.PlaySingle(slam);
+			renderer?.materials[1].SetTexture("_MainTex", texs[2]);
+
+			yield break;
+		}
+
+		private void StealItems(int amount, PlayerManager player)
+		{
+			for (int i = 0; i < amount; i++) 
+			{
+				player.itm.RemoveRandomItem();
+			}
+		}
+
+		readonly Items targetItm = ContentManager.instance.customItemEnums.GetItemByName("Lockpick");
+
+		bool decoy = false, beenUsed = false;
+
+		readonly Texture2D[] texs = new Texture2D[4] { 
+			ContentAssets.GetAsset<Texture2D>("greenLocker"), 
+			ContentAssets.GetAsset<Texture2D>("greenLocker_open"), 
+			ContentAssets.GetAsset<Texture2D>("d_greenLocker"), // Decoy Textures
+			ContentAssets.GetAsset<Texture2D>("d_greenLocker_open1")
+		};
+
+		readonly SoundObject slam = ContentAssets.GetAsset<SoundObject>("lockerNoise"), HA_HA = ContentAssets.GetAsset<SoundObject>("HA_HA");
+
+		AudioManager audMan;
+
+		MeshRenderer renderer;
+
+		const int itemsToSteal = 2;
+
+		const float guiltTime = 1f;
 	}
 
 	public class FireObject : MonoBehaviour
@@ -322,6 +404,7 @@ namespace BB_MOD.ExtraComponents
 		{
 			ContentUtilities.AddCollisionToSprite(gameObject, transform.right * 9f + Vector3.up * 5f, Vector3.zero);
 			CreateSprite(ContentManager.Prefabs.NewFlatMaterial, noEvSprite);
+			rendererSprite.transform.localScale = new Vector3(0.96f, 1f, 1f);
 		}
 		private void Update()
 		{

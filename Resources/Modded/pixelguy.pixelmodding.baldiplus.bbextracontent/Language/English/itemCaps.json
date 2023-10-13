@@ -24,5 +24,7 @@
 	{"key":"Vfx_BN_slip","value":"*SLIP*"},
 	{"key":"GUM_Name","value":"Gum"},
 	{"key":"GUM_Desc","value":"Gum\nBeans sometimes drop his secret weapon, so why not sell it here? Might be useful and delicious... and sticky..!"},
-	{"key":"Vfx_GUM_spit","value":"*SPIT*"}
+	{"key":"Vfx_GUM_spit","value":"*SPIT*"},
+	{"key":"LPC_Name","value":"Lock Pick"},
+	{"key":"LPC_Desc","value":"Lock Pick\nNoDescriptionBcNoShopping"}
 ]}

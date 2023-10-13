@@ -20,6 +20,7 @@ namespace BB_MOD.NPCs
 			
 			robocamCamera = gameObject.AddComponent<Camera>();
 			robocamCamera.enabled = false;
+
 		}
 
 		private void Update()

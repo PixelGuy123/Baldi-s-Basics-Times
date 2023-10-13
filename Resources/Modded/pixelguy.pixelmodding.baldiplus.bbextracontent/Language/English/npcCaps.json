@@ -53,5 +53,7 @@
 	{"key":"PST_Wch_Name","value":"The Watcher"},
 	{"key":"PST_Wch_Desc","value":"A shy watcher that... watches hallways, for such good comedy, he swaps people's positions.. such a good prank!"},
 	{"key":"Vfx_Wch_Idle","value":"*Watching*"},
-	{"key":"Vfx_Wch_See","value":"*Screeching*"}
+	{"key":"Vfx_Wch_See","value":"*Screeching*"},
+	{"key":"Vfx_Wch_Angry","value":"*Otherwordly noises*"},
+	{"key":"Vfx_Wch_Teleport","value":"*Warping*"}
 ]}
