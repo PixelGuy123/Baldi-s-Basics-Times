@@ -228,6 +228,13 @@ namespace BB_MOD.Builders
 			var obj = ContentUtilities.CreateBasicCube_WithObstacle(new Vector3(1f, 10f, 9.9f), new Vector3(1f, 5f, 1.3f), "bathToiletWalls.png");
 			var doorObj = ContentUtilities.CreateBasicCube_WithObstacle(new Vector3(1f, 10f, 9.9f), new Vector3(1f, 5f, 1.3f), "BathDoor.png");
 
+			Destroy(doorObj.GetComponent<BoxCollider>()); // Removes the BoxCollider
+			var doorCollision = new GameObject("doorCollision", typeof(MeshCollider));
+			doorCollision.transform.SetParent(doorObj);
+			doorCollision.GetComponent<MeshCollider>().sharedMesh = ContentUtilities.FindResourceObject<ElevatorDoor>().transform.GetChildByName("Quads").GetChildByName("Door_In").GetComponent<MeshCollider>().sharedMesh; // Gets the mesh of the elevator
+			doorCollision.transform.localPosition = Vector3.zero;
+			doorCollision.transform.localRotation = Quaternion.Euler(doorObj.rotation.eulerAngles + Vector3.up * 90f);
+
 
 
 			foreach (var spot in spots)

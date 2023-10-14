@@ -220,7 +220,7 @@ namespace BB_MOD.NPCs
 		{
 			while (active)
 			{
-				EnvironmentExtraVariables.PlayerAdditionalFOV = Random.Range(-crazinessRange, crazinessRange) * (maxAngryCooldown - angryCooldown);
+				EnvironmentExtraVariables.PlayerAdditionalFOV = Random.Range(-crazinessRange + EnvironmentExtraVariables.FixedFOV, EnvironmentExtraVariables.FixedFOV + crazinessRange) * (maxAngryCooldown - angryCooldown);
 				yield return null;
 			}
 		}
@@ -249,7 +249,7 @@ namespace BB_MOD.NPCs
 					StopCoroutine(crazyTime);
 				}
 
-				EnvironmentExtraVariables.PlayerAdditionalFOV = 0f;
+				EnvironmentExtraVariables.PlayerAdditionalFOV = EnvironmentExtraVariables.FixedFOV;
 				audMan.FlushQueue(true);
 				angryCooldown = maxAngryCooldown;
 			}

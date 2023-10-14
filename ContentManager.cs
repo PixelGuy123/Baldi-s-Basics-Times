@@ -20,6 +20,7 @@ using UnityEngine.Networking;
 using static BB_MOD.ContentAssets;
 using static BB_MOD.ContentManager;
 using static UnityEngine.Rendering.DebugUI;
+using UnityEngine.UIElements;
 
 // -------------------- PRO TIP ----------------------
 // Recommended using UnityExplorer to debug your item, event or npc. It's a very useful tool
@@ -385,6 +386,16 @@ namespace BB_MOD
 			}
 			return transforms;
 		}
+		public static Transform GetChildByName(this Transform transform, string name)
+		{
+			for (int i = 0; i < transform.childCount; i++)
+			{
+				var t = transform.GetChild(i);
+				if (t.name.ToLower().Contains(name.ToLower()))
+					return t;
+			}
+			return null;
+		}
 		/// <summary>
 		/// Gets all childs of the transform converted in an list, if no child is found, an empty list is returned
 		/// </summary>
@@ -420,7 +431,10 @@ namespace BB_MOD
 			allowHangingLights = true;
 			isEndGame = false;
 			playerFOV = 0f;
+			lastFOVVal = 0f;
 			overlapFOVModifier = false;
+			BlackOut.OutageGoing = false;
+			ITM_SpeedPotion.ResetCount();
 			OnEndGame.RemoveAllListeners();
 		}
 
@@ -430,23 +444,36 @@ namespace BB_MOD
 			{
 				case Floors.F1:
 					MaxConveyorSpeedOffset = 2;
-					MaxNewProblems[0] = 1;
-					MaxNewProblems[1] = 1;
+					MaxNewProblems = new WeightedSelection<int>[]
+					{
+						new WeightedSelection<int>() { selection = 1, weight = 100 }
+					};
 					break;
 				case Floors.F2:
 					MaxConveyorSpeedOffset = 4;
-					MaxNewProblems[0] = 1;
-					MaxNewProblems[1] = 2;
+					MaxNewProblems = new WeightedSelection<int>[2]
+					{
+						new WeightedSelection<int>() { selection = 1, weight = 100 },
+						new WeightedSelection<int>() { selection = 2, weight = 75 }
+					};
 					break;
 				case Floors.F3:
 					MaxConveyorSpeedOffset = 2;
-					MaxNewProblems[0] = 2;
-					MaxNewProblems[1] = 4;
+					MaxNewProblems = new WeightedSelection<int>[4]
+					{
+						new WeightedSelection<int>() { selection = 1, weight = 100 },
+						new WeightedSelection<int>() { selection = 2, weight = 75 },
+						new WeightedSelection<int>() { selection = 3, weight = 50 },
+						new WeightedSelection<int>() { selection = 4, weight = 10 }
+					};
 					break;
 				case Floors.END:
 					MaxConveyorSpeedOffset = 3;
-					MaxNewProblems[0] = 1;
-					MaxNewProblems[1] = 2;
+					MaxNewProblems = new WeightedSelection<int>[2]
+					{
+						new WeightedSelection<int>() { selection = 1, weight = 100 },
+						new WeightedSelection<int>() { selection = 2, weight = 25 }
+					};
 					break;
 				
 			}
@@ -518,10 +545,13 @@ namespace BB_MOD
 			{
 				if (overlapFOVModifier)
 					return;
-				
+
 				playerFOV = FOVCheck(value);
+				lastFOVVal = playerFOV;
 			}
 		}
+
+		public static float SetADefaultFOV(float fov) => lastFOVVal = FOVCheck(fov);
 
 		static float FOVCheck(float fov) => fov < minFOV ? minFOV : fov > maxFOV ? maxFOV : fov;
 
@@ -530,8 +560,10 @@ namespace BB_MOD
 			playerFOV = FOVCheck(fov);
 		}
 
-		public static IEnumerator SmoothFOVSlide(float divider, float endingFOV = 0f, float offset = 0f)
+		public static IEnumerator SmoothFOVSlide(float divider, float targetFOV = 0f, float offset = 0f)
 		{
+			float endingFOV = targetFOV == 0f ? lastFOVVal : targetFOV;
+
 			float fovOffset = playerFOV + offset;
 			if (fovOffset.Compare(endingFOV))
 			{
@@ -556,12 +588,16 @@ namespace BB_MOD
 
 		private static float playerFOV = 0f;
 
+		private static float lastFOVVal = 0f;
+
+		public static float FixedFOV => lastFOVVal;
+
 		public const float maxFOV = 113f;
 
 		public const float minFOV = -50f;
 
 		// Some custom attributes for each level that are set up by the environment
-		public static int[] MaxNewProblems { get; private set; } = new int[2];
+		public static WeightedSelection<int>[] MaxNewProblems { get; private set; }
 		
 		public static int MaxConveyorSpeedOffset { get; private set; }
 
@@ -1568,6 +1604,9 @@ namespace BB_MOD
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "item", "gum_grounded.png"), 25, "gum_gummed");
 			AddSoundObject(Path.Combine(modPath, "Audio", "item", "gum_spit.wav"), "gumSpit", true, "Vfx_GUM_spit", SoundType.Effect, new Color(0.9960f, 0.5f, 0.8710f)); // Gum Spit for Gum Item duh
 
+			AddSoundObject(Path.Combine(modPath, "Audio", "item", "potion_drink.wav"), "pt_drink", true, "Vfx_SPP_drink", SoundType.Effect, new Color(0.19921875f, 0.99609375f, 0.59765625f)); // Cyan-like color / Assets for speed potion
+			AddSoundObject(Path.Combine(modPath, "Audio", "item", "potion_speedCoilNoises.wav"), "pt_speed", true, "Vfx_SPP_drink", SoundType.Effect, Color.clear, hasSubtitle:false);
+
 			// Events Assets
 
 			AddAudioAsset(Path.Combine(modPath, "Audio", "event", "new_CreepyOldComputer.wav"), "fogNewSong", false); // The new noise when the fog event play
@@ -1587,6 +1626,7 @@ namespace BB_MOD
 			// Misc Assets
 
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "otherMainMenu.png"), 1, "newBaldiMenu"); // The BB Times Main Menu
+			AddLoopingSoundObject("bbtimesopening", false, Path.Combine(modPath, "Audio", "extras", "BAL_Speech.wav")); // BB Times opening speech
 
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "npc", "old_sweep.png"), 20, "oldSweepSprite"); // Old Sweep sprite
 			AddTextureAsset(Path.Combine(modPath, "Textures", "npc", "pri_oldsweep.png"), "oldSweepPoster"); // Old Sweep Poster
@@ -1721,7 +1761,7 @@ namespace BB_MOD
 			CreateNPC<PencilBoy>("Pencil Boy", 50, ContentUtilities.Array("pb_angry.png", "pb_angrySpot.png", "pb_happy.png"), false, false, 65f, -1.75f, "pri_pb.png", "PST_PB_Name", "PST_PB_Desc", ContentUtilities.Array(Floors.F2, Floors.END), ContentUtilities.Array(RoomCategory.Hall, RoomCategory.Test), enterRooms: false, capsuleRadius: 2.6f);
 			CreateNPC<Stunly>("Stunly", 60, ContentUtilities.Array("Stunly.png"), false, false, 34, -1.35f, "pri_stunly.png", "PST_Stunly_Name", "PST_Stunly_Desc", ContentUtilities.AllFloors, enterRooms: false);
 			CreateNPC<Leapy>("Leapy", 75, ContentUtilities.Array("leapy_1.png", "leapy_2.png", "leapy_3.png"), false, false, 25f, -1f, "pri_leapy.png", "PST_Leapy_Name", "PST_Leapy_Desc", ContentUtilities.AllFloorsExcept(Floors.F1), false, false, true, true);
-			CreateNPC<Watcher>("Watcher", 80, ContentUtilities.Array("Watcher.png"), false, false, 34f, 0f, "pri_watcher.png", "PST_Wch_Name", "PST_Wch_Desc", ContentUtilities.Array(Floors.F3), true, false, true, true, forceSpawn: true);
+			CreateNPC<Watcher>("Watcher", 80, ContentUtilities.Array("Watcher.png"), false, false, 34f, 0f, "pri_watcher.png", "PST_Wch_Name", "PST_Wch_Desc", ContentUtilities.Array(Floors.F3), true, false, true, true, forceSpawn: true, isStatic:true);
 
 
 			// Replacement NPCs here
@@ -1901,11 +1941,12 @@ namespace BB_MOD
 			CreateItem<ITM_Bell>("BEL_Name", "BEL_Desc", "bell.png", "bell.png", "Bell", 30, 25, 25, ContentUtilities.AllFloors, 125, ContentUtilities.AllFloors, 45, includeOnFieldTrip: true); // PixelGuy
 			CreateItem<ITM_GPS>("GPS_Name", "GPS_Desc", "gps.png", "gpsSmall.png", "GPS", 70, 20, 25, ContentUtilities.Array(Floors.F2, Floors.END), 245, ContentUtilities.Array(Floors.F2, Floors.F3), 30, includeOnPartyEvent: true, includeOnFieldTrip: true); // PixelGuy
 			CreateItem<ITM_Pencil>("PC_Name", "PC_Desc", "Pencil.png", "Pencil.png", "Pencil", 40, 22, 25, ContentUtilities.Array(Floors.F2, Floors.END), 40, ContentUtilities.Array(Floors.F2, Floors.F3), 30, includeOnFieldTrip: true); // FileName3 (Coded by PixelGuy)
-			CreateItem<ITM_ScrewDriver>("SD_Name", "SD_Desc", "screwDriver.png", "screwDriver.png", "ScrewDriver", 110, 25, 15, 110, ContentUtilities.AllFloors, 25, false, false, false, true);
-			CreateItem<ITM_Trap>("BT_Name", "BT_Desc", "TrapOpen.png", "trapSmall.png", "BearTrap", 90, 27, 20, ContentUtilities.Array(Floors.F2, Floors.END), 85, ContentUtilities.AllFloorsExcept(Floors.F1), 15, true, true, false);
-			CreateItem<ITM_Banana>("BN_Name", "BN_Desc", "Banana.png", "Banana.png", "Banana", 50, 18, 5, 25, ContentUtilities.AllFloors, 55);
-			CreateItem<ITM_Gum>("GUM_Name", "GUM_Desc", "gum.png", "gum.png", "Gum", 75, 25, 45, 65, ContentUtilities.AllFloors, 35);
-			CreateItem<ITM_LockPick>("LPC_Name", "LPC_Desc", "lockpick.png", "lockpick.png", "Lockpick", 75, 26, 10, 75, Array.Empty<Floors>(), 1, true, unlockDoors:true);
+			CreateItem<ITM_ScrewDriver>("SD_Name", "SD_Desc", "screwDriver.png", "screwDriver.png", "ScrewDriver", 110, 25, 15, 110, ContentUtilities.AllFloors, 25, false, false, false, true); // PixelGuy
+			CreateItem<ITM_Trap>("BT_Name", "BT_Desc", "TrapOpen.png", "trapSmall.png", "BearTrap", 90, 27, 20, ContentUtilities.Array(Floors.F2, Floors.END), 85, ContentUtilities.AllFloorsExcept(Floors.F1), 15, true, true, false); // PixelGuy
+			CreateItem<ITM_Banana>("BN_Name", "BN_Desc", "Banana.png", "Banana.png", "Banana", 50, 18, 5, 25, ContentUtilities.AllFloors, 55); // PixelGuy
+			CreateItem<ITM_Gum>("GUM_Name", "GUM_Desc", "gum.png", "gum.png", "Gum", 75, 25, 45, 65, ContentUtilities.AllFloors, 35); // PixelGuy
+			CreateItem<ITM_LockPick>("LPC_Name", "LPC_Desc", "lockpick.png", "lockpick.png", "Lockpick", 75, 20, 2, 95, Array.Empty<Floors>(), 1, unlockDoors:true); // PixelGuy
+			CreateItem<ITM_SpeedPotion>("SPP_Name", "SPP_Desc", "speedPotion.png", "speedPotion.png", "Speedpotion", 75, 25, 25, 45, ContentUtilities.AllFloors, 50, includeOnFieldTrip: true); // AdvancedDasher
 		}
 
 

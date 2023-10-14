@@ -948,9 +948,12 @@ namespace BB_MOD_Patches
 		}
 	}
 
-	[HarmonyPatch(typeof(ElevatorScreen), "StartGame")]
+	[HarmonyPatch(typeof(ElevatorScreen))]
 	internal class StopMusicThereAswell
 	{
+		[HarmonyPatch("StartGame")]
+		[HarmonyPatch("Initialize")]
+		[HarmonyPrefix]
 		private static void Prefix()
 		{
 			Singleton<MusicManager>.Instance.StopFile(); // Stops music before opening elevator
@@ -1387,6 +1390,7 @@ namespace BB_MOD_Patches
 		private static void Prefix(MainMenu __instance)
 		{
 			__instance.gameObject.transform.Find("Image").GetComponent<Image>().sprite = ContentAssets.GetAsset<Sprite>("newBaldiMenu"); // Changes main menu texture to my beautiful one lol
+			Singleton<MusicManager>.Instance.QueueFile(ContentAssets.GetAsset<LoopingSoundObject>("bbtimesopening"), false);
 		}
 	}
 
@@ -1919,24 +1923,35 @@ namespace BB_MOD_Patches
 		}
 	}
 
-	[HarmonyPatch(typeof(MathMachine))]
+	
+	[HarmonyPatch()]
+	internal class MathMachineWOOOW
+	{
+		[HarmonyTargetMethod]
+		private static MethodBase PointOutTheRightOne()
+		{
+			return AccessTools.Method(typeof(MathMachine), "Completed", new Type[] { typeof(int), typeof(bool), typeof(Activity) }); // Points out the second one
+		}
 
+		[HarmonyPrefix]
+		private static void RegisterMachine(MathMachine __instance, AudioManager ___audMan, bool correct)
+		{
+			EnvironmentExtraVariables.completedMachines.Add(__instance);
+			if (correct)
+				___audMan.PlaySingle(ContentAssets.GetAsset<SoundObject>("baldi_WOW"));
+		}
+	}
+
+	[HarmonyPatch(typeof(MathMachine))]
 	internal class BlackoutEventPatch_MathMachine
 	{
 		[HarmonyPrefix]
 		[HarmonyPatch("Start")]
 		private static void MoreQuestions(ref int ___totalProblems)
 		{
-			___totalProblems = UnityEngine.Random.Range(EnvironmentExtraVariables.MaxNewProblems[0], EnvironmentExtraVariables.MaxNewProblems[1] + 1);
+			___totalProblems = WeightedSelection<int>.RandomSelection(EnvironmentExtraVariables.MaxNewProblems);
 		}
 
-		[HarmonyPrefix]
-		[HarmonyPatch("Completed")]
-		private static void RegisterMachine(MathMachine __instance, AudioManager ___audMan)
-		{
-			EnvironmentExtraVariables.completedMachines.Add(__instance);
-			___audMan.PlaySingle(ContentAssets.GetAsset<SoundObject>("baldi_WOW"));
-		}
 		[HarmonyPrefix]
 		[HarmonyPatch("Clicked")]
 		private static bool DisableClick() // If outage is going, disable interaction

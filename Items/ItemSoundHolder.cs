@@ -40,10 +40,11 @@ namespace BB_MOD.ExtraItems
 		/// <param name="position"></param>
 		/// <param name="sound"></param>
 
-		public static void CreateSoundHolder(Transform position, SoundObject sound, bool positionalAudio, float minDistance = 30f, float maxDistance = 30f, bool supportDuppler = false, bool destructiveParent = false)
+		public static ItemSoundHolder CreateSoundHolder(Transform position, SoundObject sound, bool positionalAudio, float minDistance = 30f, float maxDistance = 30f, bool supportDuppler = false, bool destructiveParent = false)
 		{
 			var obj = Internal_CreateSoundHolder(position, positionalAudio, minDistance, maxDistance, supportDuppler);
 			obj.GetComponent<ItemSoundHolder>().StartCoroutine(obj.GetComponent<ItemSoundHolder>().PlaySoundAndDespawn(sound, obj.GetComponent<AudioManager>(), maxDistance, destructiveParent ? position : null));
+			return obj.GetComponent<ItemSoundHolder>();
 		}
 
 		/// <summary>
@@ -51,10 +52,11 @@ namespace BB_MOD.ExtraItems
 		/// </summary>
 		/// <param name="position"></param>
 		/// <param name="sound"></param>
-		public static void CreateSoundHolder(Vector3 position, SoundObject sound, bool positionalAudio, float minDistance = 30f, float maxDistance = 30f, bool supportDuppler = false, Transform destructiveParent = null)
+		public static ItemSoundHolder CreateSoundHolder(Vector3 position, SoundObject sound, bool positionalAudio, float minDistance = 30f, float maxDistance = 30f, bool supportDuppler = false, Transform destructiveParent = null)
 		{
 			var obj = Internal_CreateSoundHolder(position, positionalAudio, minDistance, maxDistance, supportDuppler);
 			obj.GetComponent<ItemSoundHolder>().StartCoroutine(obj.GetComponent<ItemSoundHolder>().PlaySoundAndDespawn(sound, obj.GetComponent<AudioManager>(), maxDistance, destructiveParent));
+			return obj.GetComponent<ItemSoundHolder>();
 		}
 
 		private IEnumerator PlaySoundAndDespawn(SoundObject sound, AudioManager audMan, float maxDistance, Transform parent = null)
