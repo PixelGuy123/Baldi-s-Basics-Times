@@ -17,7 +17,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace BB_MOD_Patches
+namespace Patches.Main
 {
 
 	[HarmonyPatch(typeof(LevelGenerator), "StartGenerate")]
@@ -401,6 +401,15 @@ namespace BB_MOD_Patches
 		}
 	}
 
+	[HarmonyPatch(typeof(CoreGameManager), "Start")]
+	internal class NonPosAudioForCores
+	{
+		private static void Postfix(CoreGameManager __instance)
+		{
+			__instance.audMan.positional = false; // Literally only this
+		}
+	}
+
 	[HarmonyPatch(typeof(MainGameManager), "LoadNextLevel")]
 	internal class BeautifulCutscene
 	{
@@ -757,7 +766,7 @@ namespace BB_MOD_Patches
 					Singleton<MusicManager>.Instance.QueueFile(ContentAssets.GetAsset<LoopingSoundObject>("SchoolEscapeSong"), true); // Normal Escape Sequence
 					sound = ContentAssets.GetAsset<SoundObject>("BaldiNormalEscape");
 				}
-				__instance.StartCoroutine(EnvironmentExtraVariables.SmoothFOVSlide(7.5f, EnvironmentExtraVariables.PlayerAdditionalFOV, 25f));
+				__instance.StartCoroutine(EnvironmentExtraVariables.SmoothFOVSlide(7.5f, 15, offset:25f));
 				sound.subtitle = false; // No subtitles.
 				if (mainMode)
 					ItemSoundHolder.CreateSoundHolder(Singleton<CoreGameManager>.Instance.GetPlayer(0).transform, sound, false, maxDistance: 100f);
@@ -853,7 +862,7 @@ namespace BB_MOD_Patches
 				elevatorGates[1].GetComponent<MeshRenderer>().material.mainTexture = gateTexs[0];
 				elevatorGates[2].GetComponent<MeshRenderer>().material.mainTexture = gateTexs[2];
 
-				__instance.StartCoroutine(EnvironmentExtraVariables.SmoothFOVSlide(14f, EnvironmentExtraVariables.PlayerAdditionalFOV, 75f));
+				__instance.StartCoroutine(EnvironmentExtraVariables.SmoothFOVSlide(14f, 15, offset:75f));
 				for (int i = 0; i < ___ec.CurrentEventTypes.Count; i++)
 				{
 					AccessTools.Field(typeof(RandomEvent), "remainingTime").SetValue(___ec.GetEvent(___ec.CurrentEventTypes[i]), 0f);
@@ -1001,6 +1010,7 @@ namespace BB_MOD_Patches
 			obj.SetActive(false);
 
 			var obj2 = UnityEngine.Object.Instantiate(obj);
+			obj2.GetComponent<MeshRenderer>().material.mainTexture = ContentAssets.GetAsset<Texture2D>("ventTex");
 
 			obj2.name = "StraightVent";
 
@@ -1024,12 +1034,17 @@ namespace BB_MOD_Patches
 
 		}
 		[HarmonyPostfix]
-		private static void MakeVentsPositionsALittleBetter(System.Random cRng, GameObject[] __state) // as the method name suggests
+		private static void MakeVentsPositionsALittleBetter(GameObject[] __state) // as the method name suggests
 		{
-			var vents = ContentUtilities.FindObjectsContainingName<Vent>("clone", true);
-			vents.Do(x => x.gameObject.SetActive(true));
-			vents.Do(x => x.transform.localPosition = Vector3.up * 9f);
-			vents.DoIf(x => x.name.Contains("Straight"), x => x.TurnVent(false, true));
+			foreach (var vent in ContentUtilities.FindObjectsContainingName<Vent>("clone", true))
+			{
+				vent.gameObject.SetActive(true);
+				vent.transform.localPosition = Vector3.up * 9f;
+				if (vent.name.Contains("StraightVent"))
+				{
+					vent.TurnVent(false, true);
+				}
+			}
 			__state.Do(x => UnityEngine.Object.Destroy(x));
 
 		}
@@ -1094,30 +1109,53 @@ namespace BB_MOD_Patches
 		}
 	}
 
-	[HarmonyPatch(typeof(FloodEvent), "Move", MethodType.Enumerator)]
-	internal class FixWhirpoolSpawn
+	[HarmonyPatch(typeof(FloodEvent))]
+	internal class FixWhirlpoolSpawn
 	{
-		private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+		[HarmonyTranspiler]
+		[HarmonyPatch("Move", MethodType.Enumerator)]
+		private static IEnumerable<CodeInstruction> FixWhirlpoolSpawns(IEnumerable<CodeInstruction> instructions)
 		{
-			bool success = false;
-			int foundBooleans = 0;
-			using (var enumerator = instructions.GetEnumerator())
+			var list = new List<CodeInstruction>(instructions);
+
+			var allTiles = AccessTools.Method(typeof(EnvironmentController), "AllTilesNoGarbage");
+
+			int idx = list.FindIndex(x => x.Is(OpCodes.Callvirt, allTiles));
+			if (idx >= 0)
+				list[idx - 1].opcode = OpCodes.Ldc_I4_0; // Just switches one boolean from true to false
+
+
+			return list.AsEnumerable();
+		}
+
+		[HarmonyPrefix]
+		[HarmonyPatch("MoveWater")]
+		private static void ShutDoorTime(ref List<Door> ___doors, FloodEvent __instance)
+		{
+			if (__instance.Active) return;
+
+			foreach (var door in ___doors)
 			{
-				while (enumerator.MoveNext())
-				{
-					var instruction = enumerator.Current;
-					if (!success && instruction.opcode == OpCodes.Ldc_I4_1)
-					{
-						if (++foundBooleans >= 2) // If it found the second boolean (meaning it is about the object thing), then skip!
-						{
-							success = true;
-							yield return new CodeInstruction(OpCodes.Ldc_I4_0);
-							continue;
-						}
-					}
-					yield return instruction;
-				}
+				door.StartCoroutine(door.ShutTimer(UnityEngine.Random.Range(5f, 10f)));
 			}
+			___doors.Clear();
+		}
+	}
+	[HarmonyPatch(typeof(Whirlpool), "Teleport", MethodType.Enumerator)]
+	internal class FixWhirlpoolSpawn_InWhirlpools
+	{
+		private static IEnumerable<CodeInstruction> FixWhirlpoolSpawns(IEnumerable<CodeInstruction> instructions)
+		{
+			var list = new List<CodeInstruction>(instructions);
+
+			var allTiles = AccessTools.Method(typeof(EnvironmentController), "AllTilesNoGarbage");
+
+			int idx = list.FindIndex(x => x.Is(OpCodes.Callvirt, allTiles));
+			if (idx >= 0)
+				list[idx - 1].opcode = OpCodes.Ldc_I4_0; // Just switches one boolean from true to false
+			
+
+			return list.AsEnumerable();
 		}
 	}
 
@@ -2000,8 +2038,12 @@ namespace BB_MOD_Patches
 	{
 		private static void Postfix(GameCamera __instance)
 		{
-			__instance.camCom.fieldOfView = EnvironmentExtraVariables.PlayerDefaultFOV + EnvironmentExtraVariables.PlayerAdditionalFOV;
-			__instance.billboardCam.fieldOfView = EnvironmentExtraVariables.PlayerDefaultFOV + EnvironmentExtraVariables.PlayerAdditionalFOV;
+			var sum = EnvironmentExtraVariables.GetFOVSum();
+			var fov = EnvironmentExtraVariables.PlayerDefaultFOV + sum;
+			EnvironmentExtraVariables.CurrentFOV = sum;
+
+			__instance.camCom.fieldOfView = fov;
+			__instance.billboardCam.fieldOfView = fov;
 		}
 	}
 
@@ -2114,7 +2156,8 @@ namespace BB_MOD_Patches
 		private static void Prefix(SubtitleController __instance, out float __state)
 		{
 			__state = __instance.distance;
-			__instance.distance = Mathf.Max(1f, __instance.distance - (EnvironmentExtraVariables.PlayerAdditionalFOV * 2f));
+			if (EnvironmentExtraVariables.CurrentFOV < 0f)
+				__instance.distance = Mathf.Max(1f, __instance.distance - (EnvironmentExtraVariables.CurrentFOV * 2f));
 		}
 
 		private static void Postfix(SubtitleController __instance, float __state)
@@ -2137,6 +2180,34 @@ namespace BB_MOD_Patches
 			{
 				___potentialTypes.Add(FarmAnimalType.Sheep);
 			}
+		}
+	}
+	[HarmonyPatch(typeof(ITM_Scissors), "Use")]
+	internal class CutASBully
+	{
+		private static void Prefix(PlayerManager pm)
+		{
+			if (pm.jumpropes.Count > 0)
+			{
+				pm.RuleBreak("Bullying", 2f);
+			}
+		}
+
+		private static void Postfix(bool __result, PlayerManager pm)
+		{
+			if (__result)
+			{
+				ItemSoundHolder.CreateSoundHolder(pm.transform, ContentAssets.GetAsset<SoundObject>("sc_cut"), false, 40, 60);
+			}
+		}
+	}
+
+	[HarmonyPatch(typeof(ITM_ZestyBar), "Use")]
+	internal class EatZesty
+	{
+		private static void Prefix(PlayerManager pm)
+		{
+			ItemSoundHolder.CreateSoundHolder(pm.transform, ContentAssets.GetAsset<SoundObject>("zesty_eat"), false, 40, 60);
 		}
 	}
 

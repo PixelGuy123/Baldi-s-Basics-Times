@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Transactions;
 using UnityEngine;
 
 namespace BB_MOD.ExtraItems
@@ -28,17 +29,19 @@ namespace BB_MOD.ExtraItems
 		private IEnumerator DrinkingPhase()
 		{
 			UsedPotions++;
+
+			var token = new EnvironmentExtraVariables.FOVToken(0f, 1, false);
 			ItemSoundHolder holder = ItemSoundHolder.CreateSoundHolder(pm.transform, aud_drink, false, 40, 60);
 
-			StartCoroutine(EnvironmentExtraVariables.SmoothFOVSlide(8f, -20f));
+			StartCoroutine(EnvironmentExtraVariables.SmoothFOVSlide(8f, token, -20f));
 
 			while (holder.IsPlaying) { yield return null; }
 
 			pm.Am.moveMods.Add(moveMod);
-			
 
-			EnvironmentExtraVariables.SetADefaultFOV(speedFOV + fovMultiplier * UsedPotions);
-			StartCoroutine(EnvironmentExtraVariables.SmoothFOVSlide(6f, 0f));
+			token.CanSum = true;
+			StartCoroutine(EnvironmentExtraVariables.SmoothFOVSlide(6f, token, 30f));
+
 			ItemSoundHolder.CreateSoundHolder(pm.transform, aud_speed, false, 40, 60);
 			float timer = Random.Range(minTime, maxTime);
 
@@ -50,14 +53,16 @@ namespace BB_MOD.ExtraItems
 
 			pm.Am.moveMods.Remove(moveMod);
 
-			if (--UsedPotions == 0)
-				EnvironmentExtraVariables.SetADefaultFOV(0f);
-
-			StartCoroutine(EnvironmentExtraVariables.SmoothFOVSlide(6f));
+			token.CanSum = false;
+			StartCoroutine(EnvironmentExtraVariables.SmoothFOVSlide(6f, token));
 
 			
 
-			while (!EnvironmentExtraVariables.PlayerAdditionalFOV.Compare(EnvironmentExtraVariables.FixedFOV)) { yield return null; }
+			while (!token.DoneSlide) { yield return null; }
+
+			EnvironmentExtraVariables.FovModifiers.Remove(token);
+
+			UsedPotions--;
 			
 
 			Destroy(gameObject);
@@ -74,7 +79,7 @@ namespace BB_MOD.ExtraItems
 		readonly MovementModifier moveMod = new MovementModifier(Vector3.zero, 2f);
 
 
-		const float minTime = 10f, maxTime = 15f, speedFOV = 50f, fovMultiplier = 10f;
+		const float minTime = 10f, maxTime = 15f;
 
 		const int potionLimit = 2;
 

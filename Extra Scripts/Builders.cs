@@ -6,7 +6,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using BB_MOD_Patches;
+using Patches.Main;
 
 namespace BB_MOD.Builders
 {
@@ -227,13 +227,7 @@ namespace BB_MOD.Builders
 
 			var obj = ContentUtilities.CreateBasicCube_WithObstacle(new Vector3(1f, 10f, 9.9f), new Vector3(1f, 5f, 1.3f), "bathToiletWalls.png");
 			var doorObj = ContentUtilities.CreateBasicCube_WithObstacle(new Vector3(1f, 10f, 9.9f), new Vector3(1f, 5f, 1.3f), "BathDoor.png");
-
-			Destroy(doorObj.GetComponent<BoxCollider>()); // Removes the BoxCollider
-			var doorCollision = new GameObject("doorCollision", typeof(MeshCollider));
-			doorCollision.transform.SetParent(doorObj);
-			doorCollision.GetComponent<MeshCollider>().sharedMesh = ContentUtilities.FindResourceObject<ElevatorDoor>().transform.GetChildByName("Quads").GetChildByName("Door_In").GetComponent<MeshCollider>().sharedMesh; // Gets the mesh of the elevator
-			doorCollision.transform.localPosition = Vector3.zero;
-			doorCollision.transform.localRotation = Quaternion.Euler(doorObj.rotation.eulerAngles + Vector3.up * 90f);
+			
 
 
 
@@ -245,7 +239,7 @@ namespace BB_MOD.Builders
 				if (!tile.wallDirections.Contains(fixatedDir.GetOpposite()) && !lg.Ec.TileFromPos(tile.position + fixatedDir.GetOpposite().ToIntVector2()).containsWallObject)
 					this.PlaceObject_RawPos(obj, spot + (fixatedDir.GetOpposite().ToVector3() * 5f), dir.GetOpposite().ToRotation());
 
-				this.PlaceObject_RawPos(doorObj, spot + (dir.GetOpposite().ToVector3() * 4f), fixatedDir.ToRotation(), true, true); // Door
+				var door = this.PlaceObject_RawPos(doorObj, spot + (dir.GetOpposite().ToVector3() * 4f), fixatedDir.ToRotation(), true, true); // Door
 
 				tile.CoverAllWalls();
 
@@ -844,13 +838,13 @@ namespace BB_MOD.Builders
 			if (!overlayEnabled && hasPlayers)
 			{
 				if (sequence != null) StopCoroutine(sequence);
-				sequence = StartCoroutine(EnvironmentExtraVariables.SmoothFOVSlide(4f)); // Starts from current fov and goes for there
+				sequence = StartCoroutine(EnvironmentExtraVariables.SmoothFOVSlide(4f, 10)); // Starts from current fov and goes for there
 			}
 			else if (overlayEnabled)
 			{
 				if (!EnvironmentExtraVariables.SmoothFOVActive)
 				{
-					sequence = StartCoroutine(EnvironmentExtraVariables.SmoothFOVSlide(4f, -30f));
+					sequence = StartCoroutine(EnvironmentExtraVariables.SmoothFOVSlide(4f, 10, -30f));
 				}
 			}
 

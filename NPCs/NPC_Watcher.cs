@@ -172,8 +172,10 @@ namespace BB_MOD.NPCs
 			audMan.SetLoop(false);
 			audMan.QueueAudio(warp);
 
+			EnvironmentExtraVariables.FovModifiers.Remove(crazyToken);
 
-			StartCoroutine(EnvironmentExtraVariables.SmoothFOVSlide(10f, offset: 115f));
+
+			StartCoroutine(EnvironmentExtraVariables.SmoothFOVSlide(10f, 5, offset: 115f));
 		}
 
 		private void GetAngry()
@@ -218,11 +220,15 @@ namespace BB_MOD.NPCs
 
 		private IEnumerator CrazyScreen()
 		{
+			EnvironmentExtraVariables.FovModifiers.Add(crazyToken);
 			while (active)
 			{
-				EnvironmentExtraVariables.PlayerAdditionalFOV = Random.Range(-crazinessRange + EnvironmentExtraVariables.FixedFOV, EnvironmentExtraVariables.FixedFOV + crazinessRange) * (maxAngryCooldown - angryCooldown);
+				crazyToken.Offset = Random.Range(-crazinessRange, crazinessRange) * (maxAngryCooldown - angryCooldown);
 				yield return null;
 			}
+			EnvironmentExtraVariables.FovModifiers.Remove(crazyToken);
+
+			yield break;
 		}
 		
 
@@ -249,7 +255,7 @@ namespace BB_MOD.NPCs
 					StopCoroutine(crazyTime);
 				}
 
-				EnvironmentExtraVariables.PlayerAdditionalFOV = EnvironmentExtraVariables.FixedFOV;
+				EnvironmentExtraVariables.FovModifiers.Remove(crazyToken);
 				audMan.FlushQueue(true);
 				angryCooldown = maxAngryCooldown;
 			}
@@ -266,6 +272,8 @@ namespace BB_MOD.NPCs
 		private SoundObject warp;
 
 		private TileController[] spots;
+
+		readonly EnvironmentExtraVariables.FOVToken crazyToken = new EnvironmentExtraVariables.FOVToken(0f, 1);
 
 		bool active = false, angered = false;
 

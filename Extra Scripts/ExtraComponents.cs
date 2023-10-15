@@ -107,6 +107,8 @@ namespace BB_MOD.ExtraComponents
 
 		bool decoy = false, beenUsed = false;
 
+		public bool IsDecoy => decoy;
+
 		readonly Texture2D[] texs = new Texture2D[4] { 
 			ContentAssets.GetAsset<Texture2D>("greenLocker"), 
 			ContentAssets.GetAsset<Texture2D>("greenLocker_open"), 
@@ -499,7 +501,10 @@ namespace BB_MOD.ExtraComponents
 			base.Execute();
 			EnvironmentExtraVariables.OnEndGame.AddListener(() => isActive = false); // When the game ends by Baldi, the player model is disabled
 		}
-		public void SetPlayer(PlayerManager player) => targetPlayer = player;
+		public void SetPlayer(PlayerManager player)
+		{
+			targetPlayer = player;
+		}
 
 		private void Update()
 		{

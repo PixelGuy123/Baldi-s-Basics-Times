@@ -19,8 +19,6 @@ using UnityEngine.Events;
 using UnityEngine.Networking;
 using static BB_MOD.ContentAssets;
 using static BB_MOD.ContentManager;
-using static UnityEngine.Rendering.DebugUI;
-using UnityEngine.UIElements;
 
 // -------------------- PRO TIP ----------------------
 // Recommended using UnityExplorer to debug your item, event or npc. It's a very useful tool
@@ -430,12 +428,12 @@ namespace BB_MOD
 			elevatorTilePositions.Clear();
 			allowHangingLights = true;
 			isEndGame = false;
-			playerFOV = 0f;
-			lastFOVVal = 0f;
 			overlapFOVModifier = false;
 			BlackOut.OutageGoing = false;
 			ITM_SpeedPotion.ResetCount();
 			OnEndGame.RemoveAllListeners();
+			FovModifiers.Clear();
+			CurrentFOV = PlayerDefaultFOV;
 		}
 
 		public static void SetVariables()
@@ -538,63 +536,7 @@ namespace BB_MOD
 		public static bool AreSubtitlesForceDisabled => forceDisableSubtitles;
 		public static bool IsEndGame => isEndGame;
 
-		public static float PlayerAdditionalFOV
-		{
-			get => playerFOV;
-			set
-			{
-				if (overlapFOVModifier)
-					return;
-
-				playerFOV = FOVCheck(value);
-				lastFOVVal = playerFOV;
-			}
-		}
-
-		public static float SetADefaultFOV(float fov) => lastFOVVal = FOVCheck(fov);
-
-		static float FOVCheck(float fov) => fov < minFOV ? minFOV : fov > maxFOV ? maxFOV : fov;
-
-		private static void ForceSetFOV(float fov)
-		{
-			playerFOV = FOVCheck(fov);
-		}
-
-		public static IEnumerator SmoothFOVSlide(float divider, float targetFOV = 0f, float offset = 0f)
-		{
-			float endingFOV = targetFOV == 0f ? lastFOVVal : targetFOV;
-
-			float fovOffset = playerFOV + offset;
-			if (fovOffset.Compare(endingFOV))
-			{
-				yield break;
-			}
-			overlapFOVModifier = true;
-			ForceSetFOV(fovOffset);
-			while (Mathf.Abs(fovOffset - endingFOV) > 0.1f)
-			{
-				fovOffset += (endingFOV - fovOffset) / divider;
-				ForceSetFOV(fovOffset);
-				yield return null;
-			}
-			ForceSetFOV(endingFOV);
-
-			overlapFOVModifier = false;
-
-			yield break;
-		}
-
-		public static void RandomFOV(float min = minFOV, float max = maxFOV) => PlayerAdditionalFOV = UnityEngine.Random.Range(min, max);
-
-		private static float playerFOV = 0f;
-
-		private static float lastFOVVal = 0f;
-
-		public static float FixedFOV => lastFOVVal;
-
-		public const float maxFOV = 113f;
-
-		public const float minFOV = -50f;
+		
 
 		// Some custom attributes for each level that are set up by the environment
 		public static WeightedSelection<int>[] MaxNewProblems { get; private set; }
@@ -630,6 +572,104 @@ namespace BB_MOD
 
 			public TileController Tile { get; }
 		}
+
+		// FOV-Related Stuff
+
+		public class FOVToken
+		{
+			public FOVToken(float value, int priority, bool canSum = true)
+			{
+				offset = FOVCheck(value);
+				Priority = priority;
+				CanSum = canSum;
+			}
+
+
+			float offset = 0f;
+
+			public float Offset { get => offset; set => offset = FOVCheck(value); }
+
+			public int Priority { get; }
+
+			public bool CanSum { get; set; }
+
+			public bool DoneSlide { get; set; } = false;
+		}
+
+		
+
+		public static IEnumerator SmoothFOVSlide(float divider, int priority, float targetFOV = 0f, float offset = 0f, bool canSum = false)
+		{
+			var token = new FOVToken(CurrentFOV + offset, priority, canSum);
+
+			var endingFOV = FOVCheck(targetFOV);
+
+			FovModifiers.Add(token);
+
+			while (Mathf.Abs(token.Offset - endingFOV) > 0.1f)
+			{
+				token.Offset += (endingFOV - token.Offset) / divider;
+				yield return null;
+			}
+
+			FovModifiers.Remove(token);
+
+			yield break;
+		}
+
+		public static IEnumerator SmoothFOVSlide(float divider, FOVToken token, float targetFOV = 0f)
+		{
+			var endingFOV = FOVCheck(targetFOV);
+
+			if (!FovModifiers.Contains(token))
+				FovModifiers.Add(token);
+			token.DoneSlide = false;
+
+			while (Mathf.Abs(token.Offset - endingFOV) > 0.1f)
+			{
+				token.Offset += (endingFOV - token.Offset) / divider;
+				yield return null;
+			}
+
+			token.DoneSlide = true;
+
+			yield break;
+		}
+
+		static float FOVCheck(float fov) => fov < minFOV ? minFOV : fov > maxFOV ? maxFOV : fov;
+
+		public static float GetFOVSum() // Get the sum of all Fov values (with the highest priority)
+		{
+			if (FovModifiers.Count == 0) return 0f;
+
+			List<float> sums = new List<float>();
+			int currentPriority = 0;
+
+			foreach (var token in FovModifiers)
+			{
+				if (token.Priority > currentPriority)
+				{
+					currentPriority = token.Priority;
+					sums.Clear();
+				}
+
+				if (token.Priority == currentPriority)
+				{
+					if (token.CanSum || sums.Count == 0) // To not accumulate too many sums
+						sums.Add(token.Offset);
+				}
+			}
+
+			return FOVCheck(sums.Sum());
+		}
+
+		public static List<FOVToken> FovModifiers { get; private set; } = new List<FOVToken>();
+
+		public static float CurrentFOV = PlayerDefaultFOV;
+
+		public const float maxFOV = 90f;
+
+		public const float minFOV = -50f;
 
 		public const float PlayerDefaultFOV = 60f;
 	}
@@ -1607,6 +1647,9 @@ namespace BB_MOD
 			AddSoundObject(Path.Combine(modPath, "Audio", "item", "potion_drink.wav"), "pt_drink", true, "Vfx_SPP_drink", SoundType.Effect, new Color(0.19921875f, 0.99609375f, 0.59765625f)); // Cyan-like color / Assets for speed potion
 			AddSoundObject(Path.Combine(modPath, "Audio", "item", "potion_speedCoilNoises.wav"), "pt_speed", true, "Vfx_SPP_drink", SoundType.Effect, Color.clear, hasSubtitle:false);
 
+			AddSoundObject(Path.Combine(modPath, "Audio", "item", "scissors_cut.wav"), "sc_cut", true, "Vfx_Scissors_cut", SoundType.Effect, new Color(0.99609375f, 0f, 0.99609375f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "item", "eat.wav"), "zesty_eat", true, "Vfx_Zesty_eat", SoundType.Effect, new Color(0.74609375f, 0.5f, 0.25f));
+
 			// Events Assets
 
 			AddAudioAsset(Path.Combine(modPath, "Audio", "event", "new_CreepyOldComputer.wav"), "fogNewSong", false); // The new noise when the fog event play
@@ -1637,6 +1680,7 @@ namespace BB_MOD
 			}
 
 			AddTextureAsset(Path.Combine(modPath, "Textures", "ventAtlas.png"), "ventAtlasText"); // Texture used by the vent
+			AddTextureAsset(Path.Combine(modPath, "Textures", "ventTex.png"), "ventTex");
 
 			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "ventNoise.wav"), "ventNoises", true, "Vfx_VentNoise", SoundType.Effect, Color.white); // Vent Noises
 			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "lockerNoise.wav"), "lockerNoise", true, "Vfx_Locker_SLAM", SoundType.Effect, Color.white);
@@ -2801,7 +2845,8 @@ namespace BB_MOD
 				addedExtraContent[2] = true;
 				CreateSchoolHouseMusic("mus_NewSchool.wav", ContentUtilities.AllFloorsExcept(Floors.F3));
 				CreateSchoolHouseMusic("mus_NewSchool1.wav", Floors.F1); // Bsidekid
-				CreateSchoolHouseMusic("mus_NewSchool2.wav", Floors.F3);
+				CreateSchoolHouseMusic("mus_NewSchool2.wav", Floors.F3); // Bsidekid
+				CreateSchoolHouseMusic("mus_newschool3.wav", Floors.F2); // Bsidekid
 			}
 			if (!addedExtraContent[3])
 			{

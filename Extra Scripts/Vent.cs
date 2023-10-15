@@ -12,6 +12,7 @@ namespace BB_MOD.ExtraComponents
 
 			if (disabledForever) return;
 
+			audMan.maintainLoop = true;
 			audMan.QueueAudio(aud_ventNoise);
 			audMan.SetLoop(true);
 		}
@@ -29,7 +30,11 @@ namespace BB_MOD.ExtraComponents
 			else
 				audMan?.QueueAudio(aud_ventNoise);
 
-			audMan?.SetLoop(turn);
+			if (audMan != null)
+			{
+				audMan.maintainLoop = turn;
+				audMan.SetLoop(turn);
+			}
 		}
 
 		bool disabledForever = false;

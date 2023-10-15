@@ -25,9 +25,11 @@
 	{"key":"GUM_Name","value":"Gum"},
 	{"key":"GUM_Desc","value":"Gum\nBeans sometimes drop his secret weapon, so why not sell it here? Might be useful and delicious... and sticky..!"},
 	{"key":"Vfx_GUM_spit","value":"*SPIT*"},
-	{"key":"LPC_Name","value":"Lock Pick"},
-	{"key":"LPC_Desc","value":"Lock Pick\nNoDescriptionBcNoShopping"},
+	{"key":"LPC_Name","value":"Lockpick"},
+	{"key":"LPC_Desc","value":"Lockpick\nNoDescriptionBcNoShopping"},
 	{"key":"SPP_Name","value":"Speed Potion"},
 	{"key":"SPP_Desc","value":"Speed Potion\nA special potion being one of the most basic inventions by Baldi! Just drink it and run as far as you can!"},
-	{"key":"Vfx_SPP_drink","value":"*Drinking*"}
+	{"key":"Vfx_SPP_drink","value":"*Drinking*"},
+	{"key":"Vfx_Scissors_cut","value":"*Cut*"},
+	{"key":"Vfx_Zesty_eat","value":"*Eat*"}
 ]}
