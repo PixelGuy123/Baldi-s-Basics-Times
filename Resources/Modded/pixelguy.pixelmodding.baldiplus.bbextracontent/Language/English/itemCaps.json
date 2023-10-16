@@ -31,5 +31,9 @@
 	{"key":"SPP_Desc","value":"Speed Potion\nA special potion being one of the most basic inventions by Baldi! Just drink it and run as far as you can!"},
 	{"key":"Vfx_SPP_drink","value":"*Drinking*"},
 	{"key":"Vfx_Scissors_cut","value":"*Cut*"},
-	{"key":"Vfx_Zesty_eat","value":"*Eat*"}
+	{"key":"Vfx_Zesty_eat","value":"*Eat*"},
+	{"key":"BSED_Name","value":"Baldi's Super Energy Drink"},
+	{"key":"BSED_Desc","value":"Baldi's Super Energy Drink\nThe first BSODA competitor, made by Baldi himself, it's a very tasty drink which makes you very energetic! This is not advertisement, I promise!!"},
+	{"key":"gquarter_Name","value":"Golden Quarter"},
+	{"key":"gquarter_Desc","value":"Golden Quarter\nThis shiny golden quarter invention made by Baldi will grant you three more shiny quarters, use it wisely as it occupies most of your inventory!"}
 ]}

@@ -55,5 +55,8 @@
 	{"key":"Vfx_Wch_Idle","value":"*Watching*"},
 	{"key":"Vfx_Wch_See","value":"*Screeching*"},
 	{"key":"Vfx_Wch_Angry","value":"*Otherwordly noises*"},
-	{"key":"Vfx_Wch_Teleport","value":"*Warping*"}
+	{"key":"Vfx_Wch_Teleport","value":"*Warping*"},
+	{"key":"PST_Spj_Name","value":"Superintendent Jr."},
+	{"key":"PST_Spj_Desc","value":"This small guy is learning how to be a good principal of the thing, his only task is warn the Principal about rule-breakers!"},
+	{"key":"Vfx_Spj_Wander","value":"I wonder who is following the rules. I know I am."}
 ]}

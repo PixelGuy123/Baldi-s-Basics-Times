@@ -21,7 +21,8 @@ namespace BB_MOD.ExtraItems
 					{
 						itemAcceptor.InsertItem(pm, pm.ec);
 						Destroy(gameObject);
-						return !hit.transform.GetComponent<GreenLocker>();
+						var locker = hit.transform.GetComponent<GreenLocker>();
+						return !locker || locker.IsDecoy;
 					}
 				}
 			}

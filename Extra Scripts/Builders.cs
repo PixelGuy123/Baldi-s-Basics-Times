@@ -71,6 +71,20 @@ namespace BB_MOD.Builders
 
 		}
 
+		public static void CreateTrashCans(LevelBuilder lg, RoomController room, System.Random rng)
+		{
+			if (rng.NextDouble() < 0.7d) return; // Chance to spawn
+
+			var tiles = room.GetTilesOfShape(new List<TileShape>() { TileShape.Corner }, true).Where(x => !x.containsObject);
+			int tileCount = tiles.Count();
+
+			if (tileCount == 0) return; // If there's available corner for it
+
+			var pos = tiles.ElementAt(rng.Next(0, tileCount));
+			PrefabInstance.SpawnPrefab<TrashCan>(pos, lg.Ec);
+
+		}
+
 	}
 	// Any other class below are actual builders that will be added to weight lists, please make sure to comment your user name on the class of your builder to identify who made it!
 	// Those builders must inherate from ObjectBuilder
@@ -546,6 +560,7 @@ namespace BB_MOD.Builders
 				var spot = machineSpots[cRNG.Next(machineSpots.Count)];
 				dir = spot.wallDirections[cRNG.Next(spot.wallDirections.Length)];
 				PrefabInstance.SpawnPrefab<FogMachine>(spot.transform.position + Vector3.up * 5f + dir.ToVector3() * ContentUtilities.TileOffset, dir.ToRotation(), room.ec, false);
+				spot.CoverWall(dir, true);
 			}
 
 			yield return null;

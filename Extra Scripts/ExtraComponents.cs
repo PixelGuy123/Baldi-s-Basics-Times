@@ -6,6 +6,9 @@ using System.Collections.Generic;
 using System.Collections;
 using HarmonyLib;
 using System.Linq;
+using Steamworks;
+using UnityEngine.AI;
+using Rewired;
 
 namespace BB_MOD.ExtraComponents
 {
@@ -42,6 +45,44 @@ namespace BB_MOD.ExtraComponents
 		public Func<Items, StandardDoor, bool> ItemFittingFunction { get => itemFitFunc; }
 
 		private Func<Items, StandardDoor, bool> itemFitFunc = new Func<Items, StandardDoor, bool>((item, _2) => ContentManager.instance.CanItemUnlockDoors(item));
+	}
+
+	public class DecoyBlueLocker : MonoBehaviour, IClickable<int>
+	{
+		public void Clicked(int player)
+		{
+			var pm = Singleton<CoreGameManager>.Instance.GetPlayer(player);
+			if (stealed || !pm.itm.HasItem()) return;
+
+			pm.ec.MakeNoise(transform.position, 105);
+			pm.itm.RemoveRandomItem();
+			StartCoroutine(TrololoSequence());
+			stealed = true;
+		}
+
+		IEnumerator TrololoSequence()
+		{
+			
+			var noise = ItemSoundHolder.CreateSoundHolder(transform, aud_troll, true, 40, 70);
+			ItemSoundHolder.CreateSoundHolder(transform, slam, true, 40, 60);
+			GetComponent<MeshRenderer>().materials[1].SetTexture("_MainTex", decoy_open);
+
+			while (noise.IsPlaying) { yield return null; }
+
+			ItemSoundHolder.CreateSoundHolder(transform, slam, true, 40, 60);
+			GetComponent<MeshRenderer>().materials[1].SetTexture("_MainTex", decoy);
+
+			Destroy(this); // Removes the IClickable component entirely so it can't be "interactable" anymore
+
+			yield break;
+		}
+
+
+		bool stealed = false;
+
+		readonly SoundObject aud_troll = ContentAssets.GetAsset<SoundObject>("trololo"), slam = ContentAssets.GetAsset<SoundObject>("lockerNoise");
+
+		readonly Texture2D decoy_open = ContentAssets.GetAsset<Texture2D>("d_blueLocker_open"), decoy = ContentAssets.GetAsset<Texture2D>("d_blueLocker");
 	}
 
 	public class GreenLocker : MonoBehaviour, IItemAcceptor
@@ -285,6 +326,40 @@ namespace BB_MOD.ExtraComponents
 		private readonly static List<PrefabInstance> prefabs = new List<PrefabInstance>();
 
 		protected const string namePrefix = "CustomObj_";
+	}
+
+	public class TrashCan : PrefabInstance, IClickable<int>
+	{
+		private void Start()
+		{
+			audMan = GetComponent<AudioManager>();
+		}
+		public void Clicked(int player)
+		{
+			var pm = Singleton<CoreGameManager>.Instance.GetPlayer(player);
+			if (pm.itm.items[pm.itm.selectedItem].itemType != Items.None)
+			{
+				audMan?.PlaySingle(aud_throw);
+				pm.itm.RemoveItem(pm.itm.selectedItem);
+			}
+		} 
+		public override void Setup()
+		{
+			base.Setup();
+			CreateSprite(ContentUtilities.DefaultBillBoardMaterial, ContentAssets.GetAsset<Sprite>("trashCan"));
+			rendererSprite.transform.localPosition = Vector3.down * 2.5f;
+			ContentUtilities.CreatePositionalAudio(gameObject, 30, 60, out _, out AudioManager audio);
+			audMan = audio;
+			var collider = gameObject.AddComponent<BoxCollider>();
+			collider.size = new Vector3(1.8f, 10f, 1.8f);
+			var obstacle = gameObject.AddComponent<NavMeshObstacle>();
+			obstacle.size = new Vector3(1.8f, 10f, 1.8f);
+		}
+		public override string NameForIt => "TrashCan";
+
+		readonly SoundObject aud_throw = ContentAssets.GetAsset<SoundObject>("throwTrash");
+
+		AudioManager audMan;
 	}
 
 	public class BaldiGoesAway : PrefabInstance

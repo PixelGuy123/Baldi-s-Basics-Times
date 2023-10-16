@@ -19,6 +19,7 @@ using UnityEngine.Events;
 using UnityEngine.Networking;
 using static BB_MOD.ContentAssets;
 using static BB_MOD.ContentManager;
+using Patches.Main;
 
 // -------------------- PRO TIP ----------------------
 // Recommended using UnityExplorer to debug your item, event or npc. It's a very useful tool
@@ -414,7 +415,7 @@ namespace BB_MOD
 
 	public static class EnvironmentExtraVariables
 	{
-		public static void ResetVariables()
+		public static void ResetVariables() // Resets literally everything
 		{
 			forceDisableSubtitles = false;
 			AudioListener.volume = 1f;
@@ -434,6 +435,7 @@ namespace BB_MOD
 			OnEndGame.RemoveAllListeners();
 			FovModifiers.Clear();
 			CurrentFOV = PlayerDefaultFOV;
+			StaminaRisingPatch.staminaModifiers.Clear();
 		}
 
 		public static void SetVariables()
@@ -1738,7 +1740,13 @@ namespace BB_MOD
 			AddTextureAsset(Path.Combine(modPath, "Textures", "greenLocker_open.png"), "greenLocker_open");
 			AddTextureAsset(Path.Combine(modPath, "Textures", "decoy_greenLocker.png"), "d_greenLocker");
 			AddTextureAsset(Path.Combine(modPath, "Textures", "decoy_greenLocker_open1.png"), "d_greenLocker_open1");
+			AddTextureAsset(Path.Combine(modPath, "Textures", "decoy_blueLocker.png"), "d_blueLocker");
+			AddTextureAsset(Path.Combine(modPath, "Textures", "decoy_blueLocker_open.png"), "d_blueLocker_open"); // Decoy Lockers
 			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "HA_HA.wav"), "HA_HA", true, "Vfx_Locker_HAHA", SoundType.Voice, Color.white);
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "trololo.wav"), "trololo", true, "Vfx_Locker_trololo", SoundType.Voice, Color.white);
+
+			AddSpriteAsset(Path.Combine(modPath, "Textures", "trashcan.png"), 85, "trashCan"); // Trash can objects
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "throwTrash.wav"), "throwTrash", true, "Vfx_TrashCan_throw", SoundType.Effect, Color.white);
 
 		}
 
@@ -1987,14 +1995,16 @@ namespace BB_MOD
 			CreateItem<ITM_Pencil>("PC_Name", "PC_Desc", "Pencil.png", "Pencil.png", "Pencil", 40, 22, 25, ContentUtilities.Array(Floors.F2, Floors.END), 40, ContentUtilities.Array(Floors.F2, Floors.F3), 30, includeOnFieldTrip: true); // FileName3 (Coded by PixelGuy)
 			CreateItem<ITM_ScrewDriver>("SD_Name", "SD_Desc", "screwDriver.png", "screwDriver.png", "ScrewDriver", 110, 25, 15, 110, ContentUtilities.AllFloors, 25, false, false, false, true); // PixelGuy
 			CreateItem<ITM_Trap>("BT_Name", "BT_Desc", "TrapOpen.png", "trapSmall.png", "BearTrap", 90, 27, 20, ContentUtilities.Array(Floors.F2, Floors.END), 85, ContentUtilities.AllFloorsExcept(Floors.F1), 15, true, true, false); // PixelGuy
-			CreateItem<ITM_Banana>("BN_Name", "BN_Desc", "Banana.png", "Banana.png", "Banana", 50, 18, 5, 25, ContentUtilities.AllFloors, 55); // PixelGuy
+			CreateItem<ITM_Banana>("BN_Name", "BN_Desc", "Banana.png", "Banana.png", "Banana", 50, 18, 5, 25, ContentUtilities.AllFloors, 55, appearsInCafeteria:true); // PixelGuy
 			CreateItem<ITM_Gum>("GUM_Name", "GUM_Desc", "gum.png", "gum.png", "Gum", 75, 25, 45, 65, ContentUtilities.AllFloors, 35); // PixelGuy
 			CreateItem<ITM_LockPick>("LPC_Name", "LPC_Desc", "lockpick.png", "lockpick.png", "Lockpick", 75, 20, 2, 95, Array.Empty<Floors>(), 1, unlockDoors:true); // PixelGuy
 			CreateItem<ITM_SpeedPotion>("SPP_Name", "SPP_Desc", "speedPotion.png", "speedPotion.png", "Speedpotion", 75, 25, 25, 45, ContentUtilities.AllFloors, 50, includeOnFieldTrip: true); // AdvancedDasher
+			CreateItem<ITM_BSED>("BSED_Name", "BSED_Desc", "BSED.png", "BSED.png", "Bsed", 65, 25, 35, ContentUtilities.AllFloorsExcept(Floors.F1), 45, ContentUtilities.AllFloors, 65, appearsInCafeteria:true); // HaHaFunny
+			CreateItem<ITM_GQuarter>("gquarter_Name", "gquarter_Desc", "gQuarter.png", "gQuarter.png", "Gquarter", 35, 21, 5, 35, ContentUtilities.AllFloors, 35, includeOnFieldTrip:true);
 		}
 
 
-		private WeightedItemObject CreateItem<I>(string itemNameKey, string itemDescKey, string largeSpriteFile, string smallSpriteFile, string itemName, int shopPrice, int itemCost, int spawnWeight, int largerPixelsPerUnit, Floors[] shoppingFloors, int shoppingWeight, bool includeOnMysteryRoom = false, bool includeOnFieldTrip = false, bool includeOnPartyEvent = false, bool unlockDoors = false) where I : Item
+		private WeightedItemObject CreateItem<I>(string itemNameKey, string itemDescKey, string largeSpriteFile, string smallSpriteFile, string itemName, int shopPrice, int itemCost, int spawnWeight, int largerPixelsPerUnit, Floors[] shoppingFloors, int shoppingWeight, bool includeOnMysteryRoom = false, bool includeOnFieldTrip = false, bool includeOnPartyEvent = false, bool unlockDoors = false, bool appearsInCafeteria = false) where I : Item
 		{
 			Items cEnum = EnumExtensions.ExtendEnum<Items>(itemName);
 			customItemEnums.Add(cEnum);
@@ -2040,6 +2050,10 @@ namespace BB_MOD
 						selection = item,
 						weight = spawnWeight
 					});
+				if (appearsInCafeteria)
+				{
+					cafeteriaItems.Add(weightedItem);
+				}
 
 				return weightedItem;
 			}
@@ -2058,9 +2072,9 @@ namespace BB_MOD
 		}
 
 
-		private WeightedItemObject CreateItem<I>(string itemNameKey, string itemDescKey, string largeSpriteFile, string smallSpriteFile, string itemName, int shopPrice, int itemCost, int spawnWeight, Floors[] spawnFloors, int largerPixelsPerUnit, Floors[] shoppingFloors, int shoppingWeight, bool includeOnMysteryRoom = false, bool includeOnFieldTrip = false, bool includeOnPartyEvent = false, bool unlockDoors = false) where I : Item
+		private WeightedItemObject CreateItem<I>(string itemNameKey, string itemDescKey, string largeSpriteFile, string smallSpriteFile, string itemName, int shopPrice, int itemCost, int spawnWeight, Floors[] spawnFloors, int largerPixelsPerUnit, Floors[] shoppingFloors, int shoppingWeight, bool includeOnMysteryRoom = false, bool includeOnFieldTrip = false, bool includeOnPartyEvent = false, bool unlockDoors = false, bool appearsInCafeteria = false) where I : Item
 		{
-			var item = CreateItem<I>(itemNameKey, itemDescKey, largeSpriteFile, smallSpriteFile, itemName, shopPrice, itemCost, spawnWeight, largerPixelsPerUnit, shoppingFloors, shoppingWeight, includeOnMysteryRoom, includeOnFieldTrip, includeOnPartyEvent, unlockDoors);
+			var item = CreateItem<I>(itemNameKey, itemDescKey, largeSpriteFile, smallSpriteFile, itemName, shopPrice, itemCost, spawnWeight, largerPixelsPerUnit, shoppingFloors, shoppingWeight, includeOnMysteryRoom, includeOnFieldTrip, includeOnPartyEvent, unlockDoors, appearsInCafeteria);
 			allNewItems[allNewItems.Count - 1].OverwriteAvailableFloors(spawnFloors);
 			return item;
 		}
@@ -2447,6 +2461,7 @@ namespace BB_MOD
 
 			allExtraStuffForRoomBuilders.Add(ReplacementBuilders.CreateWallClocks, ContentUtilities.Array(RoomCategory.Class, RoomCategory.Office));
 			allExtraStuffForRoomBuilders.Add(ReplacementBuilders.CreateLightBulbs, ContentUtilities.Array(RoomCategory.Faculty));
+			allExtraStuffForRoomBuilders.Add(ReplacementBuilders.CreateTrashCans, ContentUtilities.Array(RoomCategory.Class));
 
 			// New Object Builders Here
 
@@ -2847,6 +2862,7 @@ namespace BB_MOD
 				CreateSchoolHouseMusic("mus_NewSchool1.wav", Floors.F1); // Bsidekid
 				CreateSchoolHouseMusic("mus_NewSchool2.wav", Floors.F3); // Bsidekid
 				CreateSchoolHouseMusic("mus_newschool3.wav", Floors.F2); // Bsidekid
+				CreateSchoolHouseMusic("mus_newschool4.wav", Floors.F2); // Bsidekid
 			}
 			if (!addedExtraContent[3])
 			{
@@ -2869,6 +2885,7 @@ namespace BB_MOD
 				PrefabInstance.CreateInstance<FogMachine>();
 				PrefabInstance.CreateInstance<ExitSign>();
 				PrefabInstance.CreateInstance<BaldiGoesAway>();
+				PrefabInstance.CreateInstance<TrashCan>();
 			}
 			if (!addedExtraContent[5])
 			{
@@ -3958,7 +3975,15 @@ namespace BB_MOD
 
 		readonly List<Items> unlockDoorItems = new List<Items>() { Items.DetentionKey };
 
+		readonly List<WeightedItemObject> cafeteriaItems = new List<WeightedItemObject>()
+		{
+			 new WeightedItemObject() {selection = ContentUtilities.FindResourceObjectContainingName<ItemObject>("bsoda"), weight = 45 },
+			 new WeightedItemObject() {selection = ContentUtilities.FindResourceObjectContainingName<ItemObject>("zesty"), weight = 85 }
+		};
+
 		public bool CanItemUnlockDoors(Items item) => unlockDoorItems.Contains(item);
+
+		public List<WeightedItemObject> CafeteriaItems => cafeteriaItems;
 
 		public bool DebugMode { get; set; }
 

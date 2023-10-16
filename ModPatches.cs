@@ -16,6 +16,7 @@ using System.Reflection.Emit;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using Mono.Security.Protocol.Tls;
 
 namespace Patches.Main
 {
@@ -641,12 +642,7 @@ namespace Patches.Main
 			ContentManager.instance.LockAccessedFloor(currentFloor); // On the end of the patch, so the features aren't applied twice
 
 			var cafeterias = UnityEngine.Object.FindObjectsOfType<CafeteriaCreator>();
-			WeightedItemObject[] cafeItems = new WeightedItemObject[]
-			{
-				new WeightedItemObject() {selection = ContentUtilities.FindResourceObjectContainingName<ItemObject>("bsoda"), weight = 45 },
-				new WeightedItemObject() {selection = ContentUtilities.FindResourceObjectContainingName<ItemObject>("zesty"), weight = 85 },
-				new WeightedItemObject() {selection = ContentManager.instance.GetItemByEnum(ContentManager.instance.customItemEnums.GetItemByName("Banana")), weight = 10 }
-			};
+			WeightedItemObject[] cafeItems = ContentManager.instance.CafeteriaItems.ToArray();
 
 			foreach (var cafe in cafeterias)
 			{
@@ -706,13 +702,16 @@ namespace Patches.Main
 			}
 			queuedElevatorsForFixing.Clear();
 
-			var chance = 5f;
+			var chance = 8f;
 			foreach (var locker in ContentUtilities.FindObjectsContainingName<MeshRenderer>("locker").Where(x => !x.GetComponent<HideableLocker>())) // Make green lockers
 			{
 				var random = rng.NextDouble() * 100f;
 				if (random > chance)
 				{
 					chance += (float)random;
+					if (chance > 100f)
+						chance = 80f;
+
 					locker.materials[1].SetTexture("_MainTex", ContentAssets.GetAsset<Texture2D>("greenLocker"));
 					locker.material.SetColor("_TextureColor", Color.green);
 					var green = locker.gameObject.AddComponent<GreenLocker>();
@@ -722,6 +721,22 @@ namespace Patches.Main
 						green.MakeMeDecoy();
 						locker.materials[1].SetTexture("_MainTex", ContentAssets.GetAsset<Texture2D>("d_greenLocker"));
 					}
+				}
+			}
+			chance = 5f;
+
+			foreach (var locker in UnityEngine.Object.FindObjectsOfType<HideableLocker>())
+			{
+				var random = rng.NextDouble() * 100f;
+				if (random > chance)
+				{
+					chance += (float)random;
+					if (chance > 100f)
+						chance = 80f;
+
+					locker.GetComponent<MeshRenderer>().materials[1].SetTexture("_MainTex", ContentAssets.GetAsset<Texture2D>("d_blueLocker"));
+					locker.gameObject.AddComponent<DecoyBlueLocker>();
+					UnityEngine.Object.Destroy(locker);
 				}
 			}
 
@@ -2208,6 +2223,61 @@ namespace Patches.Main
 		private static void Prefix(PlayerManager pm)
 		{
 			ItemSoundHolder.CreateSoundHolder(pm.transform, ContentAssets.GetAsset<SoundObject>("zesty_eat"), false, 40, 60);
+		}
+	}
+
+	[HarmonyPatch(typeof(PlayerMovement), "StaminaUpdate")]
+	public class StaminaRisingPatch
+	{
+		private static void Prefix(out float[] __state, PlayerMovement __instance) // Gets the stamina thing
+		{
+			__state = new float[] { __instance.staminaRise, __instance.staminaDrop, __instance.staminaMax };
+			if (staminaModifiers.Count == 0) return;
+			LookForType(ref __instance.staminaRise, StaminaToken.ModifierType.Rise);
+			LookForType(ref __instance.staminaDrop, StaminaToken.ModifierType.Drop);
+			LookForType(ref __instance.staminaMax, StaminaToken.ModifierType.Max);
+
+			void LookForType(ref float val, StaminaToken.ModifierType type)
+			{
+				foreach (var mod in staminaModifiers)
+				{
+					if (mod.MyType == type)
+						val *= mod.Value;
+				}
+			}
+		}
+
+		private static void Postfix(float[] __state, PlayerMovement __instance) // Reset the stamina variables for later
+		{
+			__instance.staminaRise = __state[0];
+			__instance.staminaDrop = __state[1];
+			__instance.staminaMax = __state[2];
+		}
+
+		public readonly static List<StaminaToken> staminaModifiers = new List<StaminaToken>();
+
+		public class StaminaToken
+		{
+			public enum ModifierType
+			{
+				Rise,
+				Drop,
+				Max
+			}
+			public StaminaToken(ModifierType type, float value)
+			{
+				MyType = type;
+				this.value = value;
+				if (this.value < 0f)
+				{
+					this.value = 1f;
+				}
+			}
+
+			float value = 0f;
+			public float Value { get => value; set => this.value = value; }
+
+			public ModifierType MyType { get; }
 		}
 	}
 
