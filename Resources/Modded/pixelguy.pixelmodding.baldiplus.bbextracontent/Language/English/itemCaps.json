@@ -13,8 +13,8 @@
 	{"key":"PC_Name","value":"Pencil"},
 	{"key":"PC_Desc","value":"Pencil\nA normal pencil for normal uses, it is still prohibited to stab people in the halls. But it does freeze them, just aim correctly... don't tell that to Principal!"},
 	{"key":"Vfx_PC_stab","value":"*Stab*"},
-	{"key":"SD_Name","value":"Screw Driver"},
-	{"key":"SD_Desc","value":"Screw Driver\nVery useful for machines! It can be used in the computer room, perhaps disable a special event..."},
+	{"key":"SD_Name","value":"Screwdriver"},
+	{"key":"SD_Desc","value":"Screwdriver\nVery useful for machines! It can be used in the computer room, perhaps disable a special event..."},
 	{"key":"Vfx_SD_screw","value":"*Screwing*"},
 	{"key":"BT_Name","value":"Bear Trap"},
 	{"key":"BT_Desc","value":"Bear Trap\nSomeone took this from an old Camping area... It is dangerous! Don't step on it, you wouldn't like to be stuck!"},
@@ -26,7 +26,7 @@
 	{"key":"GUM_Desc","value":"Gum\nBeans sometimes drop his secret weapon, so why not sell it here? Might be useful and delicious... and sticky..!"},
 	{"key":"Vfx_GUM_spit","value":"*SPIT*"},
 	{"key":"LPC_Name","value":"Lockpick"},
-	{"key":"LPC_Desc","value":"Lockpick\nNoDescriptionBcNoShopping"},
+	{"key":"LPC_Desc","value":"Lockpick\nA very useful tool to unlock doors and lockers! Specially the green ones... but it is still agaisn't the rules!"},
 	{"key":"SPP_Name","value":"Speed Potion"},
 	{"key":"SPP_Desc","value":"Speed Potion\nA special potion being one of the most basic inventions by Baldi! Just drink it and run as far as you can!"},
 	{"key":"Vfx_SPP_drink","value":"*Drinking*"},
@@ -35,5 +35,9 @@
 	{"key":"BSED_Name","value":"Baldi's Super Energy Drink"},
 	{"key":"BSED_Desc","value":"Baldi's Super Energy Drink\nThe first BSODA competitor, made by Baldi himself, it's a very tasty drink which makes you very energetic! This is not advertisement, I promise!!"},
 	{"key":"gquarter_Name","value":"Golden Quarter"},
-	{"key":"gquarter_Desc","value":"Golden Quarter\nThis shiny golden quarter invention made by Baldi will grant you three more shiny quarters, use it wisely as it occupies most of your inventory!"}
+	{"key":"gquarter_Desc","value":"Golden Quarter\nThis shiny golden quarter invention made by Baldi will grant you three more shiny quarters, use it wisely as it occupies most of your inventory!"},
+	{"key":"EBottle_Name","value":"Empty Bottle"},
+	{"key":"EBottle_Desc","value":"Empty Bottle\nAn empty bottle, there's no useful use for it. Unless doing what it does, hold water, you can fill it in the fountain!"},
+	{"key":"WBottle_Name","value":"Water Bottle"},
+	{"key":"WBottle_Desc","value":"Water Bottle\nStored water that can refill entirely your stamina, you can always refill it again with the fountain!"}
 ]}
