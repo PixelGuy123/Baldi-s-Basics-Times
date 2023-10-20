@@ -187,6 +187,16 @@ namespace BB_MOD
 			return eventType;
 		}
 
+		public static Obstacle GetObstacleByName(this List<Obstacle> npcs, string name)
+		{
+			foreach (var item in npcs)
+			{
+				if (EnumExtensions.GetExtendedName<Obstacle>((int)item).ToLower() == name.ToLower())
+					return item;
+			}
+			return Obstacle.Null;
+		}
+
 		/// <summary>
 		/// Compare both values like an Equal sign
 		/// </summary>
@@ -429,13 +439,13 @@ namespace BB_MOD
 			elevatorTilePositions.Clear();
 			allowHangingLights = true;
 			isEndGame = false;
-			overlapFOVModifier = false;
 			BlackOut.OutageGoing = false;
 			ITM_SpeedPotion.ResetCount();
 			OnEndGame.RemoveAllListeners();
 			FovModifiers.Clear();
 			CurrentFOV = PlayerDefaultFOV;
 			StaminaRisingPatch.staminaModifiers.Clear();
+			LookerDistancingPatch.lookerModifiers.Clear();
 		}
 
 		public static void SetVariables()
@@ -530,10 +540,6 @@ namespace BB_MOD
 
 		private static bool forceDisableSubtitles = false;
 
-		static bool overlapFOVModifier = false;
-
-		public static bool SmoothFOVActive => overlapFOVModifier;
-
 		private static bool isEndGame = false;
 		public static bool AreSubtitlesForceDisabled => forceDisableSubtitles;
 		public static bool IsEndGame => isEndGame;
@@ -575,42 +581,19 @@ namespace BB_MOD
 			public TileController Tile { get; }
 		}
 
-		// FOV-Related Stuff
-
-		public class FOVToken
-		{
-			public FOVToken(float value, int priority, bool canSum = true)
-			{
-				offset = FOVCheck(value);
-				Priority = priority;
-				CanSum = canSum;
-			}
-
-
-			float offset = 0f;
-
-			public float Offset { get => offset; set => offset = FOVCheck(value); }
-
-			public int Priority { get; }
-
-			public bool CanSum { get; set; }
-
-			public bool DoneSlide { get; set; } = false;
-		}
-
 		
 
 		public static IEnumerator SmoothFOVSlide(float divider, int priority, float targetFOV = 0f, float offset = 0f, bool canSum = false)
 		{
 			var token = new FOVToken(CurrentFOV + offset, priority, canSum);
 
-			var endingFOV = FOVCheck(targetFOV);
+			var endingFOV = FOVToken.FOVCheck(targetFOV);
 
 			FovModifiers.Add(token);
 
-			while (Mathf.Abs(token.Offset - endingFOV) > 0.1f)
+			while (Mathf.Abs(token.Value - endingFOV) > 0.1f)
 			{
-				token.Offset += (endingFOV - token.Offset) / divider;
+				token.Value += (endingFOV - token.Value) / divider;
 				yield return null;
 			}
 
@@ -621,15 +604,15 @@ namespace BB_MOD
 
 		public static IEnumerator SmoothFOVSlide(float divider, FOVToken token, float targetFOV = 0f)
 		{
-			var endingFOV = FOVCheck(targetFOV);
+			var endingFOV = FOVToken.FOVCheck(targetFOV);
 
 			if (!FovModifiers.Contains(token))
 				FovModifiers.Add(token);
 			token.DoneSlide = false;
 
-			while (Mathf.Abs(token.Offset - endingFOV) > 0.1f)
+			while (Mathf.Abs(token.Value - endingFOV) > 0.1f)
 			{
-				token.Offset += (endingFOV - token.Offset) / divider;
+				token.Value += (endingFOV - token.Value) / divider;
 				yield return null;
 			}
 
@@ -637,8 +620,6 @@ namespace BB_MOD
 
 			yield break;
 		}
-
-		static float FOVCheck(float fov) => fov < minFOV ? minFOV : fov > maxFOV ? maxFOV : fov;
 
 		public static float GetFOVSum() // Get the sum of all Fov values (with the highest priority)
 		{
@@ -658,11 +639,11 @@ namespace BB_MOD
 				if (token.Priority == currentPriority)
 				{
 					if (token.CanSum || sums.Count == 0) // To not accumulate too many sums
-						sums.Add(token.Offset);
+						sums.Add(token.Value);
 				}
 			}
 
-			return FOVCheck(sums.Sum());
+			return FOVToken.FOVCheck(sums.Sum());
 		}
 
 		public static List<FOVToken> FovModifiers { get; private set; } = new List<FOVToken>();
@@ -674,6 +655,38 @@ namespace BB_MOD
 		public const float minFOV = -50f;
 
 		public const float PlayerDefaultFOV = 60f;
+	}
+
+	public class GenericToken<T>
+	{
+		public GenericToken(T value, int priority)
+		{
+			Priority = priority;
+			val = value;
+		}
+
+		protected T val;
+
+		public virtual T Value { get => val; set => val = value; }
+
+		public int Priority { get; } = 0;
+
+	}
+
+	public class FOVToken : GenericToken<float>
+	{
+		public FOVToken(float value, int priority, bool canSum = true) : base(FOVCheck(value), priority)
+		{
+			CanSum = canSum;
+		}
+
+		public static float FOVCheck(float fov) => fov < EnvironmentExtraVariables.minFOV ? EnvironmentExtraVariables.minFOV : fov > EnvironmentExtraVariables.maxFOV ? EnvironmentExtraVariables.maxFOV : fov;
+
+		public override float Value { get => val; set => val = FOVCheck(value); }
+
+		public bool CanSum { get; set; }
+
+		public bool DoneSlide { get; set; } = false;
 	}
 
 	public static class ContentUtilities
@@ -1375,6 +1388,8 @@ namespace BB_MOD
 		public const int defaultBillboardLayer = 9;
 
 		public const int defaultIgnoreRaycastLayer = 2;
+
+		public const int defaultClickMask = 2359297;
 		/// <summary>
 		/// Returns an instanced gumOverlay
 		/// </summary>
@@ -1748,6 +1763,16 @@ namespace BB_MOD
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "trashcan.png"), 85, "trashCan"); // Trash can objects
 			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "throwTrash.wav"), "throwTrash", true, "Vfx_TrashCan_throw", SoundType.Effect, Color.white);
 
+			AddSpriteAsset(Path.Combine(modPath, "Textures", "bananaTree.png"), 50, "bananaTree"); // Banana tree
+
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "waterslurp.wav"), "slurp", true, "Sfx_Slurp", SoundType.Effect, Color.white); // Slurp noise
+
+			AddSpriteAsset(Path.Combine(modPath, "Textures", "trapdoor.png"), 48, "trapdoor"); // Trapdoor sprite
+			AddSpriteAsset(Path.Combine(modPath, "Textures", "trapdoor_rng.png"), 48, "trapdoor_rng"); // Trapdoor sprite
+			AddSpriteAsset(Path.Combine(modPath, "Textures", "black.png"), 48, "trapdoor_open"); // Trapdoor sprite
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "trapDoor_open.wav"), "trapdoor_open", true, "Sfx_Doors_StandardOpen", SoundType.Effect, Color.white);
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "trapDoor_shut.wav"), "trapdoor_shut", true, "Sfx_Doors_StandardShut", SoundType.Effect, Color.white);
+
 		}
 
 		// ------------------------------------------------------ NPC CREATION STUFF ------------------------------------------------------
@@ -1813,7 +1838,7 @@ namespace BB_MOD
 			CreateNPC<PencilBoy>("Pencil Boy", 50, ContentUtilities.Array("pb_angry.png", "pb_angrySpot.png", "pb_happy.png"), false, false, 65f, -1.75f, "pri_pb.png", "PST_PB_Name", "PST_PB_Desc", ContentUtilities.Array(Floors.F2, Floors.END), ContentUtilities.Array(RoomCategory.Hall, RoomCategory.Test), enterRooms: false, capsuleRadius: 2.6f);
 			CreateNPC<Stunly>("Stunly", 60, ContentUtilities.Array("Stunly.png"), false, false, 34, -1.35f, "pri_stunly.png", "PST_Stunly_Name", "PST_Stunly_Desc", ContentUtilities.AllFloors, enterRooms: false);
 			CreateNPC<Leapy>("Leapy", 75, ContentUtilities.Array("leapy_1.png", "leapy_2.png", "leapy_3.png"), false, false, 25f, -1f, "pri_leapy.png", "PST_Leapy_Name", "PST_Leapy_Desc", ContentUtilities.AllFloorsExcept(Floors.F1), false, false, true, true);
-			CreateNPC<Watcher>("Watcher", 80, ContentUtilities.Array("Watcher.png"), false, false, 34f, 0f, "pri_watcher.png", "PST_Wch_Name", "PST_Wch_Desc", ContentUtilities.Array(Floors.F3), true, false, true, true, forceSpawn: true, isStatic:true);
+			CreateNPC<Watcher>("Watcher", 80, ContentUtilities.Array("Watcher.png"), false, false, 34f, 0f, "pri_watcher.png", "PST_Wch_Name", "PST_Wch_Desc", ContentUtilities.Array(Floors.F3, Floors.END), true, false, true, true, forceSpawn: true, isStatic:true);
 
 
 			// Replacement NPCs here
@@ -2000,7 +2025,9 @@ namespace BB_MOD
 			CreateItem<ITM_LockPick>("LPC_Name", "LPC_Desc", "lockpick.png", "lockpick.png", "Lockpick", 75, 20, 2, 95, Array.Empty<Floors>(), 1, unlockDoors:true); // PixelGuy
 			CreateItem<ITM_SpeedPotion>("SPP_Name", "SPP_Desc", "speedPotion.png", "speedPotion.png", "Speedpotion", 75, 25, 25, 45, ContentUtilities.AllFloors, 50, includeOnFieldTrip: true); // AdvancedDasher
 			CreateItem<ITM_BSED>("BSED_Name", "BSED_Desc", "BSED.png", "BSED.png", "Bsed", 65, 25, 35, ContentUtilities.AllFloorsExcept(Floors.F1), 45, ContentUtilities.AllFloors, 65, appearsInCafeteria:true); // HaHaFunny
-			CreateItem<ITM_GQuarter>("gquarter_Name", "gquarter_Desc", "gQuarter.png", "gQuarter.png", "Gquarter", 35, 21, 5, 35, ContentUtilities.AllFloors, 35, includeOnFieldTrip:true);
+			CreateItem<ITM_GQuarter>("gquarter_Name", "gquarter_Desc", "gQuarter.png", "gQuarter.png", "Gquarter", 35, 21, 5, 35, ContentUtilities.AllFloors, 35, includeOnFieldTrip:true); //PixelGuy
+			CreateItem<ITM_EmptyBottle>("EBottle_Name", "EBottle_Desc", "bottle_empty.png", "bottle_empty.png", "Emptybottle", 2, 25, 15, 42, Array.Empty<Floors>(), 15); // PixelGuy
+			CreateItem<ITM_WaterBottle>("WBottle_Name", "WBottle_Desc", "bottle_water.png", "bottle_water.png", "Waterbottle", 75, 25, 15, 42, ContentUtilities.AllFloors, 5, includeOnFieldTrip:true, appearsInCafeteria:true); // PixelGuy
 		}
 
 
@@ -2466,6 +2493,8 @@ namespace BB_MOD
 			// New Object Builders Here
 
 			CreateAndAddObjBuilder<WallBellBuilder>("Bell Builder", ContentUtilities.AllFloors);
+			CreateAndAddObjBuilder<BananaTreeBuilder>("Banana Tree Builder", ContentUtilities.AllFloors);
+			CreateAndAddObjBuilder<TrapDoorBuilder>("Trap Door Builder", 115,ContentUtilities.AllFloorsExcept(Floors.F1));
 			CreateAndAddObjBuilder<VentBuilder>("Vent Builder", 85, ContentUtilities.AllFloorsExcept(Floors.F1));
 
 			// New Room Builders Here
@@ -2836,6 +2865,7 @@ namespace BB_MOD
 				MakePrincipalScoldingAudio("gumming", "principal_nospittinggums.wav", "Vfx_PRI_NoGumming");
 				MakePrincipalScoldingAudio("stabbing", "principal_nostabbing.wav", "Vfx_PRI_NoStabbing");
 				MakePrincipalScoldingAudio("uglyStun", "principal_nouglystun.wav", "Vfx_PRI_NoUglyStun");
+				MakePrincipalScoldingAudio("littering", "principal_noLittering.wav", "Vfx_PRI_NoLittering");
 
 			}
 			if (!addedExtraContent[1]) // Extra Decorations Here
@@ -2886,6 +2916,8 @@ namespace BB_MOD
 				PrefabInstance.CreateInstance<ExitSign>();
 				PrefabInstance.CreateInstance<BaldiGoesAway>();
 				PrefabInstance.CreateInstance<TrashCan>();
+				PrefabInstance.CreateInstance<BananaTree>();
+				PrefabInstance.CreateInstance<Trapdoor>();
 			}
 			if (!addedExtraContent[5])
 			{
@@ -2893,6 +2925,7 @@ namespace BB_MOD
 				CreateMapIcon("FogMachine", "fogMachineIcon.png", 22f);
 				CreateMapIcon("mathNotebookIcon", "hiddenNotebookIcon.png", 22f);
 				CreateMapIcon("buttonIcon", "buttonIcon.png", 22f);
+				CreateMapIcon("trashCan", "trashcanIcon.png", 22f);
 			}
 		}
 

@@ -9,6 +9,7 @@ using System.Linq;
 using Steamworks;
 using UnityEngine.AI;
 using Rewired;
+using TMPro;
 
 namespace BB_MOD.ExtraComponents
 {
@@ -56,6 +57,7 @@ namespace BB_MOD.ExtraComponents
 
 			pm.ec.MakeNoise(transform.position, 105);
 			pm.itm.RemoveRandomItem();
+			pm.RuleBreak("Lockers", guiltTime);
 			StartCoroutine(TrololoSequence());
 			stealed = true;
 		}
@@ -79,6 +81,8 @@ namespace BB_MOD.ExtraComponents
 
 
 		bool stealed = false;
+
+		const float guiltTime = 1f;
 
 		readonly SoundObject aud_troll = ContentAssets.GetAsset<SoundObject>("trololo"), slam = ContentAssets.GetAsset<SoundObject>("lockerNoise");
 
@@ -300,9 +304,19 @@ namespace BB_MOD.ExtraComponents
 			gameObject.SetActive(true);
 		}
 
-		public virtual void Despawn()
+		public virtual void Despawn(bool withAnimation = false)
 		{
-			Destroy(gameObject);
+			if (!withAnimation)
+				Destroy(gameObject);
+			else
+				StartCoroutine(DespawnWithAnimation());
+		}
+
+		protected virtual IEnumerator DespawnWithAnimation()
+		{
+			yield return null;
+			Despawn(false);
+			yield break;
 		}
 		
 		protected void CreateSprite(Material mat = null, Sprite sprite = null)
@@ -360,6 +374,320 @@ namespace BB_MOD.ExtraComponents
 		readonly SoundObject aud_throw = ContentAssets.GetAsset<SoundObject>("throwTrash");
 
 		AudioManager audMan;
+	}
+
+	public class Trapdoor : PrefabInstance
+	{
+		private void Start()
+		{
+			var text = new GameObject("Timer");
+			timer = text.AddComponent<TextMeshPro>();
+			timer.text = defaultCooldown.ToString();
+			timer.transform.SetParent(transform);
+			timer.transform.localPosition = Vector3.up * 0.1f;
+			timer.transform.localScale = Vector3.one * 0.6f;
+			timer.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+			timer.alignment = TextAlignmentOptions.Center;
+			timer.gameObject.layer = ContentUtilities.defaultBillboardLayer;
+			audMan = GetComponent<AudioManager>();
+		}
+		public override void Setup()
+		{
+			base.Setup();
+			var collider = ContentUtilities.AddCollisionToSprite(gameObject, new Vector3(7f, 7f, 7f), Vector3.zero);
+			collider.isTrigger = true;
+
+			transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+			transform.localScale = new Vector3(1.8f, 1f, 1.8f);
+			CreateSprite(ContentManager.Prefabs.NewFlatMaterial, closedSprite);
+
+			rendererSprite.transform.localScale = Vector3.one;
+			rendererSprite.gameObject.layer = 8; // Post processing layer
+
+			ContentUtilities.CreatePositionalAudio(gameObject, 15f, 60f);
+		}
+
+		public override void Execute()
+		{
+			base.Execute();
+			if (!active || spawnAndDespawnOnly)
+				StartCoroutine(AppearAnimation());
+
+			isRandom = !linkedTrapdoor;
+		}
+
+		public void SetAlreadyActive() => active = true;
+
+		public void SpawnAndDespawnOnly() => spawnAndDespawnOnly = true;
+
+		public void SetTrapdoorLink(Trapdoor trapdoor) => linkedTrapdoor = trapdoor;
+
+		public void ForceOpenTrapDoor(bool open)
+		{
+			onTeleport = open;
+			SetState(!open, !open);
+		}
+
+		protected override IEnumerator DespawnWithAnimation()
+		{
+			float speed = 0f;
+			var total = Vector3.one * 0.1f;
+			while (true)
+			{
+				speed += 0.02f * ec.EnvironmentTimeScale * Time.deltaTime;
+				transform.localScale -= Vector3.one * speed;
+				if (transform.localScale.magnitude <= total.magnitude)
+				{
+					transform.localScale = total; // Just to end the loop here
+					break;
+				}
+				yield return null;
+			}
+			Despawn();
+
+			yield break;
+		}
+
+		IEnumerator AppearAnimation()
+		{
+			transform.localScale = Vector3.zero;
+			float speed = 0f;
+			var total = new Vector3(1.8f, 1f, 1.8f);
+			if (spawnAndDespawnOnly)
+			{
+				rendererSprite.sprite = openSprite;
+				onTeleport = true;
+			}
+			while (true)
+			{
+				speed += 0.02f * ec.EnvironmentTimeScale * Time.deltaTime;
+				transform.localScale += new Vector3(total[0] - transform.localScale[0], total[1] - transform.localScale[1], total[2] - transform.localScale[2]) * speed;
+				if (transform.localScale.x >= total.x)
+				{
+					transform.localScale = total; // Just to end the loop here
+					break;
+				}
+				yield return null;
+			}
+			if (!spawnAndDespawnOnly)
+			active = true;
+			else
+			{
+				float time = 6f;
+				while (time > 0f)
+				{
+					time -= ec.EnvironmentTimeScale * Time.deltaTime;
+					yield return null;
+				}
+				Despawn(true);
+			}
+			yield break;
+		}
+
+		private void Update()
+		{
+			if (!active || spawnAndDespawnOnly)
+			{
+				timer.text = "";
+				return; 
+			}
+			if (openCooldown <= 0f)
+			{
+				if (!isOpen)
+				{
+					SetState(false);
+					timer.text = "";
+				}
+			}
+			else
+			{
+				openCooldown -= ec.EnvironmentTimeScale * Time.deltaTime;
+				timer.text = Mathf.CeilToInt(openCooldown).ToString();
+			}
+		}
+
+		private void OnTriggerStay(Collider other)
+		{
+			if (!isOpen || onTeleport) return;
+
+			if (other.tag == "Player")
+			{
+				if (!other.GetComponent<PlayerManager>().plm.addendImmune)
+					StartCoroutine(Teleport(other.transform, true));
+			}
+			else if (other.tag == "NPC")
+			{
+				StartCoroutine(Teleport(other.transform, false));
+			}
+		}
+
+		IEnumerator Teleport(Transform subject, bool player)
+		{
+			onTeleport = true;
+			Vector3 newPos = Vector3.zero; // This is just the whirlpool code, but modified lol
+			bool tempDoor = false;
+			float limit = -3f;
+			if (player)
+			{
+				limit = 0.5f;
+				subject.GetComponent<PlayerManager>().Hide(true);
+			}
+			else
+			{
+				subject.GetComponent<NPC>().DisableCollision(true);
+			}
+			if (!linkedTrapdoor)
+			{
+				List<TileController> list = ec.AllTilesNoGarbage(false, false);
+				while (true)
+				{
+					int num = UnityEngine.Random.Range(0, list.Count);
+					if (!ec.TileObstructed(list[num]) && !ReferenceEquals(ec.TileFromPos(transform.position), list[num]))
+					{
+						newPos = list[num].transform.position;
+						break;
+					}
+					else
+					{
+						list.RemoveAt(num);
+					}
+					if (list.Count == 0) break; // Impossible and there's no treatment anyways
+				}
+				
+				tempDoor = true;
+				linkedTrapdoor = SpawnTempTrapDoor(newPos + Vector3.up * 0.1f);
+			}
+			else
+			{
+				newPos = linkedTrapdoor.transform.position;
+			}
+			linkedTrapdoor.OnTeleport = true;
+			float height = 5f;
+			while (height > limit)
+			{
+				height -= Time.deltaTime * ec.EnvironmentTimeScale * sinkSpeed;
+				subject.position = transform.position + Vector3.up * height;
+				yield return null;
+			}
+			SetState(true, true);
+			linkedTrapdoor.ForceOpenTrapDoor(true);
+			height = limit;
+			subject.position = transform.position + Vector3.up * height;
+			while (height < 5f)
+			{
+				height += Time.deltaTime * ec.EnvironmentTimeScale * sinkSpeed;
+				subject.position = newPos + Vector3.up * height;
+				yield return null;
+			}
+			subject.position = newPos + Vector3.up * 5f;
+			if (player)
+			{
+				subject.GetComponent<PlayerManager>().Hide(false);
+			}
+			else
+			{
+				subject.GetComponent<NPC>().DisableCollision(false);
+			}
+			if (!tempDoor)
+			{
+				linkedTrapdoor.ForceOpenTrapDoor(false);
+			}
+			onTeleport = false;
+			yield break;
+		}
+
+		private Trapdoor SpawnTempTrapDoor(Vector3 pos)
+		{
+			var door = SpawnPrefab<Trapdoor>(pos, default, ec, false);
+			door.SpawnAndDespawnOnly();
+			door.Execute();
+			return door;
+		}
+
+		private void SetState(bool closed, bool resetCooldown = false)
+		{
+			if (closed)
+			{
+				isOpen = false;
+				rendererSprite.sprite = isRandom ? closedSprite2 : closedSprite;
+				if (resetCooldown)
+				{
+					openCooldown = defaultCooldown;
+				}
+				audMan?.PlaySingle(aud_shut);
+			}
+			else
+			{
+				isOpen = true;
+				rendererSprite.sprite = openSprite;
+				audMan?.PlaySingle(aud_open);
+			}
+		}
+
+		private bool active = false, isOpen = false, spawnAndDespawnOnly = false, onTeleport = false, isRandom = false;
+
+		public bool OnTeleport { get => onTeleport; set => onTeleport = value; }
+
+		float openCooldown = 0f;
+
+		const float defaultCooldown = 20f, sinkSpeed = 2f;
+
+		Trapdoor linkedTrapdoor = null;
+
+		TextMeshPro timer = null;
+		public Trapdoor LinkedTrapDoor => linkedTrapdoor;
+		public override string NameForIt => "TrapDoor";
+
+		private AudioManager audMan = null;
+
+		readonly Sprite closedSprite = ContentAssets.GetAsset<Sprite>("trapdoor"), openSprite = ContentAssets.GetAsset<Sprite>("trapdoor_open"), closedSprite2 = ContentAssets.GetAsset<Sprite>("trapdoor_rng");
+		readonly SoundObject aud_open = ContentAssets.GetAsset<SoundObject>("trapdoor_open"), aud_shut = ContentAssets.GetAsset<SoundObject>("trapdoor_shut");
+	}
+
+	public class BananaTree : PrefabInstance
+	{
+		private void Start()
+		{
+			try
+			{
+				myRoom = ec.TileFromPos(transform.position).room;
+				banana = ContentManager.instance.GetItemByEnum(ContentManager.instance.customItemEnums.GetItemByName("Banana"));
+			}
+			catch (Exception e)
+			{
+				Debug.LogError(e.Message);
+				Debug.LogWarning("Banana tree failed to get the necessary stuff to work, destroying object...");
+				Destroy(gameObject);
+			}
+		}
+		public override void Setup()
+		{
+			base.Setup();
+			CreateSprite(ContentUtilities.DefaultBillBoardMaterial, ContentAssets.GetAsset<Sprite>("bananaTree"));
+			rendererSprite.transform.localPosition = Vector3.up * 12f;
+			var collider = gameObject.AddComponent<BoxCollider>();
+			collider.size = new Vector3(3f, 10f, 3f);
+			var obstacle = gameObject.AddComponent<NavMeshObstacle>();
+			obstacle.size = new Vector3(3f, 10f, 3f);
+		}
+
+		private void OnCollisionEnter(Collision collision)
+		{
+			if (!myRoom || !banana) return;
+
+			if (collision.gameObject.CompareTag("GrapplingHook"))
+			{
+				ec.CreateItem(myRoom, banana, new Vector3(transform.position.x + UnityEngine.Random.Range(-dropOffset, dropOffset), 5f, transform.position.z + UnityEngine.Random.Range(-dropOffset, dropOffset)));
+			}
+		}
+
+		public override string NameForIt => "BananaTree";
+
+		const float dropOffset = 2f;
+
+		RoomController myRoom = null;
+
+		ItemObject banana = null;
 	}
 
 	public class BaldiGoesAway : PrefabInstance

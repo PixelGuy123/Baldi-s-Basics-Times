@@ -1,5 +1,4 @@
 ﻿using System.Collections;
-using System.Transactions;
 using UnityEngine;
 
 namespace BB_MOD.ExtraItems
@@ -21,6 +20,7 @@ namespace BB_MOD.ExtraItems
 			}
 
 			this.pm = pm;
+			pm.RuleBreak("Drinking", 2f);
 			StartCoroutine(DrinkingPhase());
 
 			return true;
@@ -30,7 +30,7 @@ namespace BB_MOD.ExtraItems
 		{
 			UsedPotions++;
 
-			var token = new EnvironmentExtraVariables.FOVToken(0f, 1, false);
+			var token = new FOVToken(0f, 1, false);
 			ItemSoundHolder holder = ItemSoundHolder.CreateSoundHolder(pm.transform, aud_drink, false, 40, 60);
 
 			StartCoroutine(EnvironmentExtraVariables.SmoothFOVSlide(8f, token, -20f));

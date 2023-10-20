@@ -223,7 +223,7 @@ namespace BB_MOD.NPCs
 			EnvironmentExtraVariables.FovModifiers.Add(crazyToken);
 			while (active)
 			{
-				crazyToken.Offset = Random.Range(-crazinessRange, crazinessRange) * (maxAngryCooldown - angryCooldown);
+				crazyToken.Value = Random.Range(-crazinessRange, crazinessRange) * (maxAngryCooldown - angryCooldown);
 				yield return null;
 			}
 			EnvironmentExtraVariables.FovModifiers.Remove(crazyToken);
@@ -273,7 +273,7 @@ namespace BB_MOD.NPCs
 
 		private TileController[] spots;
 
-		readonly EnvironmentExtraVariables.FOVToken crazyToken = new EnvironmentExtraVariables.FOVToken(0f, 1);
+		readonly FOVToken crazyToken = new FOVToken(0f, 1);
 
 		bool active = false, angered = false;
 

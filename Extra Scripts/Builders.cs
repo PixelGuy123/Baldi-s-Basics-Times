@@ -115,9 +115,100 @@ namespace BB_MOD.Builders
 		private readonly PosterObject posterPre = ContentManager.instance.CreatePosterObject("wallbell.png");
 	}
 
+	public class BananaTreeBuilder : ObjectBuilder
+	{
+		public override void Build(EnvironmentController ec, RoomController room, System.Random cRng)
+		{
+			List<RoomController> targetRooms = new List<RoomController>();
+			var targetObstacle = ContentManager.instance.customObstacleEnums.GetObstacleByName("ForestArea");
+			foreach (var specialRoom in FindObjectsOfType<SpecialRoomCreator>())
+			{
+				if (specialRoom.obstacle == targetObstacle)
+				{
+					targetRooms.Add(specialRoom.Room);
+				}
+			}
+
+			targetRooms.AddRange(FindObjectsOfType<TripEntrance>().Select(x => x.Room));
+
+			if (targetRooms.Count == 0) return;
+
+			foreach (var target in targetRooms)
+			{
+				var tiles = target.GetTilesOfShape(new List<TileShape> { TileShape.Corner }, true);
+				if (tiles.Count == 0) continue; // Skips if no corner is found
+
+				int amount = WeightedSelection<int>.ControlledRandomSelection(amounts, cRng);
+				for (int i = 0; i < amount; i++)
+				{
+					int index = cRng.Next(tiles.Count);
+					PrefabInstance.SpawnPrefab<BananaTree>(tiles[index], ec);
+					tiles.RemoveAt(index);
+					if (tiles.Count == 0) break;
+				}
+			}
+
+		}
+
+		readonly WeightedSelection<int>[] amounts = new WeightedSelection<int>[3] {
+			new WeightedSelection<int>() {selection = 1, weight = 100},
+			new WeightedSelection<int>() {selection = 2, weight = 75},
+			new WeightedSelection<int>() {selection = 3, weight = 45}
+		};
+	}
+
+	public class TrapDoorBuilder : ObjectBuilder
+	{
+		public override void Build(EnvironmentController ec, RoomController room, System.Random cRng)
+		{
+			var tiles = room.GetTilesOfShape(new List<TileShape>() { TileShape.Corner, TileShape.End }, false).Where(x => !x.containsObject).ToList();
+			if (tiles.Count == 0) return;
+
+			int amount = cRng.Next(minTrapDoors, maxTrapDoors + 1);
+			for (int i = 0; i < amount; i++)
+			{
+				if (tiles.Count <= 1) break; // below or equal to 1 to prevent trapdoors from spawning unlinked
+				int idx = cRng.Next(tiles.Count);
+				if (cRng.NextDouble() >= 0.5f)
+				{ // Linked trapdoor
+					
+					var firstTrapdoor = PrefabInstance.SpawnPrefab<Trapdoor>(tiles[idx], ec, false);
+					tiles.RemoveAt(idx);
+					idx = cRng.Next(tiles.Count);
+					var secondTrapdoor = PrefabInstance.SpawnPrefab<Trapdoor>(tiles[idx], ec, false);
+					tiles.RemoveAt(idx);
+
+					firstTrapdoor.SetTrapdoorLink(secondTrapdoor);
+					secondTrapdoor.SetTrapdoorLink(firstTrapdoor);
+
+					firstTrapdoor.transform.position += Vector3.down * 5f;
+					secondTrapdoor.transform.position += Vector3.down * 5f;
+
+					firstTrapdoor.SetAlreadyActive();
+					secondTrapdoor.SetAlreadyActive();
+
+					firstTrapdoor.Execute();
+					secondTrapdoor.Execute();
+				}
+				else
+				{ // Random Trap door
+					var firstTrapdoor = PrefabInstance.SpawnPrefab<Trapdoor>(tiles[idx], ec, false);
+					firstTrapdoor.transform.position += Vector3.down * 5f;
+					tiles.RemoveAt(idx);
+
+					firstTrapdoor.SetAlreadyActive();
+
+					firstTrapdoor.Execute();
+				}
+			}
+		}
+
+		const int minTrapDoors = 1, maxTrapDoors = 3;
+	}
+
 	// Here are the custom room builders, which can either be a replacement for a existent builder, or a new builder for a new room type (this is planned and will be added soon!)
 
-	public class LossyClassBuilder : RoomBuilder // Basically has messy chair spawns
+	public class LossyClassBuilder : RoomBuilder // Basically has messy chair spawns, don't judge the "lossy" name lol
 	{
 		public override void Setup(LevelBuilder lg, RoomController room, System.Random rng)
 		{
@@ -815,8 +906,9 @@ namespace BB_MOD.Builders
 				var looker = other.GetComponent<Looker>();
 				if (looker)
 				{
-					npcs.Add(looker, looker.distance);
-					looker.distance = 20f;
+					var token = new LookerDistancingPatch.LookerToken(20f, looker);
+					LookerDistancingPatch.lookerModifiers.Add(token);
+					lookers.Add(token);
 				}
 			}
 			if (other.tag == "Player")
@@ -830,10 +922,15 @@ namespace BB_MOD.Builders
 			if (other.tag == "NPC" && other.isTrigger)
 			{
 				var looker = other.GetComponent<Looker>();
-				if (looker && npcs.ContainsKey(looker))
+				
+				if (looker)
 				{
-					looker.distance = npcs[looker];
-					npcs.Remove(looker);
+					int index = lookers.FindIndex(x => ReferenceEquals(x.Target, looker));
+					if (index >= 0)
+					{
+						LookerDistancingPatch.RemoveLookerFromList(lookers[index]);
+						lookers.RemoveAt(index);
+					}
 				}
 			}
 			if (other.tag == "Player")
@@ -857,18 +954,13 @@ namespace BB_MOD.Builders
 			}
 			else if (overlayEnabled)
 			{
-				if (!EnvironmentExtraVariables.SmoothFOVActive)
-				{
-					sequence = StartCoroutine(EnvironmentExtraVariables.SmoothFOVSlide(4f, 10, -30f));
-				}
+				sequence = StartCoroutine(EnvironmentExtraVariables.SmoothFOVSlide(4f, 10, -30f));
 			}
 
 			hasPlayers = overlayEnabled;
 		}
 
 		GameObject overlay;
-
-		readonly Dictionary<Looker, float> npcs = new Dictionary<Looker, float>();
 
 		Coroutine sequence = null;
 
@@ -877,6 +969,8 @@ namespace BB_MOD.Builders
 		bool hasPlayers = false;
 
 		readonly List<PlayerManager> playerManagers = new List<PlayerManager>();
+
+		readonly List<LookerDistancingPatch.LookerToken> lookers = new List<LookerDistancingPatch.LookerToken>();
 	}
 
 

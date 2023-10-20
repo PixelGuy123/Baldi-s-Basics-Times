@@ -25,6 +25,8 @@ namespace BB_MOD.ExtraItems
 			owner = pm.gameObject;
 			transform.position = pm.transform.position + Vector3.down * 4.4f;
 
+			pm.RuleBreak("littering", 1f);
+
 			return true;
 		}
 

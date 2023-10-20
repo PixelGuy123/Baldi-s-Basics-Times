@@ -1,5 +1,4 @@
-﻿using Patches.Main;
-using System.Collections;
+﻿using System.Collections;
 using UnityEngine;
 using static Patches.Main.StaminaRisingPatch;
 
@@ -16,6 +15,7 @@ namespace BB_MOD.ExtraItems
 		public override bool Use(PlayerManager pm)
 		{
 			this.pm = pm;
+			pm.RuleBreak("Drinking", 2f);
 			StartCoroutine(Timer());
 			
 			return true;

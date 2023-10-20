@@ -1,5 +1,6 @@
 ﻿using BB_MOD.ExtraComponents;
 using BB_MOD.ExtraItems;
+using Patches.Main;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -122,15 +123,15 @@ namespace BB_MOD.NPCs
 				stars.Add(star);
 
 			var looker = target.GetComponent<Looker>();
-			float previousDist = 0f;
 			bool enabledLooker = false;
+
+			LookerDistancingPatch.LookerToken token = new LookerDistancingPatch.LookerToken(0f, looker); ;
 
 			if (target.tag == "NPC" && looker)
 			{
 				if (looker.isActiveAndEnabled)
 				{
-					previousDist = looker.distance;
-					looker.distance = 0f;
+					LookerDistancingPatch.lookerModifiers.Add(token); // Adds the token
 					enabledLooker = true;
 				}
 			}
@@ -153,7 +154,7 @@ namespace BB_MOD.NPCs
 
 			if (enabledLooker)
 			{
-				looker.distance = previousDist;
+				LookerDistancingPatch.RemoveLookerFromList(token);
 			}
 
 			ClearMods();

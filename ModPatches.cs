@@ -16,7 +16,6 @@ using System.Reflection.Emit;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using Mono.Security.Protocol.Tls;
 
 namespace Patches.Main
 {
@@ -236,7 +235,7 @@ namespace Patches.Main
 
 			if (!ContentManager.instance.sweepPoster)
 			{
-				var sweep = Resources.FindObjectsOfTypeAll<GottaSweep>().First();
+				var sweep = Resources.FindObjectsOfTypeAll<GottaSweep>()[0];
 				ContentManager.instance.sweepPoster = UnityEngine.Object.Instantiate(sweep.Poster.baseTexture);
 				ContentManager.instance.sweepSprite = UnityEngine.Object.Instantiate(sweep.spriteBase.transform.Find("Sprite").GetComponent<SpriteRenderer>().sprite);
 			}
@@ -582,6 +581,11 @@ namespace Patches.Main
 				ContentManager.instance.AddMapIcon("buttonIcon", GetMapGridPosition(button.transform));
 			}
 
+			foreach (var trash in UnityEngine.Object.FindObjectsOfType<TrashCan>())
+			{
+				ContentManager.instance.AddMapIcon("trashCan", GetMapGridPosition(trash.transform));
+			}
+
 
 			return false;
 		}
@@ -702,16 +706,13 @@ namespace Patches.Main
 			}
 			queuedElevatorsForFixing.Clear();
 
-			var chance = 8f;
+			var chance = 100f;
 			foreach (var locker in ContentUtilities.FindObjectsContainingName<MeshRenderer>("locker").Where(x => !x.GetComponent<HideableLocker>())) // Make green lockers
 			{
 				var random = rng.NextDouble() * 100f;
-				if (random > chance)
+				if (random <= chance)
 				{
-					chance += (float)random;
-					if (chance > 100f)
-						chance = 80f;
-
+					chance /= (float)random;
 					locker.materials[1].SetTexture("_MainTex", ContentAssets.GetAsset<Texture2D>("greenLocker"));
 					locker.material.SetColor("_TextureColor", Color.green);
 					var green = locker.gameObject.AddComponent<GreenLocker>();
@@ -723,17 +724,15 @@ namespace Patches.Main
 					}
 				}
 			}
-			chance = 5f;
+
+			chance = 100f;
 
 			foreach (var locker in UnityEngine.Object.FindObjectsOfType<HideableLocker>())
 			{
 				var random = rng.NextDouble() * 100f;
-				if (random > chance)
+				if (random <= chance)
 				{
-					chance += (float)random;
-					if (chance > 100f)
-						chance = 80f;
-
+					chance /= (float)random;
 					locker.GetComponent<MeshRenderer>().materials[1].SetTexture("_MainTex", ContentAssets.GetAsset<Texture2D>("d_blueLocker"));
 					locker.gameObject.AddComponent<DecoyBlueLocker>();
 					UnityEngine.Object.Destroy(locker);
@@ -2059,6 +2058,7 @@ namespace Patches.Main
 
 			__instance.camCom.fieldOfView = fov;
 			__instance.billboardCam.fieldOfView = fov;
+			Singleton<GlobalCam>.Instance.Cam.fieldOfView = fov;
 		}
 	}
 
@@ -2256,7 +2256,7 @@ namespace Patches.Main
 
 		public readonly static List<StaminaToken> staminaModifiers = new List<StaminaToken>();
 
-		public class StaminaToken
+		public class StaminaToken : GenericToken<float>
 		{
 			public enum ModifierType
 			{
@@ -2264,20 +2264,75 @@ namespace Patches.Main
 				Drop,
 				Max
 			}
-			public StaminaToken(ModifierType type, float value)
+			public StaminaToken(ModifierType type, float value) : base(Mathf.Max(0f, value), 0)
 			{
 				MyType = type;
-				this.value = value;
-				if (this.value < 0f)
-				{
-					this.value = 1f;
-				}
 			}
 
-			float value = 0f;
-			public float Value { get => value; set => this.value = value; }
+			public override float Value { get => base.Value; set => base.Value = Mathf.Max(0f, value); }
 
 			public ModifierType MyType { get; }
+		}
+	}
+
+	[HarmonyPatch(typeof(Looker), "Update")]
+	public class LookerDistancingPatch
+	{
+		private static void Prefix(Looker __instance, ref float ___distance, out float __state)
+		{
+			__state = ___distance;
+			if (lookerModifiers.Count == 0) return;
+
+			var vals = new List<float>();
+			foreach (var token in lookerModifiers)
+			{
+				if (!ReferenceEquals(__instance, token.Target)) continue; // If it is not about the same target, then it is not for it
+
+				vals.Add(token.Value);
+				
+			}
+
+			if (vals.Count == 0) return; // Prevents from using an empty list, duuh
+
+			___distance = Mathf.Min(___distance, vals.Min());
+
+
+		}
+
+		private static void Postfix(float __state, ref float ___distance)
+		{
+			___distance = __state;
+		}
+
+		public static bool RemoveLookerFromList(LookerToken looker)
+		{
+			bool removed = false;
+			for (int i = 0; i < lookerModifiers.Count; i++)
+			{
+				if (ReferenceEquals(lookerModifiers[i].Target, looker.Target)) // Finds the looker to remove it
+				{
+					lookerModifiers.RemoveAt(i);
+					removed = true;
+					i--;
+				}
+			}
+			return removed;
+		}
+
+		public readonly static List<LookerToken> lookerModifiers = new List<LookerToken>();
+
+		public class LookerToken : GenericToken<float>
+		{
+			public LookerToken(float value, Looker target) : base(Mathf.Max(minVal, value), 0)
+			{
+				Target = target;
+			}
+
+			public override float Value { get => base.Value; set => base.Value = Mathf.Max(minVal, value); }
+
+			public Looker Target { get; }
+
+			const float minVal = 0f;
 		}
 	}
 

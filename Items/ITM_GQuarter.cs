@@ -28,6 +28,8 @@ namespace BB_MOD.ExtraItems
 				}
 			}
 
+			Destroy(gameObject);
+
 			return false;
 		}
 
