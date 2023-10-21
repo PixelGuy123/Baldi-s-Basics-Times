@@ -403,6 +403,7 @@ namespace BB_MOD.ExtraComponents
 
 			rendererSprite.transform.localScale = Vector3.one;
 			rendererSprite.gameObject.layer = 8; // Post processing layer
+			rendererSprite.transform.rotation = Quaternion.Euler(180f, 0f, 0f);
 
 			ContentUtilities.CreatePositionalAudio(gameObject, 15f, 60f);
 		}
@@ -414,6 +415,10 @@ namespace BB_MOD.ExtraComponents
 				StartCoroutine(AppearAnimation());
 
 			isRandom = !linkedTrapdoor;
+			if (spawnAndDespawnOnly)
+			{
+				Destroy(GetComponent<BoxCollider>()); // No need for a collider
+			}
 		}
 
 		public void SetAlreadyActive() => active = true;
@@ -425,26 +430,41 @@ namespace BB_MOD.ExtraComponents
 		public void ForceOpenTrapDoor(bool open)
 		{
 			onTeleport = open;
-			SetState(!open, !open);
+			SetState(!open, true);
 		}
 
 		protected override IEnumerator DespawnWithAnimation()
 		{
 			float speed = 0f;
-			var total = Vector3.one * 0.1f;
+			var total = Vector3.zero;
 			while (true)
 			{
-				speed += 0.02f * ec.EnvironmentTimeScale * Time.deltaTime;
-				transform.localScale -= Vector3.one * speed;
-				if (transform.localScale.magnitude <= total.magnitude)
+				if (!Singleton<CoreGameManager>.Instance.Paused)
 				{
-					transform.localScale = total; // Just to end the loop here
-					break;
+					speed += 0.1f * ec.EnvironmentTimeScale * Time.deltaTime;
+					transform.localScale -= Vector3.one * speed;
+					if (transform.localScale.x <= total.x)
+					{
+						transform.localScale = total; // Just to end the loop here
+						break;
+					}
 				}
 				yield return null;
 			}
 			Despawn();
 
+			yield break;
+		}
+
+		public IEnumerator TimeDespawn(float timer)
+		{
+			float time = timer;
+			while (time > 0f)
+			{
+				time -= ec.EnvironmentTimeScale * Time.deltaTime;
+				yield return null;
+			}
+			Despawn(true);
 			yield break;
 		}
 
@@ -460,27 +480,21 @@ namespace BB_MOD.ExtraComponents
 			}
 			while (true)
 			{
-				speed += 0.02f * ec.EnvironmentTimeScale * Time.deltaTime;
-				transform.localScale += new Vector3(total[0] - transform.localScale[0], total[1] - transform.localScale[1], total[2] - transform.localScale[2]) * speed;
-				if (transform.localScale.x >= total.x)
+				if (!Singleton<CoreGameManager>.Instance.Paused)
 				{
-					transform.localScale = total; // Just to end the loop here
-					break;
+					speed += 0.1f * ec.EnvironmentTimeScale * Time.deltaTime;
+					transform.localScale += new Vector3(total[0] - transform.localScale[0], total[1] - transform.localScale[1], total[2] - transform.localScale[2]) * speed;
+					if (transform.localScale.x >= total.x)
+					{
+						transform.localScale = total; // Just to end the loop here
+						break;
+					}
 				}
 				yield return null;
 			}
 			if (!spawnAndDespawnOnly)
 			active = true;
-			else
-			{
-				float time = 6f;
-				while (time > 0f)
-				{
-					time -= ec.EnvironmentTimeScale * Time.deltaTime;
-					yield return null;
-				}
-				Despawn(true);
-			}
+
 			yield break;
 		}
 
@@ -524,9 +538,9 @@ namespace BB_MOD.ExtraComponents
 		IEnumerator Teleport(Transform subject, bool player)
 		{
 			onTeleport = true;
-			Vector3 newPos = Vector3.zero; // This is just the whirlpool code, but modified lol
-			bool tempDoor = false;
+			Vector3 newPos; // This is just the whirlpool code, but modified lol
 			float limit = -3f;
+			bool isTempDoor = false;
 			if (player)
 			{
 				limit = 0.5f;
@@ -536,13 +550,14 @@ namespace BB_MOD.ExtraComponents
 			{
 				subject.GetComponent<NPC>().DisableCollision(true);
 			}
-			if (!linkedTrapdoor)
+			if (linkedTrapdoor == null)
 			{
 				List<TileController> list = ec.AllTilesNoGarbage(false, false);
+				var backupList = new List<TileController>(list);
 				while (true)
 				{
 					int num = UnityEngine.Random.Range(0, list.Count);
-					if (!ec.TileObstructed(list[num]) && !ReferenceEquals(ec.TileFromPos(transform.position), list[num]))
+					if (!ec.TileObstructed(list[num]))
 					{
 						newPos = list[num].transform.position;
 						break;
@@ -551,11 +566,15 @@ namespace BB_MOD.ExtraComponents
 					{
 						list.RemoveAt(num);
 					}
-					if (list.Count == 0) break; // Impossible and there's no treatment anyways
+					if (list.Count == 0)
+					{
+						newPos = backupList[UnityEngine.Random.Range(0, backupList.Count)].transform.position;
+						break; // Impossible but for sure
+					}
 				}
 				
-				tempDoor = true;
-				linkedTrapdoor = SpawnTempTrapDoor(newPos + Vector3.up * 0.1f);
+				linkedTrapdoor = SpawnTempTrapDoor(newPos);
+				isTempDoor = true;
 			}
 			else
 			{
@@ -570,7 +589,7 @@ namespace BB_MOD.ExtraComponents
 				yield return null;
 			}
 			SetState(true, true);
-			linkedTrapdoor.ForceOpenTrapDoor(true);
+			linkedTrapdoor?.ForceOpenTrapDoor(true);
 			height = limit;
 			subject.position = transform.position + Vector3.up * height;
 			while (height < 5f)
@@ -588,10 +607,13 @@ namespace BB_MOD.ExtraComponents
 			{
 				subject.GetComponent<NPC>().DisableCollision(false);
 			}
-			if (!tempDoor)
+			linkedTrapdoor?.ForceOpenTrapDoor(false);
+
+			if (isTempDoor)
 			{
-				linkedTrapdoor.ForceOpenTrapDoor(false);
+				linkedTrapdoor?.StartCoroutine(linkedTrapdoor?.TimeDespawn(2f));
 			}
+			
 			onTeleport = false;
 			yield break;
 		}
@@ -616,7 +638,7 @@ namespace BB_MOD.ExtraComponents
 				}
 				audMan?.PlaySingle(aud_shut);
 			}
-			else
+			else if (!isOpen)
 			{
 				isOpen = true;
 				rendererSprite.sprite = openSprite;

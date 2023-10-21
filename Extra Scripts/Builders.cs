@@ -167,12 +167,13 @@ namespace BB_MOD.Builders
 			int amount = cRng.Next(minTrapDoors, maxTrapDoors + 1);
 			for (int i = 0; i < amount; i++)
 			{
-				if (tiles.Count <= 1) break; // below or equal to 1 to prevent trapdoors from spawning unlinked
+				if (tiles.Count == 0) break;
 				int idx = cRng.Next(tiles.Count);
-				if (cRng.NextDouble() >= 0.5f)
+				if (tiles.Count > 1 && cRng.NextDouble() >= 0.5f)
 				{ // Linked trapdoor
 					
 					var firstTrapdoor = PrefabInstance.SpawnPrefab<Trapdoor>(tiles[idx], ec, false);
+					tiles[idx].containsObject = true;
 					tiles.RemoveAt(idx);
 					idx = cRng.Next(tiles.Count);
 					var secondTrapdoor = PrefabInstance.SpawnPrefab<Trapdoor>(tiles[idx], ec, false);
@@ -194,6 +195,7 @@ namespace BB_MOD.Builders
 				{ // Random Trap door
 					var firstTrapdoor = PrefabInstance.SpawnPrefab<Trapdoor>(tiles[idx], ec, false);
 					firstTrapdoor.transform.position += Vector3.down * 5f;
+					tiles[idx].containsObject = true;
 					tiles.RemoveAt(idx);
 
 					firstTrapdoor.SetAlreadyActive();
@@ -892,7 +894,6 @@ namespace BB_MOD.Builders
 		public override void Initialize(RoomController room)
 		{
 			base.Initialize(room);
-			active = true;
 			overlay = ContentUtilities.GumOverlay; // Gets the gum overlay
 			overlay.name = "Forest_DarkOverlay";
 			overlay.transform.SetParent(transform);
@@ -913,7 +914,8 @@ namespace BB_MOD.Builders
 			}
 			if (other.tag == "Player")
 			{
-				playerManagers.Add(other.GetComponent<PlayerManager>());
+				StartCoroutine(EnvironmentExtraVariables.SmoothFOVSlide(4f, token, -30f));
+				overlay.SetActive(true);
 			}
 		}
 
@@ -935,40 +937,14 @@ namespace BB_MOD.Builders
 			}
 			if (other.tag == "Player")
 			{
-				playerManagers.Remove(other.GetComponent<PlayerManager>());
+				StartCoroutine(EnvironmentExtraVariables.SmoothFOVSlide(4f, token, removeAfter:true));
+				overlay.SetActive(false);
 			}
 		}
 
-		private void Update()
-		{
-			if (!active) return;
-
-			bool overlayEnabled = playerManagers.Count > 0;
-			overlay.SetActive(overlayEnabled);
-			
-
-			if (!overlayEnabled && hasPlayers)
-			{
-				if (sequence != null) StopCoroutine(sequence);
-				sequence = StartCoroutine(EnvironmentExtraVariables.SmoothFOVSlide(4f, 10)); // Starts from current fov and goes for there
-			}
-			else if (overlayEnabled)
-			{
-				sequence = StartCoroutine(EnvironmentExtraVariables.SmoothFOVSlide(4f, 10, -30f));
-			}
-
-			hasPlayers = overlayEnabled;
-		}
+		readonly FOVToken token = new FOVToken(0f, 10);
 
 		GameObject overlay;
-
-		Coroutine sequence = null;
-
-		bool active = false;
-
-		bool hasPlayers = false;
-
-		readonly List<PlayerManager> playerManagers = new List<PlayerManager>();
 
 		readonly List<LookerDistancingPatch.LookerToken> lookers = new List<LookerDistancingPatch.LookerToken>();
 	}

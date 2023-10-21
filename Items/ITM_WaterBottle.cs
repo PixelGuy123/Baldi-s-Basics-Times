@@ -14,6 +14,8 @@
 			pm.RuleBreak("Drinking", 2f);
 			ItemSoundHolder.CreateSoundHolder(pm.transform, aud_drink, false, 40, 60);
 
+			Destroy(gameObject);
+
 			return false;
 		}
 

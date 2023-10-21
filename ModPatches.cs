@@ -2336,6 +2336,18 @@ namespace Patches.Main
 		}
 	}
 
+	[HarmonyPatch(typeof(FieldTripManager), "End")]
+	internal class FieldTripWinNoise
+	{
+		private static void Prefix(int rank, ref AudioManager ___baldiMan)
+		{
+			if (rank >= 3)
+			{
+				___baldiMan.PlaySingle(ContentAssets.GetAsset<SoundObject>("winFieldTrip"));
+			}
+		}
+	}
+
 
 
 

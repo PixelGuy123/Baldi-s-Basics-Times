@@ -602,7 +602,7 @@ namespace BB_MOD
 			yield break;
 		}
 
-		public static IEnumerator SmoothFOVSlide(float divider, FOVToken token, float targetFOV = 0f)
+		public static IEnumerator SmoothFOVSlide(float divider, FOVToken token, float targetFOV = 0f, bool removeAfter = false)
 		{
 			var endingFOV = FOVToken.FOVCheck(targetFOV);
 
@@ -617,6 +617,11 @@ namespace BB_MOD
 			}
 
 			token.DoneSlide = true;
+
+			if (removeAfter)
+			{
+				FovModifiers.Remove(token);
+			}
 
 			yield break;
 		}
@@ -1772,6 +1777,8 @@ namespace BB_MOD
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "black.png"), 48, "trapdoor_open"); // Trapdoor sprite
 			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "trapDoor_open.wav"), "trapdoor_open", true, "Sfx_Doors_StandardOpen", SoundType.Effect, Color.white);
 			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "trapDoor_shut.wav"), "trapdoor_shut", true, "Sfx_Doors_StandardShut", SoundType.Effect, Color.white);
+
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "MUS_Win.wav"), "winFieldTrip", true, "no", SoundType.Effect, Color.white, hasSubtitle: false); // Aud_win
 
 		}
 
