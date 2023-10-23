@@ -134,6 +134,7 @@ namespace BB_MOD.NPCs
 					// Do the mixup here
 					angered = false;
 					audMan.FlushQueue(true);
+					audMan.maintainLoop = false;
 					Disable();
 					if (crazyTime != null)
 						StopCoroutine(crazyTime);
@@ -165,7 +166,11 @@ namespace BB_MOD.NPCs
 			}
 
 			var npc = npcs[Random.Range(0, npcs.Count)];
-			(player.transform.position, npc.transform.position) = (npc.transform.position, player.transform.position); // swap positions
+			Vector3 npcPos = npc.transform.position; // swap positions
+			Vector3 playerPos = player.transform.position;
+			npc.transform.position = Vector3.zero;
+			player.transform.position = npcPos;
+			npc.transform.position = playerPos; // To make sure they don't collide with each other
 
 			ec.MakeNoise(player.transform.position, 64); // Also makes noise, so it's not a full advantage on escaping
 
@@ -191,8 +196,10 @@ namespace BB_MOD.NPCs
 			navigator.SetSpeed(0f);
 			navigator.accel = speedAccel;
 
-			audMan.SetLoop(true);
+			
 			audMan.QueueAudio(angry);
+			audMan.SetLoop(true);
+			audMan.maintainLoop = true;
 
 			crazinessRange = smallCrazinessRange;
 			

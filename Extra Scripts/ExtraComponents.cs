@@ -6,13 +6,85 @@ using System.Collections.Generic;
 using System.Collections;
 using HarmonyLib;
 using System.Linq;
-using Steamworks;
 using UnityEngine.AI;
-using Rewired;
 using TMPro;
 
 namespace BB_MOD.ExtraComponents
 {
+	public class Vent : MonoBehaviour
+	{
+		private void Awake()
+		{
+			audMan = GetComponent<AudioManager>();
+			Destroy(GetComponent<BoxCollider>());
+			aud_ventNoise = ContentAssets.GetAsset<SoundObject>("ventNoises");
+
+			if (disabledForever) return;
+
+			audMan.maintainLoop = true;
+			audMan.QueueAudio(aud_ventNoise);
+			audMan.SetLoop(true);
+		}
+
+		public void TurnVent(bool turn, bool perma = false)
+		{
+			if (turn && disabledForever)
+				return;
+
+			if (!turn)
+			{
+				disabledForever = perma;
+				audMan?.FlushQueue(true);
+			}
+			else
+				audMan?.QueueAudio(aud_ventNoise);
+
+			if (audMan != null)
+			{
+				audMan.maintainLoop = turn;
+				audMan.SetLoop(turn);
+			}
+		}
+
+		bool disabledForever = false;
+
+		private AudioManager audMan;
+		private SoundObject aud_ventNoise;
+	}
+	public class CustomPlayerAttributes : MonoBehaviour
+	{
+		public bool TryGetImmunity(string immunity, out ImmunityToken token)
+		{
+			var val = ImmuneTo.Find(x => x.Value == immunity);
+			token = val;
+			return val != null;
+		}
+		public bool TryGetAttribute(string attribute, out AttributeToken token)
+		{
+			var val = AffectedBy.Find(x => x.Value == attribute);
+			token = val;
+			return val != null;
+		}
+
+
+		public List<ImmunityToken> ImmuneTo = new List<ImmunityToken>();
+
+		public List<AttributeToken> AffectedBy = new List<AttributeToken>();
+
+		public class ImmunityToken : GenericToken<string>
+		{
+			public ImmunityToken(string val) : base(val, 0)
+			{
+			}
+		}
+
+		public class AttributeToken : GenericToken<string>
+		{
+			public AttributeToken(string val) : base(val, 0)
+			{
+			}
+		}
+	}
 	public class StandardDoor_ExtraFunctions : MonoBehaviour
 	{
 		public static void AssignDoorsToTheFunction(EnvironmentController ec)
@@ -529,7 +601,7 @@ namespace BB_MOD.ExtraComponents
 				if (!other.GetComponent<PlayerManager>().plm.addendImmune)
 					StartCoroutine(Teleport(other.transform, true));
 			}
-			else if (other.tag == "NPC")
+			else if (other.tag == "NPC" && other.isTrigger)
 			{
 				StartCoroutine(Teleport(other.transform, false));
 			}
@@ -865,6 +937,24 @@ namespace BB_MOD.ExtraComponents
 		public MapIcon icon;
 	}
 
+	public class HardHatHud : PrefabInstance
+	{
+		public override string NameForIt => "HardHat_Hud";
+
+		public override void Setup()
+		{
+			var img = gameObject.AddComponent<Image>();
+			img.sprite = ContentAssets.GetAsset<Sprite>("HardHatHud");
+		}
+
+		public void SetupHud(Canvas canvas)
+		{
+			transform.SetParent(canvas.transform);
+			transform.localPosition = Vector3.zero;
+			transform.localScale = new Vector3(3.5f, 3.7f, 3.5f);
+		}
+	}
+
 	public class StunlyEffect : PrefabInstance
 	{
 		public override string NameForIt => "Stunly\'s Stun Hud";
@@ -888,6 +978,7 @@ namespace BB_MOD.ExtraComponents
 			transform.SetParent(canvas.transform);
 			transform.localPosition = Vector3.zero;
 		}
+
 
 		private IEnumerator FadeOut()
 		{

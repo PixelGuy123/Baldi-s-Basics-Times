@@ -90,6 +90,13 @@ namespace BB_MOD.NPCs
 				var mod = other.GetComponent<ActivityModifier>();
 				if (mod && !stompedDudes.Contains(mod))
 				{
+					if (other.tag == "Player")
+					{
+						if (other.GetComponent<CustomPlayerAttributes>().TryGetImmunity("stomped", out _))
+						{
+							return; // Cancels if it has a immunity to it
+						}
+					}
 					var effect = PrefabInstance.SpawnPrefab<GroundedEffect>(other.transform.position, default, ec, false);
 					effect.SetupTarget(other.transform);
 					effect.Execute();
@@ -105,6 +112,7 @@ namespace BB_MOD.NPCs
 
 		private IEnumerator StompTimer(ActivityModifier target, GroundedEffect effect)
 		{
+
 			float timer = Random.Range(5f, 10f);
 			while (timer > 0f)
 			{

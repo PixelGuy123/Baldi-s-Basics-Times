@@ -51,7 +51,8 @@ namespace BB_MOD.NPCs
 
 				ItemSoundHolder.CreateSoundHolder(other.transform, aud_Stun, false, 40, 50);
 				StartCoroutine(Escape(other.transform.position));
-				StartCoroutine(StunCooldown(other.gameObject));
+				StartCoroutine(StunCooldown(other.gameObject, att: other.GetComponent<CustomPlayerAttributes>()));
+				other.GetComponent<CustomPlayerAttributes>().AffectedBy.Add(attToken);
 			}
 			else if (other.tag == "NPC" && other.isTrigger)
 			{
@@ -116,7 +117,7 @@ namespace BB_MOD.NPCs
 			}
 		}
 
-		private IEnumerator StunCooldown(GameObject target, StunningStars star = null)
+		private IEnumerator StunCooldown(GameObject target, StunningStars star = null, CustomPlayerAttributes att = null)
 		{
 			stunningTime = false;
 			if (star)
@@ -125,7 +126,7 @@ namespace BB_MOD.NPCs
 			var looker = target.GetComponent<Looker>();
 			bool enabledLooker = false;
 
-			LookerDistancingPatch.LookerToken token = new LookerDistancingPatch.LookerToken(0f, looker); ;
+			LookerDistancingPatch.LookerToken token = new LookerDistancingPatch.LookerToken(0f, looker);
 
 			if (target.tag == "NPC" && looker)
 			{
@@ -145,17 +146,29 @@ namespace BB_MOD.NPCs
 				mod.moveMods.Add(moveMod);
 				actMods.Add(mod);
 			}
+			bool forcedEnd = false;
 			float time = Random.Range(minStunningCooldown, maxStunningCooldown + 1f);
 			while (time > 0f)
 			{
 				time -= ec.EnvironmentTimeScale * Time.deltaTime;
+				if (att?.TryGetImmunity("stun", out var immunity) ?? false) // If the attribute has immunity
+				{
+					att?.ImmuneTo.Remove(immunity);
+					forcedEnd = true;
+					break;
+				}
+
 				yield return null;
 			}
 
+			att?.AffectedBy.Remove(attToken);
+
 			if (enabledLooker)
 			{
-				LookerDistancingPatch.RemoveLookerFromList(token);
+				LookerDistancingPatch.lookerModifiers.Remove(token);
 			}
+			if (forcedEnd)
+				stunlyHud?.Despawn();
 
 			ClearMods();
 			StartCoroutine(NextStunCooldown());
@@ -238,6 +251,8 @@ namespace BB_MOD.NPCs
 		private readonly List<StunningStars> stars = new List<StunningStars>();
 
 		private readonly MovementModifier moveMod = new MovementModifier(Vector3.zero, 0.4f);
+
+		readonly CustomPlayerAttributes.AttributeToken attToken = new CustomPlayerAttributes.AttributeToken("stunly_stun");
 
 		float wannaStunCooldown = 0f;
 

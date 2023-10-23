@@ -1669,8 +1669,15 @@ namespace BB_MOD
 			AddSoundObject(Path.Combine(modPath, "Audio", "item", "potion_drink.wav"), "pt_drink", true, "Vfx_SPP_drink", SoundType.Effect, new Color(0.19921875f, 0.99609375f, 0.59765625f)); // Cyan-like color / Assets for speed potion
 			AddSoundObject(Path.Combine(modPath, "Audio", "item", "potion_speedCoilNoises.wav"), "pt_speed", true, "Vfx_SPP_drink", SoundType.Effect, Color.clear, hasSubtitle:false);
 
-			AddSoundObject(Path.Combine(modPath, "Audio", "item", "scissors_cut.wav"), "sc_cut", true, "Vfx_Scissors_cut", SoundType.Effect, new Color(0.99609375f, 0f, 0.99609375f));
-			AddSoundObject(Path.Combine(modPath, "Audio", "item", "eat.wav"), "zesty_eat", true, "Vfx_Zesty_eat", SoundType.Effect, new Color(0.74609375f, 0.5f, 0.25f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "item", "scissors_cut.wav"), "sc_cut", true, "Vfx_Scissors_cut", SoundType.Effect, new Color(0.99609375f, 0f, 0.99609375f)); // Scissors effect
+			AddSoundObject(Path.Combine(modPath, "Audio", "item", "eat.wav"), "zesty_eat", true, "Vfx_Zesty_eat", SoundType.Effect, new Color(0.74609375f, 0.5f, 0.25f)); // Zesty effect
+
+			AddSoundObject(Path.Combine(modPath, "Audio", "item", "basketball_punch.wav"), "bb_hit", true, "BB_Hit", SoundType.Effect, new Color(0.796875f, 0.3203125f, 0f)); // Basketball stuff
+			AddSoundObject(Path.Combine(modPath, "Audio", "item", "basketball_throw.wav"), "bb_throw", true, "BB_Throw", SoundType.Effect, new Color(0.796875f, 0.3203125f, 0f));
+			AddSpriteAsset(Path.Combine(modPath, "Textures", "item", "basketBall.png"), 35, "basketball");
+
+			AddSpriteAsset(Path.Combine(modPath, "Textures", "item", "hardHatHud.png"), 1, "HardHatHud"); // Hard hat hud
+			AddSoundObject(Path.Combine(modPath, "Audio", "item", "swallow.wav"), "hdp_swallow", true, "HDP_Swallow", SoundType.Effect, new Color(0.99609375f, 0.5f, 0.5f)); // Headache pill swallowing noise
 
 			// Events Assets
 
@@ -1779,6 +1786,8 @@ namespace BB_MOD
 			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "trapDoor_shut.wav"), "trapdoor_shut", true, "Sfx_Doors_StandardShut", SoundType.Effect, Color.white);
 
 			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "MUS_Win.wav"), "winFieldTrip", true, "no", SoundType.Effect, Color.white, hasSubtitle: false); // Aud_win
+
+			
 
 		}
 
@@ -2029,12 +2038,15 @@ namespace BB_MOD
 			CreateItem<ITM_Trap>("BT_Name", "BT_Desc", "TrapOpen.png", "trapSmall.png", "BearTrap", 90, 27, 20, ContentUtilities.Array(Floors.F2, Floors.END), 85, ContentUtilities.AllFloorsExcept(Floors.F1), 15, true, true, false); // PixelGuy
 			CreateItem<ITM_Banana>("BN_Name", "BN_Desc", "Banana.png", "Banana.png", "Banana", 50, 18, 5, 25, ContentUtilities.AllFloors, 55, appearsInCafeteria:true); // PixelGuy
 			CreateItem<ITM_Gum>("GUM_Name", "GUM_Desc", "gum.png", "gum.png", "Gum", 75, 25, 45, 65, ContentUtilities.AllFloors, 35); // PixelGuy
-			CreateItem<ITM_LockPick>("LPC_Name", "LPC_Desc", "lockpick.png", "lockpick.png", "Lockpick", 75, 20, 2, 95, Array.Empty<Floors>(), 1, unlockDoors:true); // PixelGuy
+			CreateItem<ITM_LockPick>("LPC_Name", "LPC_Desc", "lockpick.png", "lockpick.png", "Lockpick", 75, 20, 2, 95, Array.Empty<Floors>(), 1, unlockDoors:true, includeOnFieldTrip:true); // PixelGuy
 			CreateItem<ITM_SpeedPotion>("SPP_Name", "SPP_Desc", "speedPotion.png", "speedPotion.png", "Speedpotion", 75, 25, 25, 45, ContentUtilities.AllFloors, 50, includeOnFieldTrip: true); // AdvancedDasher
 			CreateItem<ITM_BSED>("BSED_Name", "BSED_Desc", "BSED.png", "BSED.png", "Bsed", 65, 25, 35, ContentUtilities.AllFloorsExcept(Floors.F1), 45, ContentUtilities.AllFloors, 65, appearsInCafeteria:true); // HaHaFunny
 			CreateItem<ITM_GQuarter>("gquarter_Name", "gquarter_Desc", "gQuarter.png", "gQuarter.png", "Gquarter", 35, 21, 5, 35, ContentUtilities.AllFloors, 35, includeOnFieldTrip:true); //PixelGuy
 			CreateItem<ITM_EmptyBottle>("EBottle_Name", "EBottle_Desc", "bottle_empty.png", "bottle_empty.png", "Emptybottle", 2, 25, 15, 42, Array.Empty<Floors>(), 15); // PixelGuy
 			CreateItem<ITM_WaterBottle>("WBottle_Name", "WBottle_Desc", "bottle_water.png", "bottle_water.png", "Waterbottle", 75, 25, 15, 42, ContentUtilities.AllFloors, 5, includeOnFieldTrip:true, appearsInCafeteria:true); // PixelGuy
+			CreateItem<ITM_HardHat>("HardHat_Name", "HardHat_Desc", "hardHat.png", "hardHat.png", "Hardhat", 45, 24, 15, ContentUtilities.AllFloorsExcept(Floors.F1), 65, ContentUtilities.AllFloors, 15);
+			CreateItem<ITM_HeadachePill>("HDP_Name", "HDP_Desc", "headachePill.png", "headachePill.png", "Headachepill", 50, 26, 5, 156, ContentUtilities.AllFloors, 65);
+			CreateItem<ITM_Basketball>("BB_Name", "BB_Desc", "basketBall.png", "basketBall.png", "Basketball", 1, 100, 1, Array.Empty<Floors>(), 100, Array.Empty<Floors>(), 1);
 		}
 
 
@@ -2375,6 +2387,7 @@ namespace BB_MOD
 			CreateSchoolTexture("green_rustyCeiling.png", ContentUtilities.AllFloorsExcept(Floors.F1), SchoolTextType.Ceiling, false, false, false, 100); // Jofitzy
 			CreateSchoolTexture("white_rustyCeiling.png", ContentUtilities.AllFloorsExcept(Floors.F1), SchoolTextType.Ceiling, false, false, false, 100); // Jofitzy
 			CreateSchoolTexture("redMosaicCarpet.png", ContentUtilities.AllFloorsExcept(Floors.F2), SchoolTextType.Floor, roomsOnly:true, existOnClassrooms:true, weight:80); // Jofitzy
+			CreateSchoolTexture("redcarpet.png", ContentUtilities.AllFloors, SchoolTextType.Floor, roomsOnly: true, existOnFaculties: true); // Cherubble
 
 		}
 
@@ -2925,6 +2938,7 @@ namespace BB_MOD
 				PrefabInstance.CreateInstance<TrashCan>();
 				PrefabInstance.CreateInstance<BananaTree>();
 				PrefabInstance.CreateInstance<Trapdoor>();
+				PrefabInstance.CreateInstance<HardHatHud>();
 			}
 			if (!addedExtraContent[5])
 			{
@@ -2933,6 +2947,7 @@ namespace BB_MOD
 				CreateMapIcon("mathNotebookIcon", "hiddenNotebookIcon.png", 22f);
 				CreateMapIcon("buttonIcon", "buttonIcon.png", 22f);
 				CreateMapIcon("trashCan", "trashcanIcon.png", 22f);
+				CreateMapIcon("trapDoor", "trapDoorIcon.png", 22f);
 			}
 		}
 

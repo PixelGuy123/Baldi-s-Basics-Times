@@ -163,13 +163,16 @@ namespace BB_MOD.Builders
 		{
 			var tiles = room.GetTilesOfShape(new List<TileShape>() { TileShape.Corner, TileShape.End }, false).Where(x => !x.containsObject).ToList();
 			if (tiles.Count == 0) return;
+			var currentFloor = EnvironmentExtraVariables.currentFloor;
 
-			int amount = cRng.Next(minTrapDoors, maxTrapDoors + 1);
+			int amount = cRng.Next(trapdoorAmounts[currentFloor][0], trapdoorAmounts[currentFloor][1] + 1);
+			int allowedLinkeds = trapdoorAmounts[currentFloor][2];
+			int allowedRandoms = trapdoorAmounts[currentFloor][3];
 			for (int i = 0; i < amount; i++)
 			{
-				if (tiles.Count == 0) break;
+				if (tiles.Count == 0 || (allowedLinkeds <= 0 && allowedRandoms <= 0)) break;
 				int idx = cRng.Next(tiles.Count);
-				if (tiles.Count > 1 && cRng.NextDouble() >= 0.5f)
+				if (allowedLinkeds > 0 && tiles.Count > 1 && cRng.NextDouble() >= 0.5f)
 				{ // Linked trapdoor
 					
 					var firstTrapdoor = PrefabInstance.SpawnPrefab<Trapdoor>(tiles[idx], ec, false);
@@ -177,6 +180,7 @@ namespace BB_MOD.Builders
 					tiles.RemoveAt(idx);
 					idx = cRng.Next(tiles.Count);
 					var secondTrapdoor = PrefabInstance.SpawnPrefab<Trapdoor>(tiles[idx], ec, false);
+					tiles[idx].containsObject = true;
 					tiles.RemoveAt(idx);
 
 					firstTrapdoor.SetTrapdoorLink(secondTrapdoor);
@@ -190,8 +194,10 @@ namespace BB_MOD.Builders
 
 					firstTrapdoor.Execute();
 					secondTrapdoor.Execute();
+
+					allowedLinkeds--;
 				}
-				else
+				else if (allowedRandoms > 0)
 				{ // Random Trap door
 					var firstTrapdoor = PrefabInstance.SpawnPrefab<Trapdoor>(tiles[idx], ec, false);
 					firstTrapdoor.transform.position += Vector3.down * 5f;
@@ -201,11 +207,19 @@ namespace BB_MOD.Builders
 					firstTrapdoor.SetAlreadyActive();
 
 					firstTrapdoor.Execute();
+
+					allowedRandoms--;
 				}
 			}
 		}
 
-		const int minTrapDoors = 1, maxTrapDoors = 3;
+		readonly Dictionary<Floors, int[]> trapdoorAmounts = new Dictionary<Floors, int[]>()
+		{
+			{Floors.F1, ContentUtilities.Array(0, 0, 0, 0)  }, // first 2 numbers: how many trapdoors. third number: how many linked trapdoors allowed. fourth number: how many random trapdoors allowed
+			{Floors.F2, ContentUtilities.Array(1, 2, 2, 0)  },
+			{Floors.F3, ContentUtilities.Array(1, 3, 1, 3)  },
+			{Floors.END, ContentUtilities.Array(2, 3, 3, 1)  }
+		};
 	}
 
 	// Here are the custom room builders, which can either be a replacement for a existent builder, or a new builder for a new room type (this is planned and will be added soon!)
@@ -759,6 +773,13 @@ namespace BB_MOD.Builders
 
 
 			room.functionObject.GetComponent<RuleFreeZone>().Initialize(room);
+
+			var tiles = room.GetTilesOfShape(new List<TileShape>() { TileShape.Open }, true).Where(x => !x.containsObject);
+			room.ec.CreateItem(room, 
+				ContentManager.instance.GetItemByEnum(ContentManager.instance.customItemEnums.GetItemByName("Basketball")), 
+				tiles.ElementAt(cRNG.Next(tiles.Count())).transform.position + Vector3.up * 5f); // At least just one basketball per special room
+
+
 		}
 
 		readonly Door doorPre = ContentUtilities.SwingingDoor;
@@ -930,7 +951,7 @@ namespace BB_MOD.Builders
 					int index = lookers.FindIndex(x => ReferenceEquals(x.Target, looker));
 					if (index >= 0)
 					{
-						LookerDistancingPatch.RemoveLookerFromList(lookers[index]);
+						LookerDistancingPatch.lookerModifiers.Remove(lookers[index]);
 						lookers.RemoveAt(index);
 					}
 				}

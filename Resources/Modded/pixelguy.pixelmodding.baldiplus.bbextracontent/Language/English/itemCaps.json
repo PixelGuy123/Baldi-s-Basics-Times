@@ -39,5 +39,14 @@
 	{"key":"EBottle_Name","value":"Empty Bottle"},
 	{"key":"EBottle_Desc","value":"Empty Bottle\nAn empty bottle, there's no useful use for it. Unless doing what it does, hold water, you can fill it in the fountain!"},
 	{"key":"WBottle_Name","value":"Water Bottle"},
-	{"key":"WBottle_Desc","value":"Water Bottle\nStored water that can refill entirely your stamina, you can always refill it again with the fountain!"}
+	{"key":"WBottle_Desc","value":"Water Bottle\nStored water that can refill entirely your stamina, you can always refill it again with the fountain!"},
+	{"key":"HardHat_Name","value":"Hard Hat"},
+	{"key":"HardHat_Desc","value":"Hard Hat\nA strong hat made specificall to avoid the stomps from Leapy! It takes a quick time to become useless, use it wisely!"},
+	{"key":"HDP_Name","value":"Headache Pill"},
+	{"key":"HDP_Desc","value":"Headache Pill\nHave you suffered from headache upon seeing the most ugly person ever? Well not to worry, this instant pill will cure your suffering in a second!"},
+	{"key":"HDP_Swallow","value":"*Swallowing*"},
+	{"key":"BB_Name","value":"Basketball"},
+	{"key":"BB_Desc","value":"Basketball\nAn incredible ball that can only be obtained from the Basketball Area... I think that should be obvious already..s"},
+	{"key":"BB_Hit","value":"*Hit*"},
+	{"key":"BB_Throw","value":"*Throwing*"}
 ]}

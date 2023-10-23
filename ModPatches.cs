@@ -586,6 +586,11 @@ namespace Patches.Main
 				ContentManager.instance.AddMapIcon("trashCan", GetMapGridPosition(trash.transform));
 			}
 
+			foreach (var trapdoor in UnityEngine.Object.FindObjectsOfType<Trapdoor>())
+			{
+				ContentManager.instance.AddMapIcon("trapDoor", GetMapGridPosition(trapdoor.transform));
+			}
+
 
 			return false;
 		}
@@ -2275,6 +2280,16 @@ namespace Patches.Main
 		}
 	}
 
+	[HarmonyPatch(typeof(PlayerMovement), "Start")]
+	internal class AddCustomAttributes
+	{
+		private static void Prefix(PlayerMovement __instance)
+		{
+			if (!__instance.GetComponent<CustomPlayerAttributes>())
+				__instance.gameObject.AddComponent<CustomPlayerAttributes>(); // Add this
+		}
+	}
+
 	[HarmonyPatch(typeof(Looker), "Update")]
 	public class LookerDistancingPatch
 	{
@@ -2302,21 +2317,6 @@ namespace Patches.Main
 		private static void Postfix(float __state, ref float ___distance)
 		{
 			___distance = __state;
-		}
-
-		public static bool RemoveLookerFromList(LookerToken looker)
-		{
-			bool removed = false;
-			for (int i = 0; i < lookerModifiers.Count; i++)
-			{
-				if (ReferenceEquals(lookerModifiers[i].Target, looker.Target)) // Finds the looker to remove it
-				{
-					lookerModifiers.RemoveAt(i);
-					removed = true;
-					i--;
-				}
-			}
-			return removed;
 		}
 
 		public readonly static List<LookerToken> lookerModifiers = new List<LookerToken>();
