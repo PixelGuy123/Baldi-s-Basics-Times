@@ -1,7 +1,7 @@
 {"items":[
 	{"key":"Event_PriOut","value":"The current Principal is tired of walking, time for a little rest in a office!"},
 	{"key":"Event_BlackOut","value":"The Baldi's Eletrical Generator has failed again! Seems like everything won't work for some time..."},
-	{"key":"Event_CurtClosed","value":"Uh oh! Looks like every window has been closed by curtains! Nobody can't see through!"},
+	{"key":"Event_CurtClosed","value":"Uh oh! Looks like every window's curtains have been closed! Nobody can see through them!"},
 	{"key":"Event_WindySchool","value":"A strong wind is pushing all of the school! Be careful with your steps!"},
 	{"key":"Vfx_EvBO_turnOn","value":"*Power Coming Back*"},
 	{"key":"Vfx_EvBO_turnOff","value":"*Power Down*"}
