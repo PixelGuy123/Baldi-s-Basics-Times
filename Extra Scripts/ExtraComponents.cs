@@ -8,6 +8,7 @@ using HarmonyLib;
 using System.Linq;
 using UnityEngine.AI;
 using TMPro;
+using System.Runtime.CompilerServices;
 
 namespace BB_MOD.ExtraComponents
 {
@@ -332,11 +333,12 @@ namespace BB_MOD.ExtraComponents
 				obj.transform.SetParent(ec.transform);
 				obj.transform.position = pos;
 				obj.transform.rotation = rotation;
-				obj.GetComponent<T>().SetReferences(ec, prefab.AvailableRender);
+				var comp = obj.GetComponent<T>();
+				comp.SetReferences(ec, prefab.AvailableRender);
 				if (autoExecute)
-					obj.GetComponent<T>().Execute();
+					comp.Execute();
 
-				return obj.GetComponent<T>();
+				return comp;
 			}
 			catch
 			{
@@ -368,9 +370,10 @@ namespace BB_MOD.ExtraComponents
 		{
 			this.ec = ec;
 			if (hasRender)
+			{
 				rendererSprite = transform.Find("Sprite").GetComponent<SpriteRenderer>();
+			}
 		}
-
 		public virtual void Execute()
 		{
 			gameObject.SetActive(true);
@@ -414,6 +417,23 @@ namespace BB_MOD.ExtraComponents
 		protected const string namePrefix = "CustomObj_";
 	}
 
+	public abstract class CustomHud : PrefabInstance
+	{
+		public override void Execute()
+		{
+			base.Execute();
+			EnvironmentExtraVariables.customHuds.Add(this);
+		}
+
+		public override void Despawn(bool withAnimation = false)
+		{
+			base.Despawn(withAnimation);
+			EnvironmentExtraVariables.customHuds.Remove(this);
+		}
+
+
+	}
+
 	public class TrashCan : PrefabInstance, IClickable<int>
 	{
 		private void Start()
@@ -431,7 +451,6 @@ namespace BB_MOD.ExtraComponents
 		} 
 		public override void Setup()
 		{
-			base.Setup();
 			CreateSprite(ContentUtilities.DefaultBillBoardMaterial, ContentAssets.GetAsset<Sprite>("trashCan"));
 			rendererSprite.transform.localPosition = Vector3.down * 2.5f;
 			ContentUtilities.CreatePositionalAudio(gameObject, 30, 60, out _, out AudioManager audio);
@@ -446,6 +465,65 @@ namespace BB_MOD.ExtraComponents
 		readonly SoundObject aud_throw = ContentAssets.GetAsset<SoundObject>("throwTrash");
 
 		AudioManager audMan;
+	}
+
+	public class Curtains : PrefabInstance
+	{
+		public override string NameForIt => "Curtains";
+
+		private void Start()
+		{
+			audMan = GetComponent<AudioManager>();
+			collider = GetComponent<BoxCollider>();
+		}
+
+		public override void Setup()
+		{
+			collider = ContentUtilities.AddCollisionToSprite(gameObject, transform.right * 8f + Vector3.up * 15f, Vector3.zero);
+			CreateSprite(ContentManager.Prefabs.flatMaterial, curtains[1]);
+			ContentUtilities.CreatePositionalAudio(gameObject, 40f, 70f, out _, out var audioMan);
+			audMan = audioMan;
+		}
+
+		public void SetWindow(Window window)
+		{
+			transform.SetParent(window.transform);
+			Vector3 pos = window.transform.Find("Buffer").transform.localPosition;
+			transform.localPosition = new Vector3(pos.x, 0f, pos.z);
+			rendererSprite.transform.localPosition = Vector3.up * 5f;
+			myWindow = window;
+		}
+
+		public void SetIt(bool closed)
+		{
+			rendererSprite.sprite = curtains[closed ? 0 : 1];
+			collider.enabled = closed;
+			var comp = myWindow.GetComponent<WindowExtraFields>();
+
+			if (comp.IsBroken != closed)
+			{
+				myWindow.Block(closed);
+			}
+			if (closed)
+				isUnbreakable = comp.IsUnbreakable && !comp.IsBroken;
+			comp.IsUnbreakable = isUnbreakable || closed;
+			audMan.PlaySingle(closed ? aud_close : aud_open);
+		}
+		bool isUnbreakable = false;
+
+		AudioManager audMan;
+
+		Window myWindow;
+
+		BoxCollider collider;
+
+		readonly Sprite[] curtains = new Sprite[2]
+		{
+			ContentAssets.GetAsset<Sprite>("curtain_closed"),
+			ContentAssets.GetAsset<Sprite>("curtain_open")
+		};
+
+		readonly SoundObject aud_open = ContentAssets.GetAsset<SoundObject>("curtainOpen"), aud_close = ContentAssets.GetAsset<SoundObject>("curtainClose");
 	}
 
 	public class Trapdoor : PrefabInstance
@@ -466,7 +544,7 @@ namespace BB_MOD.ExtraComponents
 		public override void Setup()
 		{
 			base.Setup();
-			var collider = ContentUtilities.AddCollisionToSprite(gameObject, new Vector3(7f, 7f, 7f), Vector3.zero);
+			var collider = ContentUtilities.AddCollisionToSprite(gameObject, new Vector3(5f, 7f, 5f), Vector3.zero);
 			collider.isTrigger = true;
 
 			transform.rotation = Quaternion.Euler(90f, 0f, 0f);
@@ -708,17 +786,23 @@ namespace BB_MOD.ExtraComponents
 				{
 					openCooldown = defaultCooldown;
 				}
-				audMan?.PlaySingle(aud_shut);
+				if (firstTime)
+					audMan?.PlaySingle(aud_shut);
+				else
+					firstTime = true;
 			}
 			else if (!isOpen)
 			{
 				isOpen = true;
 				rendererSprite.sprite = openSprite;
-				audMan?.PlaySingle(aud_open);
+				if (firstTime)
+					audMan?.PlaySingle(aud_open);
+				else
+					firstTime = true;
 			}
 		}
 
-		private bool active = false, isOpen = false, spawnAndDespawnOnly = false, onTeleport = false, isRandom = false;
+		private bool active = false, isOpen = false, spawnAndDespawnOnly = false, onTeleport = false, isRandom = false, firstTime = false;
 
 		public bool OnTeleport { get => onTeleport; set => onTeleport = value; }
 
@@ -877,6 +961,123 @@ namespace BB_MOD.ExtraComponents
 		}
 	}
 
+	public class GroundedGlue : PrefabInstance
+	{
+		public override string NameForIt => "GlueInGround";
+
+		public override void Setup()
+		{
+			CreateSprite(ContentManager.Prefabs.flatMaterial, ContentAssets.GetAsset<Sprite>("glueInGround"));
+			rendererSprite.gameObject.layer = 0;
+			var collider = ContentUtilities.AddCollisionToSprite(gameObject, new Vector3(4.5f, 15f, 4.5f), Vector3.zero);
+			collider.isTrigger = true;
+			
+		}
+
+		public void SetOwner(GameObject obj) => myOwner = obj;
+
+		private void OnTriggerStay(Collider other)
+		{
+			if (!active) return;
+
+			if (other.gameObject != myOwner)
+			{
+				var comp = other.GetComponent<ActivityModifier>();
+				if (comp != null)
+				{
+					bool immune = other.GetComponent<PlayerManager>()?.plm.addendImmune ?? false;
+
+					if (!modifiers.Contains(comp))
+					{
+						if (!immune)
+						{
+							comp.moveMods.Add(movemod);
+							modifiers.Add(comp);
+							ItemSoundHolder.CreateSoundHolder(transform.position, aud_splash, true, 17, 20, true);
+						}
+					}
+					else if (immune)
+					{
+						comp.moveMods.Remove(movemod);
+						modifiers.Remove(comp);
+					}
+				}
+			}
+		}
+
+		private void OnTriggerExit(Collider other)
+		{
+			var comp = other.GetComponent<ActivityModifier>();
+			if (comp != null)
+			{
+				comp.moveMods.Remove(movemod);
+				modifiers.Remove(comp);
+			}
+		}
+
+		public override void Execute()
+		{
+			base.Execute();
+			ItemSoundHolder.CreateSoundHolder(transform.position, aud_splash, true, 30, 70, true);
+			StartCoroutine(SpawnAnimation());
+		}
+
+		protected override IEnumerator DespawnWithAnimation()
+		{
+			ClearUpModifiers();
+			Destroy(GetComponent<BoxCollider>()); // Destroys the collider of course
+			active = false;
+			transform.localScale = Vector3.one;
+			float val = 1f;
+			float speed = 0f;
+			while (transform.localScale.magnitude > 0.1f)
+			{
+				speed += ec.EnvironmentTimeScale * Time.deltaTime * 2f;
+				val += (0f - val) * speed;
+				transform.localScale = new Vector3(val, val, val);
+				yield return null;
+			}
+			transform.localScale = Vector3.zero;
+			Despawn();
+			yield break;
+		}
+
+		IEnumerator SpawnAnimation()
+		{
+			transform.localScale = Vector3.zero;
+			float val = 0f;
+			while (transform.localScale.magnitude < 1f)
+			{
+				val += (1f - val) / 4f;
+				transform.localScale = new Vector3(val, val, val);
+				yield return null;
+			}
+			transform.localScale = Vector3.one;
+			active = true;
+
+			yield break;
+		}
+
+		GameObject myOwner;
+
+		readonly MovementModifier movemod = new MovementModifier(Vector3.zero, 0.1f);
+
+		readonly List<ActivityModifier> modifiers = new List<ActivityModifier>();
+
+		readonly SoundObject aud_splash = ContentAssets.GetAsset<SoundObject>("glueSplash");
+
+		void ClearUpModifiers()
+		{
+			foreach (var mod in modifiers)
+			{
+				mod.moveMods.Remove(movemod);
+			}
+			modifiers.Clear();
+		}
+
+		bool active = false;
+	}
+
 	public class FogMachine : PrefabInstance, IItemAcceptor
 	{
 		public override string NameForIt => "FogMachine";
@@ -937,7 +1138,7 @@ namespace BB_MOD.ExtraComponents
 		public MapIcon icon;
 	}
 
-	public class HardHatHud : PrefabInstance
+	public class HardHatHud : CustomHud
 	{
 		public override string NameForIt => "HardHat_Hud";
 
@@ -955,7 +1156,7 @@ namespace BB_MOD.ExtraComponents
 		}
 	}
 
-	public class StunlyEffect : PrefabInstance
+	public class StunlyEffect : CustomHud
 	{
 		public override string NameForIt => "Stunly\'s Stun Hud";
 
@@ -969,7 +1170,6 @@ namespace BB_MOD.ExtraComponents
 		{
 			base.Execute();
 
-			
 			StartCoroutine(FadeOut());
 		}
 

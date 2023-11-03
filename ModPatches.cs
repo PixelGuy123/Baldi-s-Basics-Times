@@ -16,6 +16,7 @@ using System.Reflection.Emit;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using Rewired.UI.ControlMapper;
 
 namespace Patches.Main
 {
@@ -175,6 +176,7 @@ namespace Patches.Main
 						__instance.ld.maxLightDistance = 10;
 						__instance.ld.standardLightChance = 25;
 						__instance.ld.maxSpecialBuilders += 1;
+						__instance.ld.maxOffices = 2;
 						break;
 					case Floors.END:
 						__instance.ld.minClassRooms = 6;
@@ -190,6 +192,7 @@ namespace Patches.Main
 						__instance.ld.maxLightDistance = 12;
 						__instance.ld.standardLightChance = 25;
 						__instance.ld.maxSpecialBuilders += 2;
+						__instance.ld.maxOffices = 2;
 						break;
 					case Floors.F3:
 						__instance.ld.maxClassRooms = 12;
@@ -206,6 +209,8 @@ namespace Patches.Main
 						__instance.ld.additionalNPCs += 5;
 						__instance.ld.maxLightDistance = 15;
 						__instance.ld.maxSpecialBuilders += 2;
+						__instance.ld.minOffices = 2;
+						__instance.ld.maxOffices = 3;
 						break;
 				}
 			}
@@ -424,7 +429,7 @@ namespace Patches.Main
 			for (int i = 0; i < __instance.Ec.Npcs.Count; i++) // Destroy any other Baldi available
 			{
 				var npc = __instance.Ec.Npcs[i];
-				if (npc.Character != Character.Baldi & (!npc.GetComponent<CustomNPCData>() || npc.GetComponent<CustomNPCData>().isReplacing != Character.Baldi))
+				if (npc.Character != Character.Baldi & (npc.GetComponent<CustomNPCData>()?.isReplacing != Character.Baldi))
 				{
 					npc.Despawn();
 					i--;
@@ -663,14 +668,13 @@ namespace Patches.Main
 
 					ec.CreateItem(room, WeightedItemObject.ControlledRandomSelection(cafeItems, rng), rng);
 				}
-
 			}
 
 			var windows = UnityEngine.Object.FindObjectsOfType<Window>();
 
 			foreach (var window in windows) // Replaces with windows from specific room
 			{
-				if (window.name.StartsWith("CustomWindow_")) // Skips custom windows
+				if (window.name.StartsWith("CustomWindow_") || !window.gameObject.activeSelf) // Skips custom windows or disabled
 					continue;
 
 				List<List<WindowObject>> windowCollection = new List<List<WindowObject>>();
@@ -697,6 +701,7 @@ namespace Patches.Main
 					var collection = windowCollection[rng.Next(windowCollection.Count)];
 					ContentUtilities.ReplaceWindow(window, collection[rng.Next(collection.Count)], ec); // Gets a random collection
 				}
+				
 			}
 
 			foreach (var elevator in EnvironmentExtraVariables.ElevatorCenterPositions)
@@ -743,6 +748,8 @@ namespace Patches.Main
 					UnityEngine.Object.Destroy(locker);
 				}
 			}
+
+			EnvironmentExtraVariables.OnPostGen.Invoke(); // Invokes here, it's useful for events that adds structures that are affected by the PostGen later
 
 		}
 
@@ -1308,6 +1315,8 @@ namespace Patches.Main
 	{
 		private static void Prefix() // Basically iterates by randomly choosing a replacement NPC, then gets the array of the NPC and searches for the npc it replaces (random npc from array)
 		{
+			if (EnvironmentExtraVariables.generationBooleans[0]) return; // Not repeat again
+			EnvironmentExtraVariables.generationBooleans[0] = true;
 
 			System.Random rng = new System.Random(Singleton<CoreGameManager>.Instance.Seed());
 
@@ -1417,6 +1426,36 @@ namespace Patches.Main
 
 
 
+		}
+	}
+
+	[HarmonyPatch(typeof(OfficeBuilderStandard), "Builder", MethodType.Enumerator)]
+	internal class AllPostersAtOnce
+	{
+		private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+		{
+			int booleansFound = 0;
+			bool success = false;
+			using (var enumerator = instructions.GetEnumerator())
+			{
+				while (enumerator.MoveNext())
+				{
+					var instrunction = enumerator.Current;
+
+					if (!success && instrunction.opcode == OpCodes.Ldc_I4_0)
+					{
+						booleansFound++;
+						if (booleansFound == 2) // The exact second one
+						{
+							yield return Transpilers.EmitDelegate<Func<int>>(() => int.MinValue);
+							success = true;
+							continue;
+						}
+					}
+
+					yield return instrunction;
+				}
+			}
 		}
 	}
 
@@ -2345,6 +2384,24 @@ namespace Patches.Main
 			{
 				___baldiMan.PlaySingle(ContentAssets.GetAsset<SoundObject>("winFieldTrip"));
 			}
+		}
+	}
+
+	[HarmonyPatch(typeof(Door), "Block")] // Makes it so it doesn't logs exceptions
+	internal class NoExceptionInWindows
+	{
+		private static Exception Finalizer()
+		{
+			return null;
+		}
+	}
+
+	[HarmonyPatch(typeof(FacultyBuilderStandard), "Build")]
+	internal class FacultyBuilderHasMoreWindowsNow
+	{
+		private static void Prefix(ref float ___windowChance)
+		{
+			___windowChance = 44f; // Increases chance lol
 		}
 	}
 

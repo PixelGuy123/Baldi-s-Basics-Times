@@ -32,7 +32,7 @@ namespace BB_MOD.Events
 
 			foreach (var npc in ec.Npcs)
 			{
-				if (npc.Navigator.enabled && (npc.Character == Character.Principal || (npc.GetComponent<CustomNPCData>() != null && npc.GetComponent<CustomNPCData>().isReplacing == Character.Principal)))
+				if (npc.Navigator.enabled && (npc.Character == Character.Principal || npc.GetComponent<CustomNPCData>()?.isReplacing == Character.Principal))
 				{
 					npc.controlOverride = true;
 					principals.Add(npc, office.TileAtIndex(crng.Next(0, office.TileCount)));

@@ -442,10 +442,19 @@ namespace BB_MOD
 			BlackOut.OutageGoing = false;
 			ITM_SpeedPotion.ResetCount();
 			OnEndGame.RemoveAllListeners();
+			OnPostGen.RemoveAllListeners();
 			FovModifiers.Clear();
 			CurrentFOV = PlayerDefaultFOV;
 			StaminaRisingPatch.staminaModifiers.Clear();
 			LookerDistancingPatch.lookerModifiers.Clear();
+			generationBooleans = new bool[booleansAmount];
+
+			for (int i = 0; i < customHuds.Count; i++) // Destroy the huds hre
+			{
+				customHuds[i]?.Despawn();
+				i--;
+			}
+			customHuds.Clear();
 		}
 
 		public static void SetVariables()
@@ -499,6 +508,8 @@ namespace BB_MOD
 		}
 
 		public static UnityEvent OnEndGame = new UnityEvent();
+
+		public static UnityEvent OnPostGen = new UnityEvent();
 		public static void EndGamePhase() => isEndGame = true;
 
 		public static bool IsPlayerOnLibrary
@@ -616,6 +627,8 @@ namespace BB_MOD
 				yield return null;
 			}
 
+			token.Value = endingFOV;
+
 			token.DoneSlide = true;
 
 			if (removeAfter)
@@ -660,6 +673,12 @@ namespace BB_MOD
 		public const float minFOV = -50f;
 
 		public const float PlayerDefaultFOV = 60f;
+
+		public static bool[] generationBooleans = new bool[booleansAmount]; // 1 to the ReplacementNpcs not repeating again if new offices are added
+
+		public static List<PrefabInstance> customHuds = new List<PrefabInstance>();
+
+		const int booleansAmount = 1;
 	}
 
 	public class GenericToken<T>
@@ -685,7 +704,7 @@ namespace BB_MOD
 			CanSum = canSum;
 		}
 
-		public static float FOVCheck(float fov) => fov < EnvironmentExtraVariables.minFOV ? EnvironmentExtraVariables.minFOV : fov > EnvironmentExtraVariables.maxFOV ? EnvironmentExtraVariables.maxFOV : fov;
+		public static float FOVCheck(float fov) => Mathf.Clamp(fov, EnvironmentExtraVariables.minFOV, EnvironmentExtraVariables.maxFOV);
 
 		public override float Value { get => val; set => val = FOVCheck(value); }
 
@@ -1139,7 +1158,8 @@ namespace BB_MOD
 			obstacle = AddNavigationCollisionToObject(obj, obstacleSize);
 		}
 
-		public static void AddCollisionToSprite(GameObject obj, Vector3 boxSize, Vector3 center, Vector3 obstacleSize) => AddCollisionToSprite(obj, boxSize, center, obstacleSize, out _, out _);
+		public static void AddCollisionToSprite(GameObject obj, Vector3 boxSize, Vector3 center, Vector3 obstacleSize) => AddCollisionToSprite(obj, boxSize, center, obstacleSize, out var collider, out _);
+		
 
 
 		public static GameObject AddBasicBuffer(Transform tsf, string name = "Buffer")
@@ -1641,10 +1661,22 @@ namespace BB_MOD
 			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "leapy_jump.wav"), "leapy_leap", true, "Vfx_Leapy_Leap", SoundType.Effect, new Color(0f, 0.3984f, 0f));
 			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "leapy_stomp.wav"), "leapy_stomp", true, "Vfx_Leapy_Stomp", SoundType.Effect, new Color(0f, 0.3984f, 0f));
 
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "WCH_ambience.wav"), "wch_idle", true, "Vfx_Wch_Idle", SoundType.Voice, new Color(0.3984375f, 0.3984375f, 0.59765625f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "WCH_ambience.wav"), "wch_idle", true, "Vfx_Wch_Idle", SoundType.Voice, new Color(0.3984375f, 0.3984375f, 0.59765625f)); //Watcher stuff
 			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "WCH_see.wav"), "wch_see", true, "Vfx_Wch_See", SoundType.Voice, new Color(0.3984375f, 0.3984375f, 0.59765625f));
 			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "WCH_angered.wav"), "wch_angry", true, "Vfx_Wch_Angry", SoundType.Voice, new Color(0.3984375f, 0.3984375f, 0.59765625f));
 			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "WCH_teleport.wav"), "wch_tp", true, "Vfx_Wch_Teleport", SoundType.Voice, new Color(0.3984375f, 0.3984375f, 0.59765625f));
+
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "spj_step1.wav"), "spj_step1", true, "Vfx_Spj_Step", SoundType.Effect, new Color(0.796875f, 0.19921875f, 0.99609375f)); // SuperintendentJr audios
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "spj_step1.wav"), "spj_step2", true, "Vfx_Spj_Step", SoundType.Effect, new Color(0.796875f, 0.19921875f, 0.99609375f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "spj_wonder.wav"), "spj_wonder", true, "Vfx_Spj_Wander", SoundType.Effect, new Color(0.796875f, 0.19921875f, 0.99609375f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "spj_principal.wav"), "spj_principal", true, "Vfx_Spj_Found", SoundType.Effect, new Color(0.796875f, 0.19921875f, 0.99609375f));
+
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "gBoy_putglue1.wav"), "Gboy_whatif1", true, "Vfx_Gboy_whatif1", SoundType.Voice, new Color(0f, 0.33203125f, 0.5f)); // Glueboy Assets
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "gBoy_putglue2.wav"), "Gboy_whatif2", true, "Vfx_Gboy_whatif2", SoundType.Voice, new Color(0f, 0.33203125f, 0.5f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "gBoy_putglue3.wav"), "Gboy_whatif3", true, "Vfx_Gboy_whatif3", SoundType.Voice, new Color(0f, 0.33203125f, 0.5f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "gBoy_herewego.wav"), "Gboy_herewego", true, "Vfx_Gboy_putGlue", SoundType.Voice, new Color(0f, 0.33203125f, 0.5f));
+			AddSpriteAsset(Path.Combine(modPath, "Textures", "glue.png"), 64, "glueInGround");
+
 
 
 
@@ -1684,6 +1716,7 @@ namespace BB_MOD
 			AddAudioAsset(Path.Combine(modPath, "Audio", "event", "new_CreepyOldComputer.wav"), "fogNewSong", false); // The new noise when the fog event play
 			AddSoundObject(Path.Combine(modPath, "Audio", "event", "blackout_out.wav"), "blackout_off", false, "Vfx_EvBO_turnOn", SoundType.Effect, Color.white);
 			AddSoundObject(Path.Combine(modPath, "Audio", "event", "blackout_on.wav"), "blackout_on", false, "Vfx_EvBO_turnOff", SoundType.Effect, Color.white);
+			AddSoundObject(Path.Combine(modPath, "Audio", "event", "windyNoise.wav"), "windy_wind", true, "no", SoundType.Effect, Color.white, hasSubtitle: false);
 
 			// Special Room Assets
 
@@ -1739,6 +1772,7 @@ namespace BB_MOD
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "gumSplash.png"), 25, "GumInWall"); // Gum Assets
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "gumSplash_back.png"), 25, "GumInWall_Back"); // Gum Assets
 			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "gumSplash.wav"), "gumSplash", true, "Vfx_GumSplash", SoundType.Effect, new Color(255f, 0f, 255f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "gumSplash.wav"), "glueSplash", true, "Vfx_GumSplash", SoundType.Effect, Color.white); // same but white
 
 			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "windowHit.wav"), "windowHit", true, "Vfx_WindowHit", SoundType.Effect, Color.white); // Window hit noise
 
@@ -1787,6 +1821,11 @@ namespace BB_MOD
 
 			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "MUS_Win.wav"), "winFieldTrip", true, "no", SoundType.Effect, Color.white, hasSubtitle: false); // Aud_win
 
+			AddSpriteAsset(Path.Combine(modPath, "Textures", "curtainClosed.png"), 30, "curtain_closed"); // curtains assets
+			AddSpriteAsset(Path.Combine(modPath, "Textures", "curtainOpen.png"), 30, "curtain_open"); // curtains assets
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "curtainOpen.wav"), "curtainOpen", true, "Vfx_Curtain_Slide", SoundType.Effect, Color.white);
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "curtainClose.wav"), "curtainClose", true, "Vfx_Curtain_Slide", SoundType.Effect, Color.white);
+
 			
 
 		}
@@ -1807,7 +1846,7 @@ namespace BB_MOD
 			// name > Name of character (will also be the Character enum name, but without spaces)
 			// weight > Spawn Weight/Chance of character (100 is enough, above that will make it spawn in pratically every seed)
 			// Weight Info: Npcs mostly have weights between 75 - 100, you can set below 75, but depending on the floor and the amount of potential characters, putting low values such as 25 for F3 for example, can make the character almost impossible to spawn
-			// spriteFileName > All File Names of Textures that should be added to the npc (should be png), the first filename on the array will be the default texture
+			// spriteFileName > All File Names of Textures that should be added to the npc (should be png), the first filename on the array will be the default texture.. Tip: if you find a white question mark instead, the image might be corrupted
 			// flatSprite > if the sprite of the NPC doesn't use billboard (As chalkles does when he is on a chalkboard, for example), if you want to switch between materials, the NPC_CustomData component already have a method for that
 			// includeAnimator > Include the animator component from beans (use whatever you want with that)
 			// pixelsPerUnit > Basically if this value is larger, the NPC's sprite is smaller
@@ -1855,6 +1894,8 @@ namespace BB_MOD
 			CreateNPC<Stunly>("Stunly", 60, ContentUtilities.Array("Stunly.png"), false, false, 34, -1.35f, "pri_stunly.png", "PST_Stunly_Name", "PST_Stunly_Desc", ContentUtilities.AllFloors, enterRooms: false);
 			CreateNPC<Leapy>("Leapy", 75, ContentUtilities.Array("leapy_1.png", "leapy_2.png", "leapy_3.png"), false, false, 25f, -1f, "pri_leapy.png", "PST_Leapy_Name", "PST_Leapy_Desc", ContentUtilities.AllFloorsExcept(Floors.F1), false, false, true, true);
 			CreateNPC<Watcher>("Watcher", 80, ContentUtilities.Array("Watcher.png"), false, false, 34f, 0f, "pri_watcher.png", "PST_Wch_Name", "PST_Wch_Desc", ContentUtilities.Array(Floors.F3, Floors.END), true, false, true, true, forceSpawn: true, isStatic:true);
+			CreateNPC<SuperIntendentJr>("Super Intendent Jr", 65, ContentUtilities.Array("spj_walk1.png", "spj_walk2.png", "spj_scream1.png", "spj_scream2.png"), false, false, 63f, -1.2f, "pri_spj.png", "PST_Spj_Name", "PST_Spj_Desc", ContentUtilities.AllFloorsExcept(Floors.F1), usingWanderRounds: true); // Cherubble
+			CreateNPC<GlueBoy>("Glue Boy", 50, ContentUtilities.Array("glueBoy.png"), false, false, 78f, -1.3f, "pri_gboy.png", "PST_Gboy_Name", "PST_Gboy_Desc", ContentUtilities.AllFloorsExcept(Floors.F1), enterRooms: false);
 
 
 			// Replacement NPCs here
@@ -2145,8 +2186,10 @@ namespace BB_MOD
 
 			// Event Creation Here
 
-			CreateEvent<PrincipalOut>("PrincipalOut", "Event_PriOut", 40f, 60f, Floors.F2, 75); // PixelGuy
+			CreateEvent<PrincipalOut>("PrincipalOut", "Event_PriOut", 40f, 60f, ContentUtilities.Array(Floors.F2, Floors.END), 75); // PixelGuy
 			CreateEvent<BlackOut>("BlackOut", "Event_BlackOut", 60f, 120f, Floors.F3, 45); // PixelGuy
+			CreateEvent<CurtainsClosed>("CurtainsClosed", "Event_CurtClosed", 55f, 80f, ContentUtilities.AllFloorsExcept(Floors.F1, Floors.F3), 110);
+			CreateEvent<WindySchool>("WindySchool", "Event_WindySchool", 30f, 60f, ContentUtilities.Array(Floors.F3, Floors.END), 100);
 
 		}
 
@@ -2939,6 +2982,8 @@ namespace BB_MOD
 				PrefabInstance.CreateInstance<BananaTree>();
 				PrefabInstance.CreateInstance<Trapdoor>();
 				PrefabInstance.CreateInstance<HardHatHud>();
+				PrefabInstance.CreateInstance<GroundedGlue>();
+				PrefabInstance.CreateInstance<Curtains>();
 			}
 			if (!addedExtraContent[5])
 			{

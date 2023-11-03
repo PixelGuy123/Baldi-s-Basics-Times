@@ -19,7 +19,7 @@ namespace BB_MOD.ExtraItems
 				return false;
 			}
 			Destroy(gameObject);
-			if (hit.transform.CompareTag("Window"))
+			if (hit.transform.CompareTag("Window") && !hit.transform.GetComponent<WindowExtraFields>().IsBroken)
 			{
 				hit.transform.GetComponent<Window>().Break(true);
 				if (hit.transform.GetComponent<WindowExtraFields>().IsBroken)

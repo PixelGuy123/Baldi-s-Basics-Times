@@ -58,6 +58,14 @@
 	{"key":"Vfx_Wch_Angry","value":"*Otherwordly noises*"},
 	{"key":"Vfx_Wch_Teleport","value":"*Warping*"},
 	{"key":"PST_Spj_Name","value":"Superintendent Jr."},
-	{"key":"PST_Spj_Desc","value":"This small guy is learning how to be a good principal of the thing, his only task is warn the Principal about rule-breakers!"},
-	{"key":"Vfx_Spj_Wander","value":"I wonder who is following the rules. I know I am."}
+	{"key":"PST_Spj_Desc","value":"This small guy is learning how to be a good Principal, his only task is warn the Principal about rule-breakers!"},
+	{"key":"Vfx_Spj_Wander","value":"I wonder who is following the rules. I know I am."},
+	{"key":"Vfx_Spj_Step","value":"*Step*"},
+	{"key":"Vfx_Spj_Found","value":"Principal! I found someone breaking the rules!"},
+	{"key":"PST_Gboy_Name","value":"Glue Boy"},
+	{"key":"PST_Gboy_Desc","value":"With a Text-To-Speech voice, he likes glue a lot, and will troll the \"player\" by blocking the path with glue"},
+	{"key":"Vfx_Gboy_whatif1","value":"I wonder what would happen if I was to"},
+	{"key":"Vfx_Gboy_whatif2","value":"put glue on the floor to see if the"},
+	{"key":"Vfx_Gboy_whatif3","value":"player would be stuck to the ground."},
+	{"key":"Vfx_Gboy_putGlue","value":"There we go"}
 ]}
