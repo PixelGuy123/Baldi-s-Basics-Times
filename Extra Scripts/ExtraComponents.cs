@@ -735,9 +735,14 @@ namespace BB_MOD.ExtraComponents
 			while (height > limit)
 			{
 				height -= Time.deltaTime * ec.EnvironmentTimeScale * sinkSpeed;
+				if (subject == null) // Safe check for when a NPC is despawned in the middle of the animation
+				{
+					goto endAnimation;
+				}
 				subject.position = transform.position + Vector3.up * height;
 				yield return null;
 			}
+			
 			SetState(true, true);
 			linkedTrapdoor?.ForceOpenTrapDoor(true);
 			height = limit;
@@ -745,6 +750,10 @@ namespace BB_MOD.ExtraComponents
 			while (height < 5f)
 			{
 				height += Time.deltaTime * ec.EnvironmentTimeScale * sinkSpeed;
+				if (subject == null) // Safe check for when a NPC is despawned in the middle of the animation
+				{
+					goto endAnimation;
+				}
 				subject.position = newPos + Vector3.up * height;
 				yield return null;
 			}
@@ -757,6 +766,7 @@ namespace BB_MOD.ExtraComponents
 			{
 				subject.GetComponent<NPC>().DisableCollision(false);
 			}
+			endAnimation:
 			linkedTrapdoor?.ForceOpenTrapDoor(false);
 
 			if (isTempDoor)
