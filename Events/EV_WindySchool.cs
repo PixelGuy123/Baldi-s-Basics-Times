@@ -41,6 +41,7 @@ namespace BB_MOD.Events
 		{
 			base.End();
 			moveMods.ForEach(x => x?.moveMods.Remove(mod));
+			audMan.FlushQueue(true);
 		}
 
 		public override void Pause()

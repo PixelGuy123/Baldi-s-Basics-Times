@@ -24,7 +24,6 @@ namespace BB_MOD.ExtraItems
 		IEnumerator Timer()
 		{
 			ItemSoundHolder.CreateSoundHolder(pm.transform, aud_drink, false, 40, 60);
-			StartCoroutine(EnvironmentExtraVariables.SmoothFOVSlide(8f, 1, offset: 60, canSum:true));
 
 			staminaModifiers.Add(riseToken);
 			staminaModifiers.Add(dropToken);

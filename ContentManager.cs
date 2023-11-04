@@ -2082,7 +2082,7 @@ namespace BB_MOD
 			CreateItem<ITM_LockPick>("LPC_Name", "LPC_Desc", "lockpick.png", "lockpick.png", "Lockpick", 75, 20, 2, 95, Array.Empty<Floors>(), 1, unlockDoors:true, includeOnFieldTrip:true); // PixelGuy
 			CreateItem<ITM_SpeedPotion>("SPP_Name", "SPP_Desc", "speedPotion.png", "speedPotion.png", "Speedpotion", 75, 25, 25, 45, ContentUtilities.AllFloors, 50, includeOnFieldTrip: true); // AdvancedDasher
 			CreateItem<ITM_BSED>("BSED_Name", "BSED_Desc", "BSED.png", "BSED.png", "Bsed", 65, 25, 35, ContentUtilities.AllFloorsExcept(Floors.F1), 45, ContentUtilities.AllFloors, 65, appearsInCafeteria:true); // HaHaFunny
-			CreateItem<ITM_GQuarter>("gquarter_Name", "gquarter_Desc", "gQuarter.png", "gQuarter.png", "Gquarter", 35, 21, 5, 35, ContentUtilities.AllFloors, 35, includeOnFieldTrip:true); //PixelGuy
+			CreateItem<ITM_GQuarter>("gquarter_Name", "gquarter_Desc", "gQuarter.png", "gQuarter.png", "Gquarter", 75, 21, 5, 35, ContentUtilities.AllFloors, 35, includeOnFieldTrip:true); //PixelGuy
 			CreateItem<ITM_EmptyBottle>("EBottle_Name", "EBottle_Desc", "bottle_empty.png", "bottle_empty.png", "Emptybottle", 2, 25, 15, 42, Array.Empty<Floors>(), 15); // PixelGuy
 			CreateItem<ITM_WaterBottle>("WBottle_Name", "WBottle_Desc", "bottle_water.png", "bottle_water.png", "Waterbottle", 75, 25, 15, 42, ContentUtilities.AllFloors, 5, includeOnFieldTrip:true, appearsInCafeteria:true); // PixelGuy
 			CreateItem<ITM_HardHat>("HardHat_Name", "HardHat_Desc", "hardHat.png", "hardHat.png", "Hardhat", 45, 24, 15, ContentUtilities.AllFloorsExcept(Floors.F1), 65, ContentUtilities.AllFloors, 15);
