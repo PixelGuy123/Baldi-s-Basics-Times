@@ -610,6 +610,37 @@ namespace Patches.Main
 		}
 	}
 
+	[HarmonyPatch(typeof(CoreGameManager), "RestoreMap")] // Quick fix for the map restoring, so it doesn't crash the game
+	internal class MapSizePatch
+	{
+		private static bool Prefix(Map map, ref bool ___restoreMap, bool[,] ___foundTilesToRestore)
+		{
+			if (ContentManager.instance.DebugMode)
+			{
+				Debug.Log("Do I have to restore map? : " + ___restoreMap);
+				Debug.Log("Map Sizes: " + map.size.GetString() + " // Multiplied results in: " + map.size.x * map.size.z);
+				Debug.Log("Size of array to restore: " + ___foundTilesToRestore.Length);
+				Debug.Log("Size of map tiles array: " + map.tiles.Length);
+			}
+			if (___restoreMap)
+			{
+				for (int i = 0; i < map.size.x; i++)
+				{
+					for (int j = 0; j < map.size.z; j++)
+					{
+						if (___foundTilesToRestore[i, j])
+						{
+							map.tiles[i, j]?.Find(map); // the only change is here, to check whether the tile is null or not
+						}
+					}
+				}
+			}
+			___restoreMap = false;
+
+			return false;
+		}
+	}
+
 
 	[HarmonyPatch(typeof(BaseGameManager))]
 	public class AfterGen
