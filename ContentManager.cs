@@ -832,23 +832,6 @@ namespace BB_MOD
 			return musicAudMan;
 		}
 
-		public static AudioClip GetAudioClip(string path) // This will temporarily replace the AssetManager.AudioClipFromFile() method, since the method is adding a 1 second delay on the end of the file, making it literally unable to be a loop
-		{
-			using (UnityWebRequest www = UnityWebRequestMultimedia.GetAudioClip("file:///" + path, AudioType.WAV))
-			{
-				www.SendWebRequest();
-				while (www.result == UnityWebRequest.Result.InProgress) { }
-
-				if (www.result != UnityWebRequest.Result.Success)
-				{
-					Debug.LogError("Error loading audio clip: " + www.error);
-					return null;
-				}
-
-				return DownloadHandlerAudioClip.GetContent(www);
-			}
-		}
-
 		public static Texture2D SolidTexture(int width, int height, Color color)
 		{
 			var emptyTex = new Texture2D(width, height);
@@ -1488,12 +1471,12 @@ namespace BB_MOD
 		/// <param name="path"></param>
 		/// <param name="assetName"></param>
 		/// /// <exception cref="ArgumentException"></exception>
-		internal static void AddAudioAsset(string path, string assetName, bool useDifferentMethod)
+		internal static void AddAudioAsset(string path, string assetName)
 		{
 			CheckParameters(path, assetName);
 
 			if (!audios.ContainsKey(assetName))
-				audios.Add(assetName, useDifferentMethod ? ContentUtilities.GetAudioClip(path) : AssetManager.AudioClipFromFile(path)); // Gets an audio from either these 2
+				audios.Add(assetName, AssetManager.AudioClipFromFile(path)); // Gets an audio from either these 2
 
 		}
 		/// <summary>
@@ -1506,13 +1489,13 @@ namespace BB_MOD
 		/// <param name="soundType"></param>
 		/// <param name="subtitleColor"></param>
 		/// <param name="subLength"></param>
-		internal static void AddSoundObject(string path, string assetName, bool useDifferentMethod, string subtitleKey, SoundType soundType, Color subtitleColor, float subLength = -1f, bool hasSubtitle = true)
+		internal static void AddSoundObject(string path, string assetName, string subtitleKey, SoundType soundType, Color subtitleColor, float subLength = -1f, bool hasSubtitle = true)
 		{
 			CheckParameters(path, assetName);
 
 			if (!soundObjects.ContainsKey(assetName))
 			{
-				var sound = ObjectCreatorHandlers.CreateSoundObject(useDifferentMethod ? ContentUtilities.GetAudioClip(path) : AssetManager.AudioClipFromFile(path), subtitleKey, soundType, subtitleColor, subLength);
+				var sound = ObjectCreatorHandlers.CreateSoundObject(AssetManager.AudioClipFromFile(path), subtitleKey, soundType, subtitleColor, subLength);
 				sound.subtitle = hasSubtitle;
 				soundObjects.Add(assetName, sound);
 			}
@@ -1523,7 +1506,7 @@ namespace BB_MOD
 		/// <param name="paths"></param>
 		/// <param name="assetName"></param>
 		/// <param name="useDifferentMethod"></param>
-		internal static void AddLoopingSoundObject(string assetName, bool useDifferentMethod, AudioMixerGroup mixer, params string[] paths)
+		internal static void AddLoopingSoundObject(string assetName, AudioMixerGroup mixer, params string[] paths)
 		{
 			CheckParameters(paths, assetName);
 			if (!loopingSoundObjects.ContainsKey(assetName))
@@ -1532,7 +1515,7 @@ namespace BB_MOD
 
 				for (int i = 0; i < clips.Length; i++)
 				{
-					clips[i] = useDifferentMethod ? ContentUtilities.GetAudioClip(paths[i]) : AssetManager.AudioClipFromFile(paths[i]);
+					clips[i] = AssetManager.AudioClipFromFile(paths[i]);
 				}
 
 				loopingSoundObjects.Add(assetName, ContentUtilities.CreateLoopingSoundObject(clips, mixer));
@@ -1544,7 +1527,7 @@ namespace BB_MOD
 		/// <param name="paths"></param>
 		/// <param name="assetName"></param>
 		/// <param name="useDifferentMethod"></param>
-		internal static void AddLoopingSoundObject(string assetName, bool useDifferentMethod, params string[] paths) => AddLoopingSoundObject(assetName, useDifferentMethod, ContentUtilities.FindResourceObjectWithName<AudioMixerGroup>("Master"), paths);
+		internal static void AddLoopingSoundObject(string assetName, params string[] paths) => AddLoopingSoundObject(assetName, ContentUtilities.FindResourceObjectWithName<AudioMixerGroup>("Master"), paths);
 
 		private static void CheckParameters(string path, string assetName)
 		{
@@ -1629,58 +1612,58 @@ namespace BB_MOD
 
 
 
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "clock_Scream.wav"), "clock_scream", true, "Vfx_CC_Scream", SoundType.Voice, new Color(230, 46, 0)); // Crazy Clock Audios
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "clock_tick.wav"), "clock_tick", true, "Vfx_CC_Tick", SoundType.Voice, new Color(230, 46, 0));
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "clock_tack.wav"), "clock_tock", true, "Vfx_CC_Tack", SoundType.Voice, new Color(230, 46, 0));
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "clock_frown.wav"), "clock_frown", true, "Vfx_CC_Frown", SoundType.Voice, new Color(230, 46, 0));
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "clock_Scream.wav"), "clock_scream", "Vfx_CC_Scream", SoundType.Voice, new Color(230, 46, 0)); // Crazy Clock Audios
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "clock_tick.wav"), "clock_tick", "Vfx_CC_Tick", SoundType.Voice, new Color(230, 46, 0));
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "clock_tack.wav"), "clock_tock", "Vfx_CC_Tack", SoundType.Voice, new Color(230, 46, 0));
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "clock_frown.wav"), "clock_frown", "Vfx_CC_Frown", SoundType.Voice, new Color(230, 46, 0));
 
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "ForgottenWarning.wav"), "forgotten_warn", false, "Vfx_Forgotten_Warning", SoundType.Voice, new Color(43, 42, 51)); // Forgotten Bell Noise
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "ForgottenWarning.wav"), "forgotten_warn", "Vfx_Forgotten_Warning", SoundType.Voice, new Color(43, 42, 51)); // Forgotten Bell Noise
 
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "drum_music.wav"), "letsdrum_music", true, "Vfx_DRUM_Music", SoundType.Voice, new Color(0.3476f, 0, 0.6992f)); // Lets Drum Audios
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "drum_wannadrum.wav"), "letsdrum_wannadrum", false, "Vfx_DRUM_LetsDrum", SoundType.Voice, new Color(0.3476f, 0, 0.6992f));
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "drum_lovetodrum.wav"), "letsdrum_DRUM", true, "Vfx_DRUM_Annoyence", SoundType.Voice, new Color(0.3476f, 0, 0.6992f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "drum_music.wav"), "letsdrum_music", "Vfx_DRUM_Music", SoundType.Voice, new Color(0.3476f, 0, 0.6992f)); // Lets Drum Audios
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "drum_wannadrum.wav"), "letsdrum_wannadrum", "Vfx_DRUM_LetsDrum", SoundType.Voice, new Color(0.3476f, 0, 0.6992f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "drum_lovetodrum.wav"), "letsdrum_DRUM", "Vfx_DRUM_Annoyence", SoundType.Voice, new Color(0.3476f, 0, 0.6992f));
 
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "MGS_Throw.wav"), "MGS_magic", false, "Vfx_MGS_Magic", SoundType.Voice, new Color(0f, 0f, 0.0065f)); // Magical Student Throw Noise
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "MGS_Throw.wav"), "MGS_magic", "Vfx_MGS_Magic", SoundType.Voice, new Color(0f, 0f, 0.0065f)); // Magical Student Throw Noise
 
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "HappyHolidays.wav"), "HPH_holiday", true, "Vfx_HapH_MerryChristmas", SoundType.Voice, new Color(153, 0, 0)); // Happy Holidays saying merry christmas
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "HappyHolidays.wav"), "HPH_holiday", "Vfx_HapH_MerryChristmas", SoundType.Voice, new Color(153, 0, 0)); // Happy Holidays saying merry christmas
 
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "Superintendent.wav"), "SI_overhere", false, "Vfx_SI_BaldiHere", SoundType.Voice, new Color(0, 0, 0.4843f)); // SuperIntendent when spotting player
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "Superintendent.wav"), "SI_overhere", "Vfx_SI_BaldiHere", SoundType.Voice, new Color(0, 0, 0.4843f)); // SuperIntendent when spotting player
 
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "0thprize_mustsweep.wav"), "0prize_mustsweep", false, "Vfx_0TH_Sweep", SoundType.Voice, new Color(0.8679f, 0.7536f, 0.434f)); // 0th Prize Noises
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "0thprize_timetosweep.wav"), "0prize_timetosweep", false, "Vfx_0TH_WannaSweep", SoundType.Voice, new Color(0.8679f, 0.7536f, 0.434f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "0thprize_mustsweep.wav"), "0prize_mustsweep", "Vfx_0TH_Sweep", SoundType.Voice, new Color(0.8679f, 0.7536f, 0.434f)); // 0th Prize Noises
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "0thprize_timetosweep.wav"), "0prize_timetosweep", "Vfx_0TH_WannaSweep", SoundType.Voice, new Color(0.8679f, 0.7536f, 0.434f));
 
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "ChairRolling.wav"), "chair_rolling", true, "Vfx_OFC_Walk", SoundType.Voice, Color.blue); // Chair rolling noises
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "ChairRolling.wav"), "chair_rolling", "Vfx_OFC_Walk", SoundType.Voice, Color.blue); // Chair rolling noises
 
 			for (int i = 0; i < 3; i++)
 			{
-				AddSoundObject(Path.Combine(modPath, "Audio", "npc", $"PB_Angry{i}.wav"), $"pb_wander{i + 1}", false, $"Vfx_PB_Wander{i + 1}", SoundType.Voice, new Color(128f, 128f, 0f));
+				AddSoundObject(Path.Combine(modPath, "Audio", "npc", $"PB_Angry{i}.wav"), $"pb_wander{i + 1}", $"Vfx_PB_Wander{i + 1}", SoundType.Voice, new Color(128f, 128f, 0f));
 			}
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "PB_SeeLaught.wav"), "pb_spot", false, "Vfx_PB_Spot", SoundType.Voice, new Color(128f, 128f, 0f));
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "PB_EvilLaught.wav"), "pb_catch", false, "Vfx_PB_Catch", SoundType.Voice, new Color(128f, 128f, 0f));
-			AddSoundObject(Path.Combine(modPath, "Audio", "item", "pc_stab.wav"), "pb_stab", false, "Vfx_PC_stab", SoundType.Voice, new Color(128f, 128f, 0f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "PB_SeeLaught.wav"), "pb_spot", "Vfx_PB_Spot", SoundType.Voice, new Color(128f, 128f, 0f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "PB_EvilLaught.wav"), "pb_catch", "Vfx_PB_Catch", SoundType.Voice, new Color(128f, 128f, 0f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "item", "pc_stab.wav"), "pb_stab", "Vfx_PC_stab", SoundType.Voice, new Color(128f, 128f, 0f));
 
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "CC_PAH.wav"), "cumulo_PAH", true, "Vfx_Cumulo_PAH", SoundType.Voice, Color.white); // Cloudy Copter PAH Noise
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "CC_PAH.wav"), "cumulo_PAH", "Vfx_Cumulo_PAH", SoundType.Voice, Color.white); // Cloudy Copter PAH Noise
 
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "StunningStars.png"), 25, "StunningStars");
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "stunly_stun.wav"), "stunly_stun", true, "Vfx_Stunly_Stun", SoundType.Effect, new Color(0.5f, 0f, 0f)); // Stunly's Stun
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "stunly_stun.wav"), "stunly_stun", "Vfx_Stunly_Stun", SoundType.Effect, new Color(0.5f, 0f, 0f)); // Stunly's Stun
 
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "leapy_jump.wav"), "leapy_leap", true, "Vfx_Leapy_Leap", SoundType.Effect, new Color(0f, 0.3984f, 0f));
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "leapy_stomp.wav"), "leapy_stomp", true, "Vfx_Leapy_Stomp", SoundType.Effect, new Color(0f, 0.3984f, 0f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "leapy_jump.wav"), "leapy_leap", "Vfx_Leapy_Leap", SoundType.Effect, new Color(0f, 0.3984f, 0f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "leapy_stomp.wav"), "leapy_stomp", "Vfx_Leapy_Stomp", SoundType.Effect, new Color(0f, 0.3984f, 0f));
 
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "WCH_ambience.wav"), "wch_idle", true, "Vfx_Wch_Idle", SoundType.Voice, new Color(0.3984375f, 0.3984375f, 0.59765625f)); //Watcher stuff
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "WCH_see.wav"), "wch_see", true, "Vfx_Wch_See", SoundType.Voice, new Color(0.3984375f, 0.3984375f, 0.59765625f));
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "WCH_angered.wav"), "wch_angry", true, "Vfx_Wch_Angry", SoundType.Voice, new Color(0.3984375f, 0.3984375f, 0.59765625f));
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "WCH_teleport.wav"), "wch_tp", true, "Vfx_Wch_Teleport", SoundType.Voice, new Color(0.3984375f, 0.3984375f, 0.59765625f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "WCH_ambience.wav"), "wch_idle", "Vfx_Wch_Idle", SoundType.Voice, new Color(0.3984375f, 0.3984375f, 0.59765625f)); //Watcher stuff
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "WCH_see.wav"), "wch_see", "Vfx_Wch_See", SoundType.Voice, new Color(0.3984375f, 0.3984375f, 0.59765625f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "WCH_angered.wav"), "wch_angry", "Vfx_Wch_Angry", SoundType.Voice, new Color(0.3984375f, 0.3984375f, 0.59765625f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "WCH_teleport.wav"), "wch_tp", "Vfx_Wch_Teleport", SoundType.Voice, new Color(0.3984375f, 0.3984375f, 0.59765625f));
 
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "spj_step1.wav"), "spj_step1", true, "Vfx_Spj_Step", SoundType.Effect, new Color(0.796875f, 0.19921875f, 0.99609375f)); // SuperintendentJr audios
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "spj_step1.wav"), "spj_step2", true, "Vfx_Spj_Step", SoundType.Effect, new Color(0.796875f, 0.19921875f, 0.99609375f));
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "spj_wonder.wav"), "spj_wonder", true, "Vfx_Spj_Wander", SoundType.Effect, new Color(0.796875f, 0.19921875f, 0.99609375f));
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "spj_principal.wav"), "spj_principal", true, "Vfx_Spj_Found", SoundType.Effect, new Color(0.796875f, 0.19921875f, 0.99609375f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "spj_step1.wav"), "spj_step1", "Vfx_Spj_Step", SoundType.Effect, new Color(0.796875f, 0.19921875f, 0.99609375f)); // SuperintendentJr audios
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "spj_step1.wav"), "spj_step2", "Vfx_Spj_Step", SoundType.Effect, new Color(0.796875f, 0.19921875f, 0.99609375f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "spj_wonder.wav"), "spj_wonder", "Vfx_Spj_Wander", SoundType.Effect, new Color(0.796875f, 0.19921875f, 0.99609375f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "spj_principal.wav"), "spj_principal", "Vfx_Spj_Found", SoundType.Effect, new Color(0.796875f, 0.19921875f, 0.99609375f));
 
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "gBoy_putglue1.wav"), "Gboy_whatif1", true, "Vfx_Gboy_whatif1", SoundType.Voice, new Color(0f, 0.33203125f, 0.5f)); // Glueboy Assets
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "gBoy_putglue2.wav"), "Gboy_whatif2", true, "Vfx_Gboy_whatif2", SoundType.Voice, new Color(0f, 0.33203125f, 0.5f));
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "gBoy_putglue3.wav"), "Gboy_whatif3", true, "Vfx_Gboy_whatif3", SoundType.Voice, new Color(0f, 0.33203125f, 0.5f));
-			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "gBoy_herewego.wav"), "Gboy_herewego", true, "Vfx_Gboy_putGlue", SoundType.Voice, new Color(0f, 0.33203125f, 0.5f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "gBoy_putglue1.wav"), "Gboy_whatif1", "Vfx_Gboy_whatif1", SoundType.Voice, new Color(0f, 0.33203125f, 0.5f)); // Glueboy Assets
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "gBoy_putglue2.wav"), "Gboy_whatif2", "Vfx_Gboy_whatif2", SoundType.Voice, new Color(0f, 0.33203125f, 0.5f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "gBoy_putglue3.wav"), "Gboy_whatif3", "Vfx_Gboy_whatif3", SoundType.Voice, new Color(0f, 0.33203125f, 0.5f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "npc", "gBoy_herewego.wav"), "Gboy_herewego", "Vfx_Gboy_putGlue", SoundType.Voice, new Color(0f, 0.33203125f, 0.5f));
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "glue.png"), 64, "glueInGround");
 
 
@@ -1688,48 +1671,48 @@ namespace BB_MOD
 
 			// ITEM Assets
 
-			AddSoundObject(Path.Combine(modPath, "Audio", "item", "bell_bellnoise.wav"), "bellNoise", true, "Vfx_BEL_Ring", SoundType.Voice, new Color(179, 179, 0)); // The bell noise heard when using the bell item
-			AddSoundObject(Path.Combine(modPath, "Audio", "item", "gps_beep.wav"), "gpsBeepNoise", false, "Vfx_GPS_Beep", SoundType.Effect, new Color(153, 153, 153)); // The beep heard when enabling the Global Positional Displayer
-			AddSoundObject(Path.Combine(modPath, "Audio", "item", "prs_unbox.wav"), "presentUnboxing", false, "Vfx_PRS_Unbox", SoundType.Effect, new Color(77, 77, 255));
-			AddSoundObject(Path.Combine(modPath, "Audio", "item", "sd_screw.wav"), "screwing", true, "Vfx_SD_screw", SoundType.Effect, new Color(0.8984f, 0.8984f, 0f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "item", "bell_bellnoise.wav"), "bellNoise", "Vfx_BEL_Ring", SoundType.Voice, new Color(179, 179, 0)); // The bell noise heard when using the bell item
+			AddSoundObject(Path.Combine(modPath, "Audio", "item", "gps_beep.wav"), "gpsBeepNoise", "Vfx_GPS_Beep", SoundType.Effect, new Color(153, 153, 153)); // The beep heard when enabling the Global Positional Displayer
+			AddSoundObject(Path.Combine(modPath, "Audio", "item", "prs_unbox.wav"), "presentUnboxing", "Vfx_PRS_Unbox", SoundType.Effect, new Color(77, 77, 255));
+			AddSoundObject(Path.Combine(modPath, "Audio", "item", "sd_screw.wav"), "screwing", "Vfx_SD_screw", SoundType.Effect, new Color(0.8984f, 0.8984f, 0f));
 
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "item", "TrapOpen.png"), 45, "trapOpen"); // Bear Trap Assets
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "item", "TrapClose.png"), 45, "trapClosed"); // Bear Trap Assets
-			AddSoundObject(Path.Combine(modPath, "Audio", "item", "trap_catch.wav"), "trapCatch", true, "Vfx_BT_catch", SoundType.Effect, Color.white);
+			AddSoundObject(Path.Combine(modPath, "Audio", "item", "trap_catch.wav"), "trapCatch", "Vfx_BT_catch", SoundType.Effect, Color.white);
 
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "item", "Banana.png"), 25, "banana");
-			AddSoundObject(Path.Combine(modPath, "Audio", "item", "banana_slip.wav"), "bananaSlip", true, "Vfx_BN_slip", SoundType.Effect, Color.yellow);
+			AddSoundObject(Path.Combine(modPath, "Audio", "item", "banana_slip.wav"), "bananaSlip", "Vfx_BN_slip", SoundType.Effect, Color.yellow);
 
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "item", "beans_gumwad.png"), 25, "gum_ball");
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "item", "gum_grounded.png"), 25, "gum_gummed");
-			AddSoundObject(Path.Combine(modPath, "Audio", "item", "gum_spit.wav"), "gumSpit", true, "Vfx_GUM_spit", SoundType.Effect, new Color(0.9960f, 0.5f, 0.8710f)); // Gum Spit for Gum Item duh
+			AddSoundObject(Path.Combine(modPath, "Audio", "item", "gum_spit.wav"), "gumSpit", "Vfx_GUM_spit", SoundType.Effect, new Color(0.9960f, 0.5f, 0.8710f)); // Gum Spit for Gum Item duh
 
-			AddSoundObject(Path.Combine(modPath, "Audio", "item", "potion_drink.wav"), "pt_drink", true, "Vfx_SPP_drink", SoundType.Effect, new Color(0.19921875f, 0.99609375f, 0.59765625f)); // Cyan-like color / Assets for speed potion
-			AddSoundObject(Path.Combine(modPath, "Audio", "item", "potion_speedCoilNoises.wav"), "pt_speed", true, "Vfx_SPP_drink", SoundType.Effect, Color.clear, hasSubtitle: false);
+			AddSoundObject(Path.Combine(modPath, "Audio", "item", "potion_drink.wav"), "pt_drink", "Vfx_SPP_drink", SoundType.Effect, new Color(0.19921875f, 0.99609375f, 0.59765625f)); // Cyan-like color / Assets for speed potion
+			AddSoundObject(Path.Combine(modPath, "Audio", "item", "potion_speedCoilNoises.wav"), "pt_speed", "Vfx_SPP_drink", SoundType.Effect, Color.clear, hasSubtitle: false);
 
-			AddSoundObject(Path.Combine(modPath, "Audio", "item", "scissors_cut.wav"), "sc_cut", true, "Vfx_Scissors_cut", SoundType.Effect, new Color(0.99609375f, 0f, 0.99609375f)); // Scissors effect
-			AddSoundObject(Path.Combine(modPath, "Audio", "item", "eat.wav"), "zesty_eat", true, "Vfx_Zesty_eat", SoundType.Effect, new Color(0.74609375f, 0.5f, 0.25f)); // Zesty effect
+			AddSoundObject(Path.Combine(modPath, "Audio", "item", "scissors_cut.wav"), "sc_cut", "Vfx_Scissors_cut", SoundType.Effect, new Color(0.99609375f, 0f, 0.99609375f)); // Scissors effect
+			AddSoundObject(Path.Combine(modPath, "Audio", "item", "eat.wav"), "zesty_eat", "Vfx_Zesty_eat", SoundType.Effect, new Color(0.74609375f, 0.5f, 0.25f)); // Zesty effect
 
-			AddSoundObject(Path.Combine(modPath, "Audio", "item", "basketball_punch.wav"), "bb_hit", true, "BB_Hit", SoundType.Effect, new Color(0.796875f, 0.3203125f, 0f)); // Basketball stuff
-			AddSoundObject(Path.Combine(modPath, "Audio", "item", "basketball_throw.wav"), "bb_throw", true, "BB_Throw", SoundType.Effect, new Color(0.796875f, 0.3203125f, 0f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "item", "basketball_punch.wav"), "bb_hit", "BB_Hit", SoundType.Effect, new Color(0.796875f, 0.3203125f, 0f)); // Basketball stuff
+			AddSoundObject(Path.Combine(modPath, "Audio", "item", "basketball_throw.wav"), "bb_throw", "BB_Throw", SoundType.Effect, new Color(0.796875f, 0.3203125f, 0f));
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "item", "basketBall.png"), 35, "basketball");
 
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "item", "hardHatHud.png"), 1, "HardHatHud"); // Hard hat hud
-			AddSoundObject(Path.Combine(modPath, "Audio", "item", "swallow.wav"), "hdp_swallow", true, "HDP_Swallow", SoundType.Effect, new Color(0.99609375f, 0.5f, 0.5f)); // Headache pill swallowing noise
+			AddSoundObject(Path.Combine(modPath, "Audio", "item", "swallow.wav"), "hdp_swallow", "HDP_Swallow", SoundType.Effect, new Color(0.99609375f, 0.5f, 0.5f)); // Headache pill swallowing noise
 
 			// Events Assets
 
-			AddAudioAsset(Path.Combine(modPath, "Audio", "event", "new_CreepyOldComputer.wav"), "fogNewSong", false); // The new noise when the fog event play
-			AddSoundObject(Path.Combine(modPath, "Audio", "event", "blackout_out.wav"), "blackout_off", false, "Vfx_EvBO_turnOn", SoundType.Effect, Color.white);
-			AddSoundObject(Path.Combine(modPath, "Audio", "event", "blackout_on.wav"), "blackout_on", false, "Vfx_EvBO_turnOff", SoundType.Effect, Color.white);
-			AddSoundObject(Path.Combine(modPath, "Audio", "event", "windyNoise.wav"), "windy_wind", true, "no", SoundType.Effect, Color.white, hasSubtitle: false);
+			AddAudioAsset(Path.Combine(modPath, "Audio", "event", "new_CreepyOldComputer.wav"), "fogNewSong"); // The new noise when the fog event play
+			AddSoundObject(Path.Combine(modPath, "Audio", "event", "blackout_out.wav"), "blackout_off", "Vfx_EvBO_turnOn", SoundType.Effect, Color.white);
+			AddSoundObject(Path.Combine(modPath, "Audio", "event", "blackout_on.wav"), "blackout_on", "Vfx_EvBO_turnOff", SoundType.Effect, Color.white);
+			AddSoundObject(Path.Combine(modPath, "Audio", "event", "windyNoise.wav"), "windy_wind", "no", SoundType.Effect, Color.white, hasSubtitle: false);
 
 			// Special Room Assets
 
 			AddTextureAsset(Path.Combine(modPath, "Textures", "schooltext", "treeWall.png"), "treeWall"); // Forest tree wall
 			AddTextureAsset(Path.Combine(modPath, "Textures", "schooltext", "nightSky.png"), "nightSky"); // Forest sky
-			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "Crickets.wav"), "cricketsAmbience", true, "", SoundType.Effect, Color.white, hasSubtitle: false);
-			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "fire.wav"), "fireNoises", true, "Vfx_FireNoise", SoundType.Effect, new Color(0.9960f, 0.6367f, 0.1015f)); // Fire Noises
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "Crickets.wav"), "cricketsAmbience", "", SoundType.Effect, Color.white, hasSubtitle: false);
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "fire.wav"), "fireNoises", "Vfx_FireNoise", SoundType.Effect, new Color(0.9960f, 0.6367f, 0.1015f)); // Fire Noises
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "darkOverlay.png"), 1, "darkOverlay");
 
 			AddTextureAsset(Path.Combine(modPath, "Textures", "schooltext", "wallFadeInBlack.png"), "fadeWall"); // For cafeteria
@@ -1737,7 +1720,7 @@ namespace BB_MOD
 			// Misc Assets
 
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "otherMainMenu.png"), 1, "newBaldiMenu"); // The BB Times Main Menu
-			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "BAL_Speech.wav"), "bbtimesopening", true, "no", SoundType.Music, Color.white, hasSubtitle:false); // BB Times opening speech
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "BAL_Speech.wav"), "bbtimesopening", "no", SoundType.Music, Color.white, hasSubtitle:false); // BB Times opening speech
 
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "npc", "old_sweep.png"), 20, "oldSweepSprite"); // Old Sweep sprite
 			AddTextureAsset(Path.Combine(modPath, "Textures", "npc", "pri_oldsweep.png"), "oldSweepPoster"); // Old Sweep Poster
@@ -1750,23 +1733,23 @@ namespace BB_MOD
 			AddTextureAsset(Path.Combine(modPath, "Textures", "ventAtlas.png"), "ventAtlasText"); // Texture used by the vent
 			AddTextureAsset(Path.Combine(modPath, "Textures", "ventTex.png"), "ventTex");
 
-			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "ventNoise.wav"), "ventNoises", true, "Vfx_VentNoise", SoundType.Effect, Color.white); // Vent Noises
-			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "lockerNoise.wav"), "lockerNoise", true, "Vfx_Locker_SLAM", SoundType.Effect, Color.white);
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "ventNoise.wav"), "ventNoises", "Vfx_VentNoise", SoundType.Effect, Color.white); // Vent Noises
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "lockerNoise.wav"), "lockerNoise", "Vfx_Locker_SLAM", SoundType.Effect, Color.white);
 
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "balExplode.png"), 29, "balExploding");
 
 			AddTextureAsset(Path.Combine(modPath, "Textures", "schooltext", "defaultWall.png"), "defaultWallTexture"); // Adds the default texture for the wall
 			AddTextureAsset(Path.Combine(modPath, "Textures", "schooltext", "defaultSaloonTexture.png"), "defaultSaloonTexture"); // Adds the default texture for the wall
 
-			AddLoopingSoundObject("SchoolEscapeSong", true, Path.Combine(modPath, "Audio", "extras", "schoolHouseEscape.wav"));
-			AddLoopingSoundObject("AngrySchool_Phase1", true, Path.Combine(modPath, "Audio", "extras", "Quiet_noise_loop.wav")); // That UFO-like noise for the first phase of the red school house
-			AddLoopingSoundObject("AngrySchool_Phase2", true, Path.Combine(modPath, "Audio", "extras", "Chaos_EarlyLoopStart.wav"), Path.Combine(modPath, "Audio", "extras", "Chaos_EarlyLoop.wav")); // Phase 2 with initial starting "angry" noise
+			AddLoopingSoundObject("SchoolEscapeSong", Path.Combine(modPath, "Audio", "extras", "schoolHouseEscape.wav"));
+			AddLoopingSoundObject("AngrySchool_Phase1", Path.Combine(modPath, "Audio", "extras", "Quiet_noise_loop.wav")); // That UFO-like noise for the first phase of the red school house
+			AddLoopingSoundObject("AngrySchool_Phase2", Path.Combine(modPath, "Audio", "extras", "Chaos_EarlyLoopStart.wav"), Path.Combine(modPath, "Audio", "extras", "Chaos_EarlyLoop.wav")); // Phase 2 with initial starting "angry" noise
 
-			AddLoopingSoundObject("AngrySchool_Phase3", true, Path.Combine(modPath, "Audio", "extras", "Chaos_FinalLoop.wav")); // Phase 3 with initial ultra "angry" noise
-			AddLoopingSoundObject("AngrySchool_Phase4", true, Path.Combine(modPath, "Audio", "extras", "Chaos_FinalLoopNoise.wav")); // Phase 4 with looping ultra "angry" noise
-			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "BAL_AllNotebooksNormal.wav"), "BaldiNormalEscape", true, "Vfx_BaldiNormalSpeak", SoundType.Effect, Color.green); // Baldi Normal Speeaaaak
-			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "BAL_AllNotebooksFinal.wav"), "BaldiAngryEscape", true, "Vfx_BaldiAngrySpeak", SoundType.Effect, Color.green); // Baldi ANGRY SPEEAAAAAAAK
-			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "BAL_AngryGetOut.wav"), "BaldiFinalWarning", true, "Vfx_BaldiAngrySpeak", SoundType.Effect, Color.green); // Baldi ANGRY FINAL WARNING SPEEEAEK
+			AddLoopingSoundObject("AngrySchool_Phase3", Path.Combine(modPath, "Audio", "extras", "Chaos_FinalLoop.wav")); // Phase 3 with initial ultra "angry" noise
+			AddLoopingSoundObject("AngrySchool_Phase4", Path.Combine(modPath, "Audio", "extras", "Chaos_FinalLoopNoise.wav")); // Phase 4 with looping ultra "angry" noise
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "BAL_AllNotebooksNormal.wav"), "BaldiNormalEscape", "Vfx_BaldiNormalSpeak", SoundType.Effect, Color.green); // Baldi Normal Speeaaaak
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "BAL_AllNotebooksFinal.wav"), "BaldiAngryEscape", "Vfx_BaldiAngrySpeak", SoundType.Effect, Color.green); // Baldi ANGRY SPEEAAAAAAAK
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "BAL_AngryGetOut.wav"), "BaldiFinalWarning", "Vfx_BaldiAngrySpeak", SoundType.Effect, Color.green); // Baldi ANGRY FINAL WARNING SPEEEAEK
 
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "SchoolFire.png"), 25, "SchoolFire_FirstFrame"); // Fire Frames
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "SchoolFire2.png"), 25, "SchoolFire_SecondFrame");
@@ -1777,10 +1760,10 @@ namespace BB_MOD
 
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "gumSplash.png"), 25, "GumInWall"); // Gum Assets
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "gumSplash_back.png"), 25, "GumInWall_Back"); // Gum Assets
-			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "gumSplash.wav"), "gumSplash", true, "Vfx_GumSplash", SoundType.Effect, new Color(255f, 0f, 255f));
-			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "gumSplash.wav"), "glueSplash", true, "Vfx_GumSplash", SoundType.Effect, Color.white); // same but white
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "gumSplash.wav"), "gumSplash", "Vfx_GumSplash", SoundType.Effect, new Color(255f, 0f, 255f));
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "gumSplash.wav"), "glueSplash", "Vfx_GumSplash", SoundType.Effect, Color.white); // same but white
 
-			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "windowHit.wav"), "windowHit", true, "Vfx_WindowHit", SoundType.Effect, Color.white); // Window hit noise
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "windowHit.wav"), "windowHit", "Vfx_WindowHit", SoundType.Effect, Color.white); // Window hit noise
 
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "player.png"), 195, "playerVisual"); // Player Visual
 
@@ -1801,7 +1784,7 @@ namespace BB_MOD
 				AddSpriteAsset(Path.Combine(modPath, "Textures", $"balDance{i}.png"), 30, $"balDance{i}"); // Baldi dances away in free mode
 			}
 
-			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "BAL_Wow.wav"), "baldi_WOW", true, "Vfx_Bal_WOW", SoundType.Effect, Color.green); // WOW
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "BAL_Wow.wav"), "baldi_WOW", "Vfx_Bal_WOW", SoundType.Effect, Color.green); // WOW
 
 			AddTextureAsset(Path.Combine(modPath, "Textures", "greenLocker.png"), "greenLocker"); // Green locker textures
 			AddTextureAsset(Path.Combine(modPath, "Textures", "greenLocker_open.png"), "greenLocker_open");
@@ -1809,28 +1792,28 @@ namespace BB_MOD
 			AddTextureAsset(Path.Combine(modPath, "Textures", "decoy_greenLocker_open1.png"), "d_greenLocker_open1");
 			AddTextureAsset(Path.Combine(modPath, "Textures", "decoy_blueLocker.png"), "d_blueLocker");
 			AddTextureAsset(Path.Combine(modPath, "Textures", "decoy_blueLocker_open.png"), "d_blueLocker_open"); // Decoy Lockers
-			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "HA_HA.wav"), "HA_HA", true, "Vfx_Locker_HAHA", SoundType.Voice, Color.white);
-			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "trololo.wav"), "trololo", true, "Vfx_Locker_trololo", SoundType.Voice, Color.white);
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "HA_HA.wav"), "HA_HA", "Vfx_Locker_HAHA", SoundType.Voice, Color.white);
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "trololo.wav"), "trololo", "Vfx_Locker_trololo", SoundType.Voice, Color.white);
 
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "trashcan.png"), 85, "trashCan"); // Trash can objects
-			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "throwTrash.wav"), "throwTrash", true, "Vfx_TrashCan_throw", SoundType.Effect, Color.white);
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "throwTrash.wav"), "throwTrash", "Vfx_TrashCan_throw", SoundType.Effect, Color.white);
 
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "bananaTree.png"), 50, "bananaTree"); // Banana tree
 
-			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "waterslurp.wav"), "slurp", true, "Sfx_Slurp", SoundType.Effect, Color.white); // Slurp noise
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "waterslurp.wav"), "slurp", "Sfx_Slurp", SoundType.Effect, Color.white); // Slurp noise
 
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "trapdoor.png"), 48, "trapdoor"); // Trapdoor sprite
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "trapdoor_rng.png"), 48, "trapdoor_rng"); // Trapdoor sprite
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "black.png"), 48, "trapdoor_open"); // Trapdoor sprite
-			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "trapDoor_open.wav"), "trapdoor_open", true, "Sfx_Doors_StandardOpen", SoundType.Effect, Color.white);
-			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "trapDoor_shut.wav"), "trapdoor_shut", true, "Sfx_Doors_StandardShut", SoundType.Effect, Color.white);
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "trapDoor_open.wav"), "trapdoor_open", "Sfx_Doors_StandardOpen", SoundType.Effect, Color.white);
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "trapDoor_shut.wav"), "trapdoor_shut", "Sfx_Doors_StandardShut", SoundType.Effect, Color.white);
 
-			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "MUS_Win.wav"), "winFieldTrip", true, "no", SoundType.Effect, Color.white, hasSubtitle: false); // Aud_win
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "MUS_Win.wav"), "winFieldTrip", "no", SoundType.Effect, Color.white, hasSubtitle: false); // Aud_win
 
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "curtainClosed.png"), 30, "curtain_closed"); // curtains assets
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "curtainOpen.png"), 30, "curtain_open"); // curtains assets
-			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "curtainOpen.wav"), "curtainOpen", true, "Vfx_Curtain_Slide", SoundType.Effect, Color.white);
-			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "curtainClose.wav"), "curtainClose", true, "Vfx_Curtain_Slide", SoundType.Effect, Color.white);
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "curtainOpen.wav"), "curtainOpen", "Vfx_Curtain_Slide", SoundType.Effect, Color.white);
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "curtainClose.wav"), "curtainClose", "Vfx_Curtain_Slide", SoundType.Effect, Color.white);
 
 
 
@@ -2956,11 +2939,11 @@ namespace BB_MOD
 			if (!addedExtraContent[2]) // Extra Schoolhouse Themes here
 			{
 				addedExtraContent[2] = true;
-				CreateSchoolHouseMusic("mus_NewSchool.wav", ContentUtilities.AllFloorsExcept(Floors.F3));
+				/*CreateSchoolHouseMusic("mus_NewSchool.wav", ContentUtilities.AllFloorsExcept(Floors.F3));
 				CreateSchoolHouseMusic("mus_NewSchool1.wav", Floors.F1); // Bsidekid
 				CreateSchoolHouseMusic("mus_NewSchool2.wav", Floors.F3); // Bsidekid
 				CreateSchoolHouseMusic("mus_newschool3.wav", Floors.F2); // Bsidekid
-				CreateSchoolHouseMusic("mus_newschool4.wav", Floors.F2); // Bsidekid
+				CreateSchoolHouseMusic("mus_newschool4.wav", Floors.F2); // Bsidekid*/ // DISABLED TEMPORARILY UNTIL MIDIS ARE ADDED
 			}
 			if (!addedExtraContent[3])
 			{
@@ -3089,8 +3072,7 @@ namespace BB_MOD
 			var path = Path.Combine(modPath, "Audio", "extras", musicName);
 			try
 			{
-				var loop = ContentUtilities.CreateLoopingSoundObject(ContentUtilities.GetAudioClip(path), ContentUtilities.FindResourceObjectWithName<AudioMixerGroup>("Master"));
-				schoolHouseMusics.Add(new GenericObjectHolder<LoopingSoundObject>(loop, supportedFloors));
+				schoolHouseMusics.Add(AssetManager.MidiFromFile(path, Path.GetFileNameWithoutExtension(musicName)), supportedFloors);
 			}
 			catch (Exception e)
 			{
@@ -3102,7 +3084,7 @@ namespace BB_MOD
 		{
 			try
 			{
-				principalLines.Add(scoldName, ObjectCreatorHandlers.CreateSoundObject(ContentUtilities.GetAudioClip(Path.Combine(modPath, "Audio", "npc", audioName)), audKey, SoundType.Voice, new Color(0f, 0.1176f, 0.4824f)));
+				principalLines.Add(scoldName, ObjectCreatorHandlers.CreateSoundObject(AssetManager.AudioClipFromFile(Path.Combine(modPath, "Audio", "npc", audioName)), audKey, SoundType.Voice, new Color(0f, 0.1176f, 0.4824f)));
 			}
 			catch (Exception e)
 			{
@@ -4040,11 +4022,11 @@ namespace BB_MOD
 			public RoomCategory[] TargetRooms { get; }
 		}
 
-		readonly List<GenericObjectHolder<LoopingSoundObject>> schoolHouseMusics = new List<GenericObjectHolder<LoopingSoundObject>>();
+		readonly Dictionary<string, Floors[]> schoolHouseMusics = new Dictionary<string, Floors[]>();
 
 		readonly Dictionary<string, MapIcon> mapIcons = new Dictionary<string, MapIcon>();
 
-		public LoopingSoundObject[] GetSchoolHouseThemes(Floors floor) => schoolHouseMusics.Where(x => x.IsObjectFromFloor(floor)).Select(x => x.Object).ToArray();
+		public string[] GetSchoolHouseThemes(Floors floor) => schoolHouseMusics.Where(x => x.Value.Contains(floor)).Select(x => x.Key).ToArray();
 
 		// -------- DONT TOUCH Variables ---------
 

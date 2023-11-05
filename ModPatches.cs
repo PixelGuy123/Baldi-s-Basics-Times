@@ -245,6 +245,9 @@ namespace Patches.Main
 						locker.gameObject.AddComponent<PlaceholderComponent>();
 				}
 
+
+
+
 			}
 		}
 
@@ -1129,7 +1132,7 @@ namespace Patches.Main
 			if (musics.Length == 0) return; // If array is empty
 
 			Singleton<MusicManager>.Instance.StopMidi();
-			Singleton<MusicManager>.Instance.QueueFile(musics[EnvironmentExtraVariables.lb.controlledRNG.Next(musics.Length)], true); // Gets a random music instance to play
+			Singleton<MusicManager>.Instance.PlayMidi(musics[EnvironmentExtraVariables.lb.controlledRNG.Next(musics.Length)], true); // Gets a random music instance to play
 		}
 	}
 
@@ -1145,7 +1148,7 @@ namespace Patches.Main
 			if (musics.Length == 0) return; // If array is empty
 
 			Singleton<MusicManager>.Instance.StopMidi();
-			Singleton<MusicManager>.Instance.QueueFile(musics[EnvironmentExtraVariables.lb.controlledRNG.Next(musics.Length)], true); // Gets a random music instance to play
+			Singleton<MusicManager>.Instance.PlayMidi(musics[EnvironmentExtraVariables.lb.controlledRNG.Next(musics.Length)], true); // Gets a random music instance to play
 		}
 	}
 
