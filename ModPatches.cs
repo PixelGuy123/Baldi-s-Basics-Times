@@ -1149,7 +1149,7 @@ namespace Patches.Main
 		}
 	}
 
-	/*[HarmonyPatch(typeof(ElevatorScreen))]
+	[HarmonyPatch(typeof(ElevatorScreen))]
 	internal class StopMusicThereAswell
 	{
 		[HarmonyPatch("StartGame")]
@@ -1159,7 +1159,7 @@ namespace Patches.Main
 		{
 			Singleton<MusicManager>.Instance.StopFile(); // Stops music before opening elevator
 		}
-	}*/ // Quick test
+	}
 
 
 
