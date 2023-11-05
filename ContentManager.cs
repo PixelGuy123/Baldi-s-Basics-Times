@@ -1,11 +1,12 @@
-﻿using BB_MOD.Events;
-using BB_MOD.Builders;
+﻿using BB_MOD.Builders;
+using BB_MOD.Events;
 using BB_MOD.ExtraComponents;
 using BB_MOD.ExtraItems;
 using BB_MOD.NPCs;
 using HarmonyLib;
 using MTM101BaldAPI;
 using MTM101BaldAPI.AssetManager;
+using Patches.Main;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -19,7 +20,6 @@ using UnityEngine.Events;
 using UnityEngine.Networking;
 using static BB_MOD.ContentAssets;
 using static BB_MOD.ContentManager;
-using Patches.Main;
 
 // -------------------- PRO TIP ----------------------
 // Recommended using UnityExplorer to debug your item, event or npc. It's a very useful tool
@@ -112,15 +112,19 @@ namespace BB_MOD
 			switch (name.ToLower()) // Converts Floor name to Floors Enum
 			{
 				case "f1":
+				case "main1":
 					return Floors.F1;
 
 				case "f2":
+				case "main2":
 					return Floors.F2;
 
 				case "f3":
+				case "main3":
 					return Floors.F3;
 
 				case "end":
+				case "endless1":
 					return Floors.END;
 				default:
 					return Floors.None;
@@ -494,7 +498,7 @@ namespace BB_MOD
 						new WeightedSelection<int>() { selection = 2, weight = 25 }
 					};
 					break;
-				
+
 			}
 		}
 
@@ -555,11 +559,11 @@ namespace BB_MOD
 		public static bool AreSubtitlesForceDisabled => forceDisableSubtitles;
 		public static bool IsEndGame => isEndGame;
 
-		
+
 
 		// Some custom attributes for each level that are set up by the environment
 		public static WeightedSelection<int>[] MaxNewProblems { get; private set; }
-		
+
 		public static int MaxConveyorSpeedOffset { get; private set; }
 
 		// Internal Generator Custom Variables >> Should not be touched in any means
@@ -592,7 +596,7 @@ namespace BB_MOD
 			public TileController Tile { get; }
 		}
 
-		
+
 
 		public static IEnumerator SmoothFOVSlide(float divider, int priority, float targetFOV = 0f, float offset = 0f, bool canSum = false)
 		{
@@ -753,7 +757,7 @@ namespace BB_MOD
 		{
 			Vector2[] uv = oldUv;
 			Vector2[] newUvs = GetUVRectangles(x, y, width, height, texWidth, texHeight);
-			
+
 			int setIdx = index;
 			for (int i = 0; i < 4; i++)
 			{
@@ -1131,7 +1135,7 @@ namespace BB_MOD
 
 		public static NavMeshObstacle AddNavigationCollisionToObject(GameObject obj, Vector3 obstacleSize)
 		{
-			if (obj.GetComponent<NavMeshObstacle>()) 
+			if (obj.GetComponent<NavMeshObstacle>())
 				return obj.GetComponent<NavMeshObstacle>(); // Stops it from adding twice
 
 			var obs = obj.AddComponent<NavMeshObstacle>();
@@ -1159,7 +1163,7 @@ namespace BB_MOD
 		}
 
 		public static void AddCollisionToSprite(GameObject obj, Vector3 boxSize, Vector3 center, Vector3 obstacleSize) => AddCollisionToSprite(obj, boxSize, center, obstacleSize, out var collider, out _);
-		
+
 
 
 		public static GameObject AddBasicBuffer(Transform tsf, string name = "Buffer")
@@ -1224,7 +1228,7 @@ namespace BB_MOD
 
 
 
-				Vector3 sidePos = room.ec.RealRoomMax(room) + Vector3.up * 15f + Vector3.back * 5f;
+				Vector3 sidePos = room.ec.RealRoomMax(room) + (Vector3.up * 15f) + (Vector3.back * 5f);
 				Vector3 ogPos = sidePos;
 				Vector3 rotation = new Vector3(90f, 0f, 90f);
 				var dirs = new Direction[] { Direction.South, Direction.West, Direction.North, Direction.East }; // This order gives a reversed square sequence
@@ -1331,7 +1335,7 @@ namespace BB_MOD
 			box.Center = center;
 			box.Size = boxSize;
 			box.BoxCollider = collider;
-			
+
 			return box;
 		}
 
@@ -1388,7 +1392,7 @@ namespace BB_MOD
 		/// <summary>
 		/// Returns the default light prefab used in every room
 		/// </summary>
-		public static WeightedTransform LightPrefab => EnvironmentExtraVariables.lb.ld.facultyLights[0];
+		public static WeightedTransform LightPrefab => ContentManager.instance.OgLbObjects[0].facultyLights[0];
 
 		/// <summary>
 		/// Returns an instanced renderer object used by the bsoda to render the billboard
@@ -1517,7 +1521,7 @@ namespace BB_MOD
 		/// <param name="paths"></param>
 		/// <param name="assetName"></param>
 		/// <param name="useDifferentMethod"></param>
-		internal static void AddLoopingSoundObject (string assetName, bool useDifferentMethod, AudioMixerGroup mixer, params string[] paths)
+		internal static void AddLoopingSoundObject(string assetName, bool useDifferentMethod, AudioMixerGroup mixer, params string[] paths)
 		{
 			CheckParameters(paths, assetName);
 			if (!loopingSoundObjects.ContainsKey(assetName))
@@ -1613,7 +1617,7 @@ namespace BB_MOD
 		public void SetupAssetData()
 		{
 			if (assetsLoaded) return;
-			assetsLoaded = true;			
+			assetsLoaded = true;
 
 
 
@@ -1699,7 +1703,7 @@ namespace BB_MOD
 			AddSoundObject(Path.Combine(modPath, "Audio", "item", "gum_spit.wav"), "gumSpit", true, "Vfx_GUM_spit", SoundType.Effect, new Color(0.9960f, 0.5f, 0.8710f)); // Gum Spit for Gum Item duh
 
 			AddSoundObject(Path.Combine(modPath, "Audio", "item", "potion_drink.wav"), "pt_drink", true, "Vfx_SPP_drink", SoundType.Effect, new Color(0.19921875f, 0.99609375f, 0.59765625f)); // Cyan-like color / Assets for speed potion
-			AddSoundObject(Path.Combine(modPath, "Audio", "item", "potion_speedCoilNoises.wav"), "pt_speed", true, "Vfx_SPP_drink", SoundType.Effect, Color.clear, hasSubtitle:false);
+			AddSoundObject(Path.Combine(modPath, "Audio", "item", "potion_speedCoilNoises.wav"), "pt_speed", true, "Vfx_SPP_drink", SoundType.Effect, Color.clear, hasSubtitle: false);
 
 			AddSoundObject(Path.Combine(modPath, "Audio", "item", "scissors_cut.wav"), "sc_cut", true, "Vfx_Scissors_cut", SoundType.Effect, new Color(0.99609375f, 0f, 0.99609375f)); // Scissors effect
 			AddSoundObject(Path.Combine(modPath, "Audio", "item", "eat.wav"), "zesty_eat", true, "Vfx_Zesty_eat", SoundType.Effect, new Color(0.74609375f, 0.5f, 0.25f)); // Zesty effect
@@ -1722,7 +1726,7 @@ namespace BB_MOD
 
 			AddTextureAsset(Path.Combine(modPath, "Textures", "schooltext", "treeWall.png"), "treeWall"); // Forest tree wall
 			AddTextureAsset(Path.Combine(modPath, "Textures", "schooltext", "nightSky.png"), "nightSky"); // Forest sky
-			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "Crickets.wav"), "cricketsAmbience", true, "", SoundType.Effect, Color.white, hasSubtitle:false);
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "Crickets.wav"), "cricketsAmbience", true, "", SoundType.Effect, Color.white, hasSubtitle: false);
 			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "fire.wav"), "fireNoises", true, "Vfx_FireNoise", SoundType.Effect, new Color(0.9960f, 0.6367f, 0.1015f)); // Fire Noises
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "darkOverlay.png"), 1, "darkOverlay");
 
@@ -1826,7 +1830,7 @@ namespace BB_MOD
 			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "curtainOpen.wav"), "curtainOpen", true, "Vfx_Curtain_Slide", SoundType.Effect, Color.white);
 			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "curtainClose.wav"), "curtainClose", true, "Vfx_Curtain_Slide", SoundType.Effect, Color.white);
 
-			
+
 
 		}
 
@@ -1893,7 +1897,7 @@ namespace BB_MOD
 			CreateNPC<PencilBoy>("Pencil Boy", 50, ContentUtilities.Array("pb_angry.png", "pb_angrySpot.png", "pb_happy.png"), false, false, 65f, -1.75f, "pri_pb.png", "PST_PB_Name", "PST_PB_Desc", ContentUtilities.Array(Floors.F2, Floors.END), ContentUtilities.Array(RoomCategory.Hall, RoomCategory.Test), enterRooms: false, capsuleRadius: 2.6f);
 			CreateNPC<Stunly>("Stunly", 60, ContentUtilities.Array("Stunly.png"), false, false, 34, -1.35f, "pri_stunly.png", "PST_Stunly_Name", "PST_Stunly_Desc", ContentUtilities.AllFloors, enterRooms: false);
 			CreateNPC<Leapy>("Leapy", 75, ContentUtilities.Array("leapy_1.png", "leapy_2.png", "leapy_3.png"), false, false, 25f, -1f, "pri_leapy.png", "PST_Leapy_Name", "PST_Leapy_Desc", ContentUtilities.AllFloorsExcept(Floors.F1), false, false, true, true);
-			CreateNPC<Watcher>("Watcher", 80, ContentUtilities.Array("Watcher.png"), false, false, 34f, 0f, "pri_watcher.png", "PST_Wch_Name", "PST_Wch_Desc", ContentUtilities.Array(Floors.F3, Floors.END), true, false, true, true, forceSpawn: true, isStatic:true);
+			CreateNPC<Watcher>("Watcher", 80, ContentUtilities.Array("Watcher.png"), false, false, 34f, 0f, "pri_watcher.png", "PST_Wch_Name", "PST_Wch_Desc", ContentUtilities.Array(Floors.F3, Floors.END), true, false, true, true, forceSpawn: true, isStatic: true);
 			CreateNPC<SuperIntendentJr>("Super Intendent Jr", 65, ContentUtilities.Array("spj_walk1.png", "spj_walk2.png", "spj_scream1.png", "spj_scream2.png"), false, false, 63f, -1.2f, "pri_spj.png", "PST_Spj_Name", "PST_Spj_Desc", ContentUtilities.AllFloorsExcept(Floors.F1), usingWanderRounds: true); // Cherubble
 			CreateNPC<GlueBoy>("Glue Boy", 50, ContentUtilities.Array("glueBoy.png"), false, false, 78f, -1.3f, "pri_gboy.png", "PST_Gboy_Name", "PST_Gboy_Desc", ContentUtilities.AllFloorsExcept(Floors.F1), enterRooms: false);
 
@@ -2077,14 +2081,14 @@ namespace BB_MOD
 			CreateItem<ITM_Pencil>("PC_Name", "PC_Desc", "Pencil.png", "Pencil.png", "Pencil", 40, 22, 25, ContentUtilities.Array(Floors.F2, Floors.END), 40, ContentUtilities.Array(Floors.F2, Floors.F3), 30, includeOnFieldTrip: true); // FileName3 (Coded by PixelGuy)
 			CreateItem<ITM_ScrewDriver>("SD_Name", "SD_Desc", "screwDriver.png", "screwDriver.png", "ScrewDriver", 110, 25, 15, 110, ContentUtilities.AllFloors, 25, false, false, false, true); // PixelGuy
 			CreateItem<ITM_Trap>("BT_Name", "BT_Desc", "TrapOpen.png", "trapSmall.png", "BearTrap", 90, 27, 20, ContentUtilities.Array(Floors.F2, Floors.END), 85, ContentUtilities.AllFloorsExcept(Floors.F1), 15, true, true, false); // PixelGuy
-			CreateItem<ITM_Banana>("BN_Name", "BN_Desc", "Banana.png", "Banana.png", "Banana", 50, 18, 5, 25, ContentUtilities.AllFloors, 55, appearsInCafeteria:true); // PixelGuy
+			CreateItem<ITM_Banana>("BN_Name", "BN_Desc", "Banana.png", "Banana.png", "Banana", 50, 18, 5, 25, ContentUtilities.AllFloors, 55, appearsInCafeteria: true); // PixelGuy
 			CreateItem<ITM_Gum>("GUM_Name", "GUM_Desc", "gum.png", "gum.png", "Gum", 75, 25, 45, 65, ContentUtilities.AllFloors, 35); // PixelGuy
-			CreateItem<ITM_LockPick>("LPC_Name", "LPC_Desc", "lockpick.png", "lockpick.png", "Lockpick", 75, 20, 2, 95, Array.Empty<Floors>(), 1, unlockDoors:true, includeOnFieldTrip:true); // PixelGuy
+			CreateItem<ITM_LockPick>("LPC_Name", "LPC_Desc", "lockpick.png", "lockpick.png", "Lockpick", 75, 20, 2, 95, Array.Empty<Floors>(), 1, unlockDoors: true, includeOnFieldTrip: true); // PixelGuy
 			CreateItem<ITM_SpeedPotion>("SPP_Name", "SPP_Desc", "speedPotion.png", "speedPotion.png", "Speedpotion", 75, 25, 25, 45, ContentUtilities.AllFloors, 50, includeOnFieldTrip: true); // AdvancedDasher
-			CreateItem<ITM_BSED>("BSED_Name", "BSED_Desc", "BSED.png", "BSED.png", "Bsed", 65, 25, 35, ContentUtilities.AllFloorsExcept(Floors.F1), 45, ContentUtilities.AllFloors, 65, appearsInCafeteria:true); // HaHaFunny
-			CreateItem<ITM_GQuarter>("gquarter_Name", "gquarter_Desc", "gQuarter.png", "gQuarter.png", "Gquarter", 75, 21, 5, 35, ContentUtilities.AllFloors, 35, includeOnFieldTrip:true); //PixelGuy
+			CreateItem<ITM_BSED>("BSED_Name", "BSED_Desc", "BSED.png", "BSED.png", "Bsed", 65, 25, 35, ContentUtilities.AllFloorsExcept(Floors.F1), 45, ContentUtilities.AllFloors, 65, appearsInCafeteria: true); // HaHaFunny
+			CreateItem<ITM_GQuarter>("gquarter_Name", "gquarter_Desc", "gQuarter.png", "gQuarter.png", "Gquarter", 75, 21, 5, 35, ContentUtilities.AllFloors, 35, includeOnFieldTrip: true); //PixelGuy
 			CreateItem<ITM_EmptyBottle>("EBottle_Name", "EBottle_Desc", "bottle_empty.png", "bottle_empty.png", "Emptybottle", 2, 25, 15, 42, Array.Empty<Floors>(), 15); // PixelGuy
-			CreateItem<ITM_WaterBottle>("WBottle_Name", "WBottle_Desc", "bottle_water.png", "bottle_water.png", "Waterbottle", 75, 25, 15, 42, ContentUtilities.AllFloors, 5, includeOnFieldTrip:true, appearsInCafeteria:true); // PixelGuy
+			CreateItem<ITM_WaterBottle>("WBottle_Name", "WBottle_Desc", "bottle_water.png", "bottle_water.png", "Waterbottle", 75, 25, 15, 42, ContentUtilities.AllFloors, 5, includeOnFieldTrip: true, appearsInCafeteria: true); // PixelGuy
 			CreateItem<ITM_HardHat>("HardHat_Name", "HardHat_Desc", "hardHat.png", "hardHat.png", "Hardhat", 45, 24, 15, ContentUtilities.AllFloorsExcept(Floors.F1), 65, ContentUtilities.AllFloors, 15);
 			CreateItem<ITM_HeadachePill>("HDP_Name", "HDP_Desc", "headachePill.png", "headachePill.png", "Headachepill", 50, 26, 5, 156, ContentUtilities.AllFloors, 65);
 			CreateItem<ITM_Basketball>("BB_Name", "BB_Desc", "basketBall.png", "basketBall.png", "Basketball", 1, 100, 1, Array.Empty<Floors>(), 100, Array.Empty<Floors>(), 1);
@@ -2420,16 +2424,16 @@ namespace BB_MOD
 			CreateSchoolTexture("GraniteCeiling.png", ContentUtilities.AllFloorsExcept(Floors.F1), SchoolTextType.Ceiling);// PixelGuy
 			CreateSchoolTexture("woodFloor.png", ContentUtilities.AllFloors, SchoolTextType.Floor);// JDVideos
 			CreateSchoolTexture("squaredTiledFloor.png", ContentUtilities.AllFloors, SchoolTextType.Floor);// tsu
-			CreateSchoolTexture("CleanWall.png", ContentUtilities.AllFloorsExcept(Floors.F1, Floors.END), SchoolTextType.Wall, existOnFaculties:true, roomsOnly:true);// tsu
-			CreateSchoolTexture("woodenFloor.png", ContentUtilities.Array(Floors.F3), SchoolTextType.Floor, existOnFaculties:true, roomsOnly:true); // tsu
-			CreateSchoolTexture("whiteClassFloor.png", ContentUtilities.AllFloors, SchoolTextType.Floor, existOnClassrooms:true, roomsOnly:true); // tsu
+			CreateSchoolTexture("CleanWall.png", ContentUtilities.AllFloorsExcept(Floors.F1, Floors.END), SchoolTextType.Wall, existOnFaculties: true, roomsOnly: true);// tsu
+			CreateSchoolTexture("woodenFloor.png", ContentUtilities.Array(Floors.F3), SchoolTextType.Floor, existOnFaculties: true, roomsOnly: true); // tsu
+			CreateSchoolTexture("whiteClassFloor.png", ContentUtilities.AllFloors, SchoolTextType.Floor, existOnClassrooms: true, roomsOnly: true); // tsu
 			CreateSchoolTexture("sanduCeiling.png", ContentUtilities.Array(Floors.F3), SchoolTextType.Ceiling); // tsu
-			CreateSchoolTexture("sequencedWall_1.png", ContentUtilities.Array(Floors.F1, Floors.F2), SchoolTextType.Wall, existOnClassrooms:true, weight:80); // tsu
+			CreateSchoolTexture("sequencedWall_1.png", ContentUtilities.Array(Floors.F1, Floors.F2), SchoolTextType.Wall, existOnClassrooms: true, weight: 80); // tsu
 			CreateSchoolTexture("sequencedWall_2.png", ContentUtilities.Array(Floors.F1, Floors.F2), SchoolTextType.Wall, existOnClassrooms: true, weight: 80); // tsu
 			CreateSchoolTexture("graySandCeiling.png", ContentUtilities.AllFloorsExcept(Floors.F1), SchoolTextType.Ceiling, weight: 70);
 			CreateSchoolTexture("green_rustyCeiling.png", ContentUtilities.AllFloorsExcept(Floors.F1), SchoolTextType.Ceiling, false, false, false, 100); // Jofitzy
 			CreateSchoolTexture("white_rustyCeiling.png", ContentUtilities.AllFloorsExcept(Floors.F1), SchoolTextType.Ceiling, false, false, false, 100); // Jofitzy
-			CreateSchoolTexture("redMosaicCarpet.png", ContentUtilities.AllFloorsExcept(Floors.F2), SchoolTextType.Floor, roomsOnly:true, existOnClassrooms:true, weight:80); // Jofitzy
+			CreateSchoolTexture("redMosaicCarpet.png", ContentUtilities.AllFloorsExcept(Floors.F2), SchoolTextType.Floor, roomsOnly: true, existOnClassrooms: true, weight: 80); // Jofitzy
 			CreateSchoolTexture("redcarpet.png", ContentUtilities.AllFloors, SchoolTextType.Floor, roomsOnly: true, existOnFaculties: true); // Cherubble
 
 		}
@@ -2526,7 +2530,7 @@ namespace BB_MOD
 		// Extra Functions for SpecialRoomCreator:
 		// this.FixElevatorTiles() is a method exclusively for special rooms with higher ceiling, it fixes the elevator ceiling tiles by adding texture to them (or else, they would be transparent and ugly)
 		// this.CreateOpenAreaForSpecialRoom() is a method also exclusively for special rooms with higher ceiling, it adds walls higher than the map's height to simulate the playground's skybox
-		
+
 		// Just like roombuilders, you can also duplicate special rooms to different floors to have variety in weights (DuplicateSpecialRoom)
 
 
@@ -2538,6 +2542,7 @@ namespace BB_MOD
 			addedBuilders = true;
 			foreach (var specialRoom in ContentUtilities.FindResourceObjects<SpecialRoomCreator>()) // Replaces every single roomcontroller from the special rooms with actual special room enums (for global use)
 			{
+
 				specialRoom.Room.category = ContentUtilities.SpecialRoomEnum; // sets to the field
 				AccessTools.Field(typeof(SpecialRoomCreator), "roomCategory").SetValue(specialRoom, ContentUtilities.SpecialRoomEnum); // Sets the other category field to the enum aswell
 			}
@@ -2554,14 +2559,12 @@ namespace BB_MOD
 			allExtraStuffForRoomBuilders.Add(ReplacementBuilders.CreateTrashCans, ContentUtilities.Array(RoomCategory.Class));
 
 			// New Object Builders Here
-
 			CreateAndAddObjBuilder<WallBellBuilder>("Bell Builder", ContentUtilities.AllFloors);
 			CreateAndAddObjBuilder<BananaTreeBuilder>("Banana Tree Builder", ContentUtilities.AllFloors);
-			CreateAndAddObjBuilder<TrapDoorBuilder>("Trap Door Builder", 115,ContentUtilities.AllFloorsExcept(Floors.F1));
+			CreateAndAddObjBuilder<TrapDoorBuilder>("Trap Door Builder", 115, ContentUtilities.AllFloorsExcept(Floors.F1));
 			CreateAndAddObjBuilder<VentBuilder>("Vent Builder", 85, ContentUtilities.AllFloorsExcept(Floors.F1));
 
 			// New Room Builders Here
-
 			CreateRoomBuilder<LossyClassBuilder>("Messy Class Builder", 60, ContentUtilities.Array(RoomCategory.Class)); // PixelGuy
 
 			CreateRoomBuilder<BathBuilder>("BathroomBuilder", 50, "bathroom", ContentUtilities.Array(Floors.F1), false, ContentUtilities.Array(CreateRawSchoolTexture("bathroomCeiling.png")),
@@ -2576,8 +2579,8 @@ namespace BB_MOD
 			ContentUtilities.Array(CreateRawSchoolTexture("woodFloor.png")), "oldDoorOpen.png", "oldDoorClosed.png", new Color(0.597f, 0.476f, 0f),
 			ContentUtilities.Array(ContentUtilities.LightPrefab, CreateExtraDecoration_Raw("long_hanginglamp.png", 200, 30, ContentUtilities.AllCategories, true, true, Vector3.up * (ContentUtilities.LightHeight - 0.7f))), 0, 1, true); // JDvideosPR >> Abandoned locked room for F3
 
-			CreateRoomBuilder<ComputerRoomBuilder>("ComputerBuilder", 50, "computerRoom", ContentUtilities.AllFloors, true, ContentUtilities.Array(CreateRawSchoolTexture("computerRoomCeiling.png")), 
-				ContentUtilities.Array(CreateRawSchoolTexture("computerRoomWall.png")), 
+			CreateRoomBuilder<ComputerRoomBuilder>("ComputerBuilder", 50, "computerRoom", ContentUtilities.AllFloors, true, ContentUtilities.Array(CreateRawSchoolTexture("computerRoomCeiling.png")),
+				ContentUtilities.Array(CreateRawSchoolTexture("computerRoomWall.png")),
 				ContentUtilities.Array(CreateRawSchoolTexture("computerRoomFloor.png")), "computerDoorOpened.png", "computerDoorClosed.png", new Color(0f, 0f, 0.5976f)); // PixelGuy
 
 			// Note: if you want to create custom lights for the room, you can always use CreateExtraDecoration_Raw, and if you want to keep the original, you include ContentUtilities.LightPrefab on the array
@@ -2589,10 +2592,12 @@ namespace BB_MOD
 
 			// New Special Rooms
 
-			CreateSpecialRoom<BasketBallArea, BasketBallBuilder, RuleFreeZone>("BasketBallArea", 75, true, ContentUtilities.Array(Floors.F2, Floors.END), new IntVector2(11, 15), new IntVector2(13, 19), stickToHalls:false, wallTex: GetAsset<Texture2D>("defaultSaloonTexture"), ceilingTex: GetAsset<Texture2D>("defaultSaloonTexture"), floorTex: CreateRawTexture("basketBallArea_Floor.png")); // PixelGuy
+			Debug.Log("new special room");
+
+			CreateSpecialRoom<BasketBallArea, BasketBallBuilder, RuleFreeZone>("BasketBallArea", 75, true, ContentUtilities.Array(Floors.F2, Floors.END), new IntVector2(11, 15), new IntVector2(13, 19), stickToHalls: false, wallTex: GetAsset<Texture2D>("defaultSaloonTexture"), ceilingTex: GetAsset<Texture2D>("defaultSaloonTexture"), floorTex: CreateRawTexture("basketBallArea_Floor.png")); // PixelGuy
 			DuplicateSpecialRoom("BasketBallArea", ContentUtilities.Array(Floors.F3), 90);
 
-			CreateSpecialRoom<ForestArea, ForestAreaBuilder, ForestAreaFunction>("ForestArea", 65, true, ContentUtilities.Array(Floors.F2), new IntVector2(12, 12), new IntVector2(16, 16), acceptExits:false ,wallTex:GetAsset<Texture2D>("treeWall"), floorTex:ContentUtilities.FindResourceObject<PlaygroundSpecialRoom>().Room.floorTex); // PixelGuy
+			CreateSpecialRoom<ForestArea, ForestAreaBuilder, ForestAreaFunction>("ForestArea", 65, true, ContentUtilities.Array(Floors.F2), new IntVector2(12, 12), new IntVector2(16, 16), acceptExits: false, wallTex: GetAsset<Texture2D>("treeWall"), floorTex: ContentUtilities.FindResourceObject<PlaygroundSpecialRoom>().Room.floorTex); // PixelGuy
 			DuplicateSpecialRoom("ForestArea", ContentUtilities.Array(Floors.F3), 110);
 
 
@@ -2611,7 +2616,7 @@ namespace BB_MOD
 
 		private S CreateSpecialRoom<S, B>(string name, int weight, bool highCeiling, Floors[] floors, IntVector2 minSize, IntVector2 maxSize, bool stickToHalls = true, bool acceptExits = true, Texture2D wallTex = null, Texture2D ceilingTex = null, Texture2D floorTex = null) where S : SpecialRoomCreator where B : RoomBuilder
 		{
-			if (!Prefabs.specialRoomPre)
+			if (Prefabs.specialRoomPre == null)
 			{
 				Debug.LogWarning("No instance of special room was found to be instanced");
 				return null;
@@ -2626,7 +2631,7 @@ namespace BB_MOD
 				Destroy(preRoom.GetComponent<RandomObjectSpawner>());
 				Destroy(preRoom.transform.Find("Builder").gameObject); // Removes the builder object aswell
 
-				
+
 
 
 				CheckForParameters(weight, floors);
@@ -2668,7 +2673,7 @@ namespace BB_MOD
 				Destroy(preRoom.gameObject);
 				return null;
 			}
-			
+
 		}
 
 		private void DuplicateSpecialRoom(string name, Floors[] floors, int weight)
@@ -3028,7 +3033,7 @@ namespace BB_MOD
 			return icon;
 		}
 
-			private void CreateCustomWindow(string windowFileName, string brokenWindowFileName, string maskFileName, bool unbreakable, bool openWindow, bool specialRandomReplace, RoomCategory[] supportedCategories, params Floors[] supportedFloors)
+		private void CreateCustomWindow(string windowFileName, string brokenWindowFileName, string maskFileName, bool unbreakable, bool openWindow, bool specialRandomReplace, RoomCategory[] supportedCategories, params Floors[] supportedFloors)
 		{
 			// Note: open material = broken
 			// overlay material = the normal texture
@@ -3413,8 +3418,8 @@ namespace BB_MOD
 				AvailableFloors = floors;
 
 				var newMat = ScriptableObject.CreateInstance<StandardDoorMats>();
-				newMat.open = new Material(EnvironmentExtraVariables.lb.ld.classDoorMat.open) { mainTexture = AssetManager.TextureFromFile(doorOpenedPath) };
-				newMat.shut = new Material(EnvironmentExtraVariables.lb.ld.classDoorMat.shut) { mainTexture = AssetManager.TextureFromFile(doorClosedPath) };
+				newMat.open = new Material(instance.OgLbObjects[0].classDoorMat.open) { mainTexture = AssetManager.TextureFromFile(doorOpenedPath) };
+				newMat.shut = new Material(instance.OgLbObjects[0].classDoorMat.shut) { mainTexture = AssetManager.TextureFromFile(doorClosedPath) };
 				newMat.name = $"{builders[0].selection.name}Door_Mat";
 				DoorTextures = newMat;
 
@@ -3877,10 +3882,6 @@ namespace BB_MOD
 			return potentialRooms;
 		}
 
-		public bool HasAccessedFloor(Floors floor) => accessedExtraStuff[floor];
-
-		public void LockAccessedFloor(Floors floor) => accessedExtraStuff[floor] = true;
-
 		public IEnumerable<WeightedNPC> AllNpcs
 		{
 			get => allNpcs.Select(x => x.Object);
@@ -4017,7 +4018,7 @@ namespace BB_MOD
 				obj = holderObj;
 				bool isAvailable = IsObjectAvailable(floor);
 
-				if (lockFloorAfter && isAvailable) 
+				if (lockFloorAfter && isAvailable)
 					accessedFloors.Add(floor);
 
 				return isAvailable;
@@ -4117,6 +4118,8 @@ namespace BB_MOD
 		public Sprite sweepSprite; // Same applies here
 
 		private readonly LevelObject[] copyOfLevelObjects = new LevelObject[3]; // A copy of each level object to replace the current one (so custom characters aren't added to the next level)
+
+		public LevelObject[] OgLbObjects => copyOfLevelObjects;
 
 		readonly RoomCategory[] currentValidCategories = new RoomCategory[] { RoomCategory.Class, RoomCategory.Office, RoomCategory.Faculty };
 

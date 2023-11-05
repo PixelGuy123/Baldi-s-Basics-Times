@@ -16,245 +16,247 @@ using System.Reflection.Emit;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using Rewired.UI.ControlMapper;
 
 namespace Patches.Main
 {
+
+	[HarmonyPatch(typeof(NameManager), "Awake")]
+	internal class ThisisWhereAllBegins // Yup, most important patch by now
+	{
+		private static void Prefix()
+		{
+
+			// Add custom posters
+			var ogLds = new LevelObject[3];
+			try
+			{
+
+
+				ogLds[0] = ContentUtilities.FindResourceObjectWithName<LevelObject>("Main1");
+				ogLds[1] = ContentUtilities.FindResourceObjectWithName<LevelObject>("Main2");
+				ogLds[2] = ContentUtilities.FindResourceObjectWithName<LevelObject>("Main3");
+
+				foreach (var ld in ogLds)
+				{
+					ContentManager.instance.AddLevelObject(UnityEngine.Object.Instantiate(ld));
+					ld.previousLevels = ContentManager.instance.GetLevelObjectCopy(ld); 
+					// Basically replaces the previousLevels variable that is used on the npcs spawn, so npcs from specific floor aren't includes on unexpected ones
+				}
+			}
+			catch (Exception e)
+			{
+				Debug.LogException(e);
+				Debug.LogWarning("Failed to initialize mod, please report this to the developer");
+				return;
+			}
+
+			var lds = new List<LevelObject>(ogLds)
+			{
+				ContentUtilities.FindResourceObjectWithName<LevelObject>("Endless1") // Includes endless this time
+			};
+
+			// Setting Special Room
+
+			ContentManager.Prefabs.specialRoomPre = ContentUtilities.FindResourceObject<CafeteriaCreator>();
+
+			ContentManager.Prefabs.windowPre = ContentUtilities.FindResourceObjectContainingName<WindowObject>("wood");
+
+			ContentManager.Prefabs.iconPre = ContentUtilities.FindResourceObject<Notebook>().iconPre;
+
+			bool canDoIt = true;
+
+			if (!ContentManager.Prefabs.posterPre)
+			{
+				try
+				{
+					ContentManager.Prefabs.posterPre = lds[0].posters[0].selection;
+					ContentManager.instance.SetupPosterWeights();
+				}
+				catch
+				{
+					Debug.LogWarning("Unable to grab a poster object for instancing, custom posters won\'t be added to the level");
+					canDoIt = false;
+				}
+			}
+
+			if (canDoIt)
+				ContentManager.Prefabs.decorationPre = ((WeightedTransform[])AccessTools.Field(typeof(RoomBuilder), "decorations").GetValue(lds[0].facultyBuilders[0].selection))[0].selection; // Get decoration
+			canDoIt = true;
+
+			try
+			{
+				ContentManager.Prefabs.beans = Character.Beans.GetFirstInstance().gameObject; // Finds the first Beans instance to be used
+			}
+			catch
+			{
+				Debug.LogWarning("Beans somehow doesn\'t exist on the npc list, the mod won\'t spawn new npcs");
+				canDoIt = false;
+			}
+
+			if (canDoIt)
+				ContentManager.instance.SetupWeightNPCValues(); // Npc Setup
+
+			ContentManager.instance.SetupObjectBuilders(); // Object Builder Setup
+
+			ContentManager.instance.SetupItemWeights(); // Item Setup
+
+			ContentManager.instance.SetupEventWeights(); // Event setup
+
+			ContentManager.instance.SetupSchoolTextWeights(); // Custom Textures
+
+			var sweep = Resources.FindObjectsOfTypeAll<GottaSweep>()[0];
+			ContentManager.instance.sweepPoster = UnityEngine.Object.Instantiate(sweep.Poster.baseTexture);
+			ContentManager.instance.sweepSprite = UnityEngine.Object.Instantiate(sweep.spriteBase.transform.Find("Sprite").GetComponent<SpriteRenderer>().sprite); // Specifically for classic sweep
+
+			ContentManager.instance.SetupExtraContent(); // Extra Content like PrefabInstances
+
+
+
+
+
+			// Actually doing changes to Level Objects below here
+
+			var newMat = ScriptableObject.CreateInstance<StandardDoorMats>(); // Principal's Office Door Setup
+			newMat.open = new Material(lds[0].classDoorMat.open) { mainTexture = ContentAssets.GetAsset<Texture2D>("officeDoorOpen") };
+			newMat.shut = new Material(lds[0].classDoorMat.shut) { mainTexture = ContentAssets.GetAsset<Texture2D>("officeDoorClosed") };
+			newMat.name = "OfficeDoor_Mat";
+			foreach (var ld in lds)
+			{
+				// Setup constant variables
+				Floors currentFloor = ld.name.ToFloorIdentifier(); // Support for level object now
+
+				ld.posters = ld.posters.AddRangeToArray(ContentManager.instance.AllPosters(false).ToArray()); // Add posters
+
+				ld.chalkBoards = ld.chalkBoards.AddRangeToArray(ContentManager.instance.AllPosters(true).ToArray()); // Add chalkboards
+
+				ld.OfficeDoorMat = newMat; // Changing the office material to a custom one
+
+				ld.potentialNPCs.AddRange(ContentManager.instance.GetNPCs(currentFloor)); // Add Npcs
+
+				// Hall Builders
+				ld.standardHallBuilders = ld.standardHallBuilders.AddRangeToArray(ContentManager.instance.StandardHallBuilders.ToArray());
+				ld.forcedSpecialHallBuilders = ld.forcedSpecialHallBuilders.AddRangeToArray(ContentManager.instance.GetForcedHallBuilders(currentFloor).ToArray());
+				ld.specialHallBuilders = ld.specialHallBuilders.AddRangeToArray(ContentManager.instance.GetObjectBuilders(currentFloor).ToArray());
+
+				// Room Builders
+				ld.classBuilders = ld.classBuilders.AddRangeToArray(ContentManager.instance.GetNewRoomBuilders(RoomCategory.Class).ToArray());
+				ld.facultyBuilders = ld.facultyBuilders.AddRangeToArray(ContentManager.instance.GetNewRoomBuilders(RoomCategory.Faculty).ToArray());
+				ld.officeBuilders = ld.officeBuilders.AddRangeToArray(ContentManager.instance.GetNewRoomBuilders(RoomCategory.Office).ToArray());
+
+				ld.items = ld.items.AddRangeToArray(ContentManager.instance.GetItems(currentFloor).ToArray()); // Add Items
+
+				ld.shopItems = ld.shopItems.AddRangeToArray(ContentManager.instance.GetShoppingItems(currentFloor).ToArray()); // Add shopping items
+
+				if (ld.fieldTrip)
+					ld.fieldTripItems.AddRange(ContentManager.instance.FieldTripItems); // Add field trip items
+
+				ld.randomEvents.AddRange(ContentManager.instance.GetEvents(currentFloor)); // Add queued events for the floor
+
+
+
+				switch (currentFloor)
+				{
+					case Floors.F1:
+						ld.maxClassRooms = 5;
+						ld.maxSize += new IntVector2(6, 6);
+						ld.maxPlots += 1;
+						ld.maxFacultyRooms += 1;
+						ld.additionalNPCs += 1;
+						break;
+					case Floors.F2:
+						ld.minClassRooms = 6;
+						ld.maxClassRooms = 8;
+						ld.minSize += new IntVector2(5, 6);
+						ld.maxSize += new IntVector2(10, 10);
+						ld.maxPlots += 2;
+						ld.exitCount += 1;
+						ld.minHallsToRemove += 1;
+						ld.maxHallsToRemove += 2;
+						ld.maxReplacementHalls += 1;
+						ld.minFacultyRooms += 1;
+						ld.maxFacultyRooms += 2;
+						ld.additionalNPCs += 2;
+						ld.maxLightDistance = 10;
+						ld.standardLightChance = 25;
+						ld.maxSpecialBuilders += 1;
+						ld.maxOffices = 2;
+						break;
+					case Floors.END:
+						ld.minClassRooms = 6;
+						ld.maxClassRooms = 8;
+						ld.minSize += new IntVector2(5, 6);
+						ld.maxSize += new IntVector2(10, 10);
+						ld.maxPlots += 2;
+						ld.minHallsToRemove += 1;
+						ld.maxHallsToRemove += 2;
+						ld.maxReplacementHalls += 2;
+						ld.maxFacultyRooms += 3;
+						ld.additionalNPCs += 3;
+						ld.maxLightDistance = 12;
+						ld.standardLightChance = 25;
+						ld.maxSpecialBuilders += 2;
+						ld.maxOffices = 2;
+						break;
+					case Floors.F3:
+						ld.maxClassRooms = 12;
+						ld.minSize += new IntVector2(8, 10);
+						ld.maxSize += new IntVector2(20, 20);
+						ld.minPlots += 6;
+						ld.maxPlots += 9;
+						ld.minHallsToRemove += 4;
+						ld.maxHallsToRemove += 5;
+						ld.minReplacementHalls += 1;
+						ld.maxReplacementHalls += 3;
+						ld.minFacultyRooms += 3;
+						ld.maxFacultyRooms += 2;
+						ld.additionalNPCs += 5;
+						ld.maxLightDistance = 15;
+						ld.maxSpecialBuilders += 2;
+						ld.minOffices = 2;
+						ld.maxOffices = 3;
+						break;
+				}
+
+
+				// Changes classroom stuff
+
+				ld.classCeilingTexs = ld.classCeilingTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(currentFloor, SchoolTextType.Ceiling, 0).ToArray());
+				ld.classWallTexs = ld.classWallTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(currentFloor, SchoolTextType.Wall, 0).ToArray());
+				ld.classFloorTexs = ld.classFloorTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(currentFloor, SchoolTextType.Floor, 0).ToArray());
+
+				// Changes faculty stuff
+				ld.facultyCeilingTexs = ld.facultyCeilingTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(currentFloor, SchoolTextType.Ceiling, 1).ToArray());
+				ld.facultyWallTexs = ld.facultyWallTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(currentFloor, SchoolTextType.Wall, 1).ToArray());
+				ld.facultyFloorTexs = ld.facultyFloorTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(currentFloor, SchoolTextType.Floor, 1).ToArray());
+
+				// Changes school stuff
+				ld.hallCeilingTexs = ld.hallCeilingTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(currentFloor, SchoolTextType.Ceiling).ToArray());
+				ld.hallFloorTexs = ld.hallFloorTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(currentFloor, SchoolTextType.Floor).ToArray());
+				ld.hallWallTexs = ld.hallWallTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(currentFloor, SchoolTextType.Wall).ToArray());
+
+
+				ld.specialRooms = ld.specialRooms.AddRangeToArray(ContentManager.instance.GetSpecialRooms(currentFloor));
+
+			}
+		}
+	}
 
 	[HarmonyPatch(typeof(LevelGenerator), "StartGenerate")]
 	internal class SetupExtraContent // Setup items, npcs, events, etc.
 	{
 		private static void Prefix(LevelGenerator __instance)
 		{
-			var sceneObject = Singleton<CoreGameManager>.Instance.sceneObject;
-			Floors currentFloor = sceneObject.levelTitle.ToFloorIdentifier();
-			bool accessedFloor = ContentManager.instance.HasAccessedFloor(currentFloor);
-			EnvironmentExtraVariables.currentFloor = currentFloor;
+			EnvironmentExtraVariables.currentFloor = Singleton<CoreGameManager>.Instance.sceneObject.levelTitle.ToFloorIdentifier();
 			EnvironmentExtraVariables.ec = __instance.Ec;
 			EnvironmentExtraVariables.lb = __instance;
 
 			EnvironmentExtraVariables.SetVariables();
 
-			// Setting Special Room
-
-			if (!ContentManager.Prefabs.specialRoomPre)
-				ContentManager.Prefabs.specialRoomPre = ContentUtilities.FindResourceObject<CafeteriaCreator>();
-
-			if (!ContentManager.Prefabs.windowPre)
-				ContentManager.Prefabs.windowPre = ContentUtilities.FindResourceObjectContainingName<WindowObject>("wood");
-
-			if (!ContentManager.Prefabs.iconPre)
-				ContentManager.Prefabs.iconPre = ContentUtilities.FindResourceObject<Notebook>().iconPre;
-
-			// Add custom posters
-
-			if (!ContentManager.Prefabs.posterPre)
-			{
-				try
-				{
-					ContentManager.Prefabs.posterPre = __instance.ld.posters[0].selection;
-				}
-				catch
-				{
-					Debug.LogWarning("Unable to grab a poster object for instancing, custom posters won\'t be added to the level");
-					goto skipPoster;
-				}
-			}
-			ContentManager.instance.SetupPosterWeights();
-			if (!accessedFloor)
-			{
-				__instance.ld.posters = __instance.ld.posters.AddRangeToArray(ContentManager.instance.AllPosters(false).ToArray());
-
-				__instance.ld.chalkBoards = __instance.ld.chalkBoards.AddRangeToArray(ContentManager.instance.AllPosters(true).ToArray());
-			}
-
-			if (!ContentManager.Prefabs.decorationPre)
-				ContentManager.Prefabs.decorationPre = ((WeightedTransform[])AccessTools.Field(typeof(RoomBuilder), "decorations").GetValue(__instance.ld.facultyBuilders[0].selection))[0].selection; // Get decoration
-
-			if (currentFloor != Floors.END)
-			{
-				if (!ContentManager.instance.HasAccessedFloor(currentFloor))
-					ContentManager.instance.AddLevelObject(UnityEngine.Object.Instantiate(__instance.ld));
-				__instance.ld.previousLevels = ContentManager.instance.GetLevelObjectCopy(__instance.ld); // Basically replaces the previousLevels variable that is used on the npcs spawn, so npcs from specific floor aren't includes on unexpected ones
-			}
 
 
+			
 
-
-
-			if (!ContentManager.Prefabs.beans)
-			{
-				try
-				{
-					ContentManager.Prefabs.beans = Character.Beans.GetFirstInstance().gameObject; // Finds the first Beans instance to be used
-					if (!ContentManager.Prefabs.beans) throw new ArgumentNullException();
-				}
-				catch
-				{
-					Debug.LogWarning("Beans somehow doesn\'t exist on the npc list, the mod won\'t spawn new npcs");
-					goto items;
-				}
-			}
-
-
-
-			ContentManager.instance.SetupWeightNPCValues(); // Anything that starts with Setup is... to setup :)
-
-
-			__instance.ld.potentialNPCs.AddRange(ContentManager.instance.GetNPCs(currentFloor));
-
-		items: // Skip Npcs Part
-
-			ContentManager.instance.SetupObjectBuilders();
-
-			if (!accessedFloor)
-			{
-				// Hall Builders
-				__instance.ld.standardHallBuilders = __instance.ld.standardHallBuilders.AddRangeToArray(ContentManager.instance.StandardHallBuilders.ToArray());
-				__instance.ld.forcedSpecialHallBuilders = __instance.ld.forcedSpecialHallBuilders.AddRangeToArray(ContentManager.instance.GetForcedHallBuilders(currentFloor).ToArray());
-				__instance.ld.specialHallBuilders = __instance.ld.specialHallBuilders.AddRangeToArray(ContentManager.instance.GetObjectBuilders(currentFloor).ToArray());
-
-				// Room Builders
-
-				__instance.ld.classBuilders = __instance.ld.classBuilders.AddRangeToArray(ContentManager.instance.GetNewRoomBuilders(RoomCategory.Class).ToArray());
-				__instance.ld.facultyBuilders = __instance.ld.facultyBuilders.AddRangeToArray(ContentManager.instance.GetNewRoomBuilders(RoomCategory.Faculty).ToArray());
-				__instance.ld.officeBuilders = __instance.ld.officeBuilders.AddRangeToArray(ContentManager.instance.GetNewRoomBuilders(RoomCategory.Office).ToArray());
-
-			}
-
-			ContentManager.instance.SetupItemWeights();
-
-			__instance.ld.items = __instance.ld.items.AddRangeToArray(ContentManager.instance.GetItems(currentFloor).ToArray());
-
-			__instance.ld.shopItems = __instance.ld.shopItems.AddRangeToArray(ContentManager.instance.GetShoppingItems(currentFloor).ToArray());
-
-
-			if (__instance.ld.fieldTrip)
-				__instance.ld.fieldTripItems.AddRange(ContentManager.instance.FieldTripItems); // Add field trip items
-
-
-			// Event Stuff
-
-			ContentManager.instance.SetupEventWeights();
-
-			__instance.ld.randomEvents.AddRange(ContentManager.instance.GetEvents(currentFloor)); // Add queued events for the floor
-
-			// Replacing Office's Door
-
-			var newMat = ScriptableObject.CreateInstance<StandardDoorMats>();
-			newMat.open = new Material(__instance.ld.classDoorMat.open) { mainTexture = ContentAssets.GetAsset<Texture2D>("officeDoorOpen") };
-			newMat.shut = new Material(__instance.ld.classDoorMat.shut) { mainTexture = ContentAssets.GetAsset<Texture2D>("officeDoorClosed") };
-			newMat.name = "OfficeDoor_Mat";
-			__instance.ld.OfficeDoorMat = newMat; // Changing the office material to a custom one
-
-			// Changing generator parameters
-
-			if (!accessedFloor)
-			{
-				switch (currentFloor)
-				{
-					case Floors.F1:
-						__instance.ld.maxClassRooms = 5;
-						__instance.ld.maxSize += new IntVector2(6, 6);
-						__instance.ld.maxPlots += 1;
-						__instance.ld.maxFacultyRooms += 1;
-						__instance.ld.additionalNPCs += 1;
-						break;
-					case Floors.F2:
-						__instance.ld.minClassRooms = 6;
-						__instance.ld.maxClassRooms = 8;
-						__instance.ld.minSize += new IntVector2(5, 6);
-						__instance.ld.maxSize += new IntVector2(10, 10);
-						__instance.ld.maxPlots += 2;
-						__instance.ld.exitCount += 1;
-						__instance.ld.minHallsToRemove += 1;
-						__instance.ld.maxHallsToRemove += 2;
-						__instance.ld.maxReplacementHalls += 1;
-						__instance.ld.minFacultyRooms += 1;
-						__instance.ld.maxFacultyRooms += 2;
-						__instance.ld.additionalNPCs += 2;
-						__instance.ld.maxLightDistance = 10;
-						__instance.ld.standardLightChance = 25;
-						__instance.ld.maxSpecialBuilders += 1;
-						__instance.ld.maxOffices = 2;
-						break;
-					case Floors.END:
-						__instance.ld.minClassRooms = 6;
-						__instance.ld.maxClassRooms = 8;
-						__instance.ld.minSize += new IntVector2(5, 6);
-						__instance.ld.maxSize += new IntVector2(10, 10);
-						__instance.ld.maxPlots += 2;
-						__instance.ld.minHallsToRemove += 1;
-						__instance.ld.maxHallsToRemove += 2;
-						__instance.ld.maxReplacementHalls += 2;
-						__instance.ld.maxFacultyRooms += 3;
-						__instance.ld.additionalNPCs += 3;
-						__instance.ld.maxLightDistance = 12;
-						__instance.ld.standardLightChance = 25;
-						__instance.ld.maxSpecialBuilders += 2;
-						__instance.ld.maxOffices = 2;
-						break;
-					case Floors.F3:
-						__instance.ld.maxClassRooms = 12;
-						__instance.ld.minSize += new IntVector2(8, 10);
-						__instance.ld.maxSize += new IntVector2(20, 20);
-						__instance.ld.minPlots += 6;
-						__instance.ld.maxPlots += 9;
-						__instance.ld.minHallsToRemove += 4;
-						__instance.ld.maxHallsToRemove += 5;
-						__instance.ld.minReplacementHalls += 1;
-						__instance.ld.maxReplacementHalls += 3;
-						__instance.ld.minFacultyRooms += 3;
-						__instance.ld.maxFacultyRooms += 2;
-						__instance.ld.additionalNPCs += 5;
-						__instance.ld.maxLightDistance = 15;
-						__instance.ld.maxSpecialBuilders += 2;
-						__instance.ld.minOffices = 2;
-						__instance.ld.maxOffices = 3;
-						break;
-				}
-			}
-
-
-
-		skipPoster:
-
-			// Adding custom textures
-			ContentManager.instance.SetupSchoolTextWeights();
-
-			// Changes classroom stuff
-
-			__instance.ld.classCeilingTexs = __instance.ld.classCeilingTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(currentFloor, SchoolTextType.Ceiling, 0).ToArray());
-			__instance.ld.classWallTexs = __instance.ld.classWallTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(currentFloor, SchoolTextType.Wall, 0).ToArray());
-			__instance.ld.classFloorTexs = __instance.ld.classFloorTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(currentFloor, SchoolTextType.Floor, 0).ToArray());
-
-			// Changes faculty stuff
-			__instance.ld.facultyCeilingTexs = __instance.ld.facultyCeilingTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(currentFloor, SchoolTextType.Ceiling, 1).ToArray());
-			__instance.ld.facultyWallTexs = __instance.ld.facultyWallTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(currentFloor, SchoolTextType.Wall, 1).ToArray());
-			__instance.ld.facultyFloorTexs = __instance.ld.facultyFloorTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(currentFloor, SchoolTextType.Floor, 1).ToArray());
-
-			// Changes school stuff
-			__instance.ld.hallCeilingTexs = __instance.ld.hallCeilingTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(currentFloor, SchoolTextType.Ceiling).ToArray());
-			__instance.ld.hallFloorTexs = __instance.ld.hallFloorTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(currentFloor, SchoolTextType.Floor).ToArray());
-			__instance.ld.hallWallTexs = __instance.ld.hallWallTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(currentFloor, SchoolTextType.Wall).ToArray());
-
-			if (!ContentManager.instance.sweepPoster)
-			{
-				var sweep = Resources.FindObjectsOfTypeAll<GottaSweep>()[0];
-				ContentManager.instance.sweepPoster = UnityEngine.Object.Instantiate(sweep.Poster.baseTexture);
-				ContentManager.instance.sweepSprite = UnityEngine.Object.Instantiate(sweep.spriteBase.transform.Find("Sprite").GetComponent<SpriteRenderer>().sprite);
-			}
-
-			if (!accessedFloor)
-			{
-				__instance.ld.specialRooms = __instance.ld.specialRooms.AddRangeToArray(ContentManager.instance.GetSpecialRooms(currentFloor));
-			}
-
-
-
-			ContentManager.instance.SetupExtraContent();
-
-			ContentManager.instance.TurnDecorations(true);
+			ContentManager.instance.TurnDecorations(true); // Turn PrefabInstances on for... instancing
 
 
 
@@ -684,7 +686,6 @@ namespace Patches.Main
 
 			if (currentFloor == Floors.None) return; // Fixes the crash on challenge, since it's an invalid floor
 			var rng = EnvironmentExtraVariables.lb.controlledRNG;
-			ContentManager.instance.LockAccessedFloor(currentFloor); // On the end of the patch, so the features aren't applied twice
 
 			var cafeterias = UnityEngine.Object.FindObjectsOfType<CafeteriaCreator>();
 			WeightedItemObject[] cafeItems = ContentManager.instance.CafeteriaItems.ToArray();
