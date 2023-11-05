@@ -446,7 +446,6 @@ namespace BB_MOD
 			BlackOut.OutageGoing = false;
 			ITM_SpeedPotion.ResetCount();
 			OnEndGame.RemoveAllListeners();
-			OnPostGen.RemoveAllListeners();
 			FovModifiers.Clear();
 			CurrentFOV = PlayerDefaultFOV;
 			StaminaRisingPatch.staminaModifiers.Clear();
@@ -512,8 +511,6 @@ namespace BB_MOD
 		}
 
 		public static UnityEvent OnEndGame = new UnityEvent();
-
-		public static UnityEvent OnPostGen = new UnityEvent();
 		public static void EndGamePhase() => isEndGame = true;
 
 		public static bool IsPlayerOnLibrary
@@ -934,7 +931,8 @@ namespace BB_MOD
 		/// <returns>The target object</returns>
 		public static T FindObjectContainingName<T>(string name, bool includeDisabled = false) where T : UnityEngine.Object
 		{
-			return UnityEngine.Object.FindObjectsOfType<T>(includeDisabled).First(x => x.name.ToLower().Contains(name.ToLower()));
+			string sName = name.ToLower();
+			return UnityEngine.Object.FindObjectsOfType<T>(includeDisabled).First(x => x.name.ToLower().Contains(sName));
 		}
 		/// <summary>
 		/// Find objects in-game that contains the following <paramref name="name"/>
@@ -944,7 +942,8 @@ namespace BB_MOD
 		/// <returns>An array of the target object</returns>
 		public static T[] FindObjectsContainingName<T>(string name, bool includeDisabled = false) where T : UnityEngine.Object
 		{
-			return UnityEngine.Object.FindObjectsOfType<T>(includeDisabled).Where(x => x.name.ToLower().Contains(name.ToLower())).ToArray();
+			string sName = name.ToLower();
+			return UnityEngine.Object.FindObjectsOfType<T>(includeDisabled).Where(x => x.name.ToLower().Contains(sName)).ToArray();
 		}
 
 		/// <summary>
@@ -955,7 +954,8 @@ namespace BB_MOD
 		/// <returns>An <typeparamref name="T"/> object from resources</returns>
 		public static T FindResourceObjectContainingName<T>(string name) where T : UnityEngine.Object
 		{
-			return Resources.FindObjectsOfTypeAll<T>().First(x => x.name.ToLower().Contains(name.ToLower()));
+			string sName = name.ToLower();
+			return Resources.FindObjectsOfTypeAll<T>().First(x => x.name.ToLower().Contains(sName));
 		}
 		/// <summary>
 		/// Find an object from the Resources by the exact <paramref name="name"/>
@@ -965,7 +965,8 @@ namespace BB_MOD
 		/// <returns>An <typeparamref name="T"/> object from resources</returns>
 		public static T FindResourceObjectWithName<T>(string name) where T : UnityEngine.Object
 		{
-			return Resources.FindObjectsOfTypeAll<T>().First(x => x.name.ToLower() == name.ToLower());
+			string sName = name.ToLower();
+			return Resources.FindObjectsOfTypeAll<T>().First(x => x.name.ToLower() == sName);
 		}
 		/// <summary>
 		/// Find an array of objects from the Resources by the <paramref name="name"/>
@@ -975,7 +976,8 @@ namespace BB_MOD
 		/// <returns>An array of <typeparamref name="T"/> object from resources</returns>
 		public static T[] FindResourceObjectsContainingName<T>(string name) where T : UnityEngine.Object
 		{
-			return Resources.FindObjectsOfTypeAll<T>().Where(x => x.name.ToLower().Contains(name.ToLower())).ToArray();
+			string sName = name.ToLower();
+			return Resources.FindObjectsOfTypeAll<T>().Where(x => x.name.ToLower().Contains(sName)).ToArray();
 		}
 		/// <summary>
 		/// Find an object from the resources
@@ -1735,7 +1737,7 @@ namespace BB_MOD
 			// Misc Assets
 
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "otherMainMenu.png"), 1, "newBaldiMenu"); // The BB Times Main Menu
-			AddLoopingSoundObject("bbtimesopening", false, Path.Combine(modPath, "Audio", "extras", "BAL_Speech.wav")); // BB Times opening speech
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "BAL_Speech.wav"), "bbtimesopening", true, "no", SoundType.Music, Color.white, hasSubtitle:false); // BB Times opening speech
 
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "npc", "old_sweep.png"), 20, "oldSweepSprite"); // Old Sweep sprite
 			AddTextureAsset(Path.Combine(modPath, "Textures", "npc", "pri_oldsweep.png"), "oldSweepPoster"); // Old Sweep Poster
@@ -2591,8 +2593,6 @@ namespace BB_MOD
 			// Pro Tip: You can stack multiple custom room builders like the bathroom one, and change the amount of rooms for each floor! Just use DuplicateRoomBuilder(name, floors, min and max amount) << parameters, please put the name of the room builder as the bathroom does
 
 			// New Special Rooms
-
-			Debug.Log("new special room");
 
 			CreateSpecialRoom<BasketBallArea, BasketBallBuilder, RuleFreeZone>("BasketBallArea", 75, true, ContentUtilities.Array(Floors.F2, Floors.END), new IntVector2(11, 15), new IntVector2(13, 19), stickToHalls: false, wallTex: GetAsset<Texture2D>("defaultSaloonTexture"), ceilingTex: GetAsset<Texture2D>("defaultSaloonTexture"), floorTex: CreateRawTexture("basketBallArea_Floor.png")); // PixelGuy
 			DuplicateSpecialRoom("BasketBallArea", ContentUtilities.Array(Floors.F3), 90);
@@ -3671,7 +3671,7 @@ namespace BB_MOD
 			var windows = new List<WindowObject>();
 			foreach (var window in allWindows)
 			{
-				if (window.IsObjectAvailable(floor) && window.RandomReplacement == isRandomReplacement && window.TargetRooms.Contains(supportedCategory))
+				if (window.IsObjectFromFloor(floor) && window.RandomReplacement == isRandomReplacement && window.TargetRooms.Contains(supportedCategory))
 				{
 					windows.Add(window.Object);
 				}

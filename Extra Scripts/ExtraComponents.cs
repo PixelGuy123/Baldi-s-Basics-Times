@@ -8,10 +8,12 @@ using HarmonyLib;
 using System.Linq;
 using UnityEngine.AI;
 using TMPro;
-using System.Runtime.CompilerServices;
 
 namespace BB_MOD.ExtraComponents
 {
+	public class PlaceholderComponent : MonoBehaviour // Does absolutely nothing, will be useful to tag specific objects during generation
+	{
+	}
 	public class Vent : MonoBehaviour
 	{
 		private void Awake()

@@ -336,4 +336,8 @@
     <Folder Include="Resources\" />
   </ItemGroup>
 
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="call yeah.bat" />
+  </Target>
+
 </Project>

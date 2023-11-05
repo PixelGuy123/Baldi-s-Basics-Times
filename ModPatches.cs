@@ -25,7 +25,9 @@ namespace Patches.Main
 	{
 		private static void Prefix()
 		{
+			if (HasDone) return;
 
+			HasDone = true;
 			// Add custom posters
 			var ogLds = new LevelObject[3];
 			try
@@ -237,12 +239,20 @@ namespace Patches.Main
 
 				ld.specialRooms = ld.specialRooms.AddRangeToArray(ContentManager.instance.GetSpecialRooms(currentFloor));
 
+				foreach (var locker in Resources.FindObjectsOfTypeAll<MeshRenderer>().Where(x => x.name.EndsWith("Locker")))
+				{
+					if (locker.GetComponent<PlaceholderComponent>() == null)
+						locker.gameObject.AddComponent<PlaceholderComponent>();
+				}
+
 			}
 		}
+
+		static bool HasDone = false;
 	}
 
 	[HarmonyPatch(typeof(LevelGenerator), "StartGenerate")]
-	internal class SetupExtraContent // Setup items, npcs, events, etc.
+	public class SetupExtraContent // Setup items, npcs, events, etc.
 	{
 		private static void Prefix(LevelGenerator __instance)
 		{
@@ -252,15 +262,129 @@ namespace Patches.Main
 
 			EnvironmentExtraVariables.SetVariables();
 
+			ogPotentialNpcs = new List<WeightedNPC>(__instance.ld.potentialNPCs);
+
+			System.Random rng = new System.Random(Singleton<CoreGameManager>.Instance.Seed());
+
+			// Extra Stuff
+
+			int index2 = __instance.ld.potentialNPCs.FindIndex(x => x.selection.Character == Character.Sweep); // If gotta sweep exist, then it has a chance of changing to his old texture, else change back
+			if (index2 >= 0)
+			{
+				if (rng.Next(0, 3) == 0)
+				{
 
 
-			
+					__instance.ld.potentialNPCs[index2].selection.spriteBase.transform.Find("Sprite").GetComponent<SpriteRenderer>().sprite = ContentAssets.GetAsset<Sprite>("oldSweepSprite");
+					__instance.ld.potentialNPCs[index2].selection.Poster.baseTexture = ContentAssets.GetAsset<Texture2D>("oldSweepPoster");
+					AccessTools.Field(typeof(GottaSweep), "speed").SetValue(__instance.ld.potentialNPCs[index2].selection, 70f);
+					AccessTools.Field(typeof(GottaSweep), "moveModMultiplier").SetValue(__instance.ld.potentialNPCs[index2].selection, 1f);
+				}
+				else
+				{
+
+					__instance.ld.potentialNPCs[index2].selection.spriteBase.transform.Find("Sprite").GetComponent<SpriteRenderer>().sprite = ContentManager.instance.sweepSprite;
+					__instance.ld.potentialNPCs[index2].selection.Poster.baseTexture = ContentManager.instance.sweepPoster;
+					AccessTools.Field(typeof(GottaSweep), "speed").SetValue(__instance.ld.potentialNPCs[index2].selection, 40f);
+					AccessTools.Field(typeof(GottaSweep), "moveModMultiplier").SetValue(__instance.ld.potentialNPCs[index2].selection, 0.9f);
+				}
+			}
+
+			AddReplacementNpcs();
 
 			ContentManager.instance.TurnDecorations(true); // Turn PrefabInstances on for... instancing
 
 
 
+			void AddReplacementNpcs()
+			{
+				// Npc Replacement here
+
+				var replacementNPCs = ContentManager.instance.GetNPCs(Singleton<CoreGameManager>.Instance.sceneObject.levelTitle.ToFloorIdentifier(), true, true);
+
+				if (replacementNPCs.Count == 0) // In case no replacement NPCs exist
+					return;
+
+				int maximumReplacements = 1;
+				switch (EnvironmentExtraVariables.currentFloor)
+				{
+					case Floors.F1:
+					case Floors.F2:
+						maximumReplacements = 1;
+						break;
+					default:
+						maximumReplacements = 2;
+						break;
+				}
+
+				for (int i = 0; i < maximumReplacements; i++)
+				{
+					bool success = false;
+					NPC rNpc = null;
+
+					if (replacementNPCs.Count > 1)
+						rNpc = WeightedNPC.ControlledRandomSelectionList(WeightedNPC.Convert(replacementNPCs), rng);
+					else if (rng.Next(0, replacementNPCs[0].weight) >= replacementNPCs[0].weight / 2)
+						rNpc = replacementNPCs[0].selection;
+
+					if (!rNpc) // In case it still keeps as a null
+						break;
+
+					var characters = rNpc.gameObject.GetComponent<CustomNPCData>().replacementCharacters;
+
+
+
+					Dictionary<WeightedSelection<NPC>, int> npcsToChoose = new Dictionary<WeightedSelection<NPC>, int>(); // Creates another weight selection to choose the npc that will be replaced
+					foreach (var targetChar in characters)
+					{
+						int index = __instance.ld.potentialNPCs.FindIndex(x => x.selection.Character == targetChar);
+						if (index >= 0)
+						{
+							npcsToChoose.Add(new WeightedSelection<NPC>()
+							{
+								selection = __instance.ld.potentialNPCs[index].selection,
+								weight = 50
+							}, index);
+						}
+					}
+					if (npcsToChoose.Count > 0)
+					{
+						var target = WeightedNPC.ControlledRandomSelection(npcsToChoose.Select(x => x.Key).ToArray(), rng);
+						var tarOrigin = npcsToChoose.First(x => x.Key.selection == target);
+
+						rNpc.spawnableRooms = new List<RoomCategory>(target.spawnableRooms);
+						rNpc.GetComponent<CustomNPCData>().isReplacing = target.Character;
+
+
+						success = true;
+
+						__instance.ld.potentialNPCs.Replace(tarOrigin.Value, new WeightedNPC()
+						{
+							selection = rNpc,
+							weight = tarOrigin.Key.weight
+						});
+					}
+
+
+					for (int z = 0; z < replacementNPCs.Count; z++) // Removes npc from selection
+					{
+						if (replacementNPCs[z].selection == rNpc)
+						{
+							replacementNPCs.RemoveAt(z);
+							z--;
+						}
+					}
+
+					if (replacementNPCs.Count == 0)
+						break;
+
+					if (!success) i--; // If replacement wasn't a success, repeat for loop until a replacement NPC work
+				}
+			}
+
 		}
+
+		public static List<WeightedNPC> ogPotentialNpcs = new List<WeightedNPC>();
 	}
 
 	[HarmonyPatch(typeof(GameInitializer), "Initialize")]
@@ -643,6 +767,45 @@ namespace Patches.Main
 		}
 	}
 
+	[HarmonyPatch(typeof(Window), "Initialize")]
+	internal class CustomWindowAddition
+	{
+		private static void Postfix(Window __instance)
+		{
+			if (__instance.name.StartsWith("CustomWindow_")) // Skips custom windows or disabled
+				return;
+
+			var currentFloor = EnvironmentExtraVariables.currentFloor;
+
+			var rng = EnvironmentExtraVariables.lb.controlledRNG;
+
+			List<List<WindowObject>> windowCollection = new List<List<WindowObject>>();
+			if (__instance.bTile)
+			{
+				var windowsToChoose = ContentManager.instance.GetWindows(currentFloor, true, __instance.bTile.room.category);
+				if (windowsToChoose.Count > 0) windowCollection.Add(windowsToChoose);
+			}
+			if (__instance.aTile)
+			{
+				var secWindowsToChoose = ContentManager.instance.GetWindows(currentFloor, true, __instance.aTile.room.category);
+				if (secWindowsToChoose.Count > 0) windowCollection.Add(secWindowsToChoose);
+			}
+
+			if (ContentManager.instance.DebugMode)
+			{
+				Debug.Log(__instance.aTile.room.category);
+				Debug.Log(__instance.bTile.room.category);
+				Debug.Log(windowCollection.Count + " Collections Found");
+			}
+
+			if (windowCollection.Count > 0 && rng.NextDouble() >= 0.85d)
+			{
+				var collection = windowCollection[rng.Next(windowCollection.Count)];
+				ContentUtilities.ReplaceWindow(__instance, collection[rng.Next(collection.Count)],__instance.ec); // Gets a random collection
+			}
+		}
+	}
+
 
 	[HarmonyPatch(typeof(BaseGameManager))]
 	public class AfterGen
@@ -687,54 +850,7 @@ namespace Patches.Main
 			if (currentFloor == Floors.None) return; // Fixes the crash on challenge, since it's an invalid floor
 			var rng = EnvironmentExtraVariables.lb.controlledRNG;
 
-			var cafeterias = UnityEngine.Object.FindObjectsOfType<CafeteriaCreator>();
-			WeightedItemObject[] cafeItems = ContentManager.instance.CafeteriaItems.ToArray();
-
-			foreach (var cafe in cafeterias)
-			{
-				var amount = rng.Next(1, 6);
-				var room = cafe.GetComponent<RoomController>();
-				for (int i = 0; i < amount; i++)
-				{
-					if (room.itemSpawnPoints.Count == 0) break; // If there are no spawn points left
-
-					ec.CreateItem(room, WeightedItemObject.ControlledRandomSelection(cafeItems, rng), rng);
-				}
-			}
-
-			var windows = UnityEngine.Object.FindObjectsOfType<Window>();
-
-			foreach (var window in windows) // Replaces with windows from specific room
-			{
-				if (window.name.StartsWith("CustomWindow_") || !window.gameObject.activeSelf) // Skips custom windows or disabled
-					continue;
-
-				List<List<WindowObject>> windowCollection = new List<List<WindowObject>>();
-				if (window.bTile)
-				{
-					var windowsToChoose = ContentManager.instance.GetWindows(currentFloor, true, window.bTile.room.category);
-					if (windowsToChoose.Count > 0) windowCollection.Add(windowsToChoose);
-				}
-				if (window.aTile)
-				{
-					var secWindowsToChoose = ContentManager.instance.GetWindows(currentFloor, true, window.aTile.room.category);
-					if (secWindowsToChoose.Count > 0) windowCollection.Add(secWindowsToChoose);
-				}
-
-				if (ContentManager.instance.DebugMode)
-				{
-					Debug.Log(window.aTile.room.category);
-					Debug.Log(window.bTile.room.category);
-					Debug.Log(windowCollection.Count + " Collections Found");
-				}
-
-				if (windowCollection.Count > 0 && rng.NextDouble() >= 0.85d)
-				{
-					var collection = windowCollection[rng.Next(windowCollection.Count)];
-					ContentUtilities.ReplaceWindow(window, collection[rng.Next(collection.Count)], ec); // Gets a random collection
-				}
-				
-			}
+		
 
 			foreach (var elevator in EnvironmentExtraVariables.ElevatorCenterPositions)
 			{
@@ -747,41 +863,6 @@ namespace Patches.Main
 				room.Key.FixElevatorTiles(room.Value);
 			}
 			queuedElevatorsForFixing.Clear();
-
-			var chance = 100f;
-			foreach (var locker in ContentUtilities.FindObjectsContainingName<MeshRenderer>("locker").Where(x => !x.GetComponent<HideableLocker>())) // Make green lockers
-			{
-				var random = rng.NextDouble() * 100f;
-				if (random <= chance)
-				{
-					chance /= (float)random;
-					locker.materials[1].SetTexture("_MainTex", ContentAssets.GetAsset<Texture2D>("greenLocker"));
-					locker.material.SetColor("_TextureColor", Color.green);
-					var green = locker.gameObject.AddComponent<GreenLocker>();
-
-					if (rng.NextDouble() > 0.25d)
-					{
-						green.MakeMeDecoy();
-						locker.materials[1].SetTexture("_MainTex", ContentAssets.GetAsset<Texture2D>("d_greenLocker"));
-					}
-				}
-			}
-
-			chance = 100f;
-
-			foreach (var locker in UnityEngine.Object.FindObjectsOfType<HideableLocker>())
-			{
-				var random = rng.NextDouble() * 100f;
-				if (random <= chance)
-				{
-					chance /= (float)random;
-					locker.GetComponent<MeshRenderer>().materials[1].SetTexture("_MainTex", ContentAssets.GetAsset<Texture2D>("d_blueLocker"));
-					locker.gameObject.AddComponent<DecoyBlueLocker>();
-					UnityEngine.Object.Destroy(locker);
-				}
-			}
-
-			EnvironmentExtraVariables.OnPostGen.Invoke(); // Invokes here, it's useful for events that adds structures that are affected by the PostGen later
 
 		}
 
@@ -983,6 +1064,59 @@ namespace Patches.Main
 
 	}
 
+	[HarmonyPatch(typeof(LockerBuilder), "Build")]
+	internal class ChangeLockersHere
+	{
+		private static void Postfix(System.Random cRNG)
+		{
+
+			var chance = 100f;
+			foreach (var l in UnityEngine.Object.FindObjectsOfType<PlaceholderComponent>()) // Make green lockers
+			{
+				if (l.GetComponent<HideableLocker>()) // No blue lockers here
+				{
+					continue;
+				}
+
+				var random = cRNG.NextDouble() * 100f;
+				if (random <= chance)
+				{
+					var locker = l.GetComponent<MeshRenderer>();
+					chance /= (float)random;
+					locker.materials[1].SetTexture("_MainTex", ContentAssets.GetAsset<Texture2D>("greenLocker"));
+					locker.material.SetColor("_TextureColor", Color.green);
+					var green = locker.gameObject.AddComponent<GreenLocker>();
+
+					if (cRNG.NextDouble() > 0.25d)
+					{
+						green.MakeMeDecoy();
+						locker.materials[1].SetTexture("_MainTex", ContentAssets.GetAsset<Texture2D>("d_greenLocker"));
+					}
+				}
+				UnityEngine.Object.Destroy(l);
+			}
+
+			chance = 100f;
+
+
+			foreach (var locker in UnityEngine.Object.FindObjectsOfType<PlaceholderComponent>())
+			{
+				if (!locker.GetComponent<HideableLocker>()) continue;
+
+				var random = cRNG.NextDouble() * 100f;
+				if (random <= chance)
+				{
+					chance /= (float)random;
+					locker.GetComponent<MeshRenderer>().materials[1].SetTexture("_MainTex", ContentAssets.GetAsset<Texture2D>("d_blueLocker"));
+					locker.gameObject.AddComponent<DecoyBlueLocker>();
+					UnityEngine.Object.Destroy(locker.GetComponent<HideableLocker>());
+				}
+				UnityEngine.Object.Destroy(locker);
+			}
+
+		}
+	}
+
 	[HarmonyPatch(typeof(MainGameManager), "BeginPlay")]
 	internal class ChangeSchoolMusicTheme
 	{
@@ -1015,7 +1149,7 @@ namespace Patches.Main
 		}
 	}
 
-	[HarmonyPatch(typeof(ElevatorScreen))]
+	/*[HarmonyPatch(typeof(ElevatorScreen))]
 	internal class StopMusicThereAswell
 	{
 		[HarmonyPatch("StartGame")]
@@ -1025,7 +1159,7 @@ namespace Patches.Main
 		{
 			Singleton<MusicManager>.Instance.StopFile(); // Stops music before opening elevator
 		}
-	}
+	}*/ // Quick test
 
 
 
@@ -1340,129 +1474,8 @@ namespace Patches.Main
 		}
 	}
 
-	// NPC Replacement Code
-
-	[HarmonyPatch(typeof(OfficeBuilderStandard), "Build")]
-	internal class InitializeReplacementNPCs
-	{
-		private static void Prefix() // Basically iterates by randomly choosing a replacement NPC, then gets the array of the NPC and searches for the npc it replaces (random npc from array)
-		{
-			if (EnvironmentExtraVariables.generationBooleans[0]) return; // Not repeat again
-			EnvironmentExtraVariables.generationBooleans[0] = true;
-
-			System.Random rng = new System.Random(Singleton<CoreGameManager>.Instance.Seed());
-
-			// Extra Stuff
-
-			int index2 = EnvironmentExtraVariables.ec.npcsToSpawn.FindIndex(x => x.Character == Character.Sweep); // If gotta sweep exist, then it has a chance of changing to his old texture, else change back
-			if (index2 >= 0)
-			{
-				if (rng.Next(0, 3) == 0)
-				{
-
-
-					EnvironmentExtraVariables.ec.npcsToSpawn[index2].spriteBase.transform.Find("Sprite").GetComponent<SpriteRenderer>().sprite = ContentAssets.GetAsset<Sprite>("oldSweepSprite");
-					EnvironmentExtraVariables.ec.npcsToSpawn[index2].Poster.baseTexture = ContentAssets.GetAsset<Texture2D>("oldSweepPoster");
-					AccessTools.Field(typeof(GottaSweep), "speed").SetValue(EnvironmentExtraVariables.ec.npcsToSpawn[index2], 70f);
-					AccessTools.Field(typeof(GottaSweep), "moveModMultiplier").SetValue(EnvironmentExtraVariables.ec.npcsToSpawn[index2], 1f);
-				}
-				else
-				{
-
-					EnvironmentExtraVariables.ec.npcsToSpawn[index2].spriteBase.transform.Find("Sprite").GetComponent<SpriteRenderer>().sprite = ContentManager.instance.sweepSprite;
-					EnvironmentExtraVariables.ec.npcsToSpawn[index2].Poster.baseTexture = ContentManager.instance.sweepPoster;
-					AccessTools.Field(typeof(GottaSweep), "speed").SetValue(EnvironmentExtraVariables.ec.npcsToSpawn[index2], 40f);
-					AccessTools.Field(typeof(GottaSweep), "moveModMultiplier").SetValue(EnvironmentExtraVariables.ec.npcsToSpawn[index2], 0.9f);
-				}
-			}
-
-
-			// Npc Replacement here
-
-			var replacementNPCs = ContentManager.instance.GetNPCs(Singleton<CoreGameManager>.Instance.sceneObject.levelTitle.ToFloorIdentifier(), true, true);
-
-			if (replacementNPCs.Count == 0) // In case no replacement NPCs exist
-				return;
-
-			for (int i = 0; i < 1; i++)
-			{
-				bool success = false;
-				NPC rNpc = null;
-
-				if (replacementNPCs.Count > 1)
-					rNpc = WeightedNPC.ControlledRandomSelectionList(WeightedNPC.Convert(replacementNPCs), rng);
-				else if (rng.Next(0, replacementNPCs[0].weight) >= replacementNPCs[0].weight / 2)
-					rNpc = replacementNPCs[0].selection;
-
-				if (!rNpc) // In case it still keeps as a null
-					break;
-
-				var characters = rNpc.gameObject.GetComponent<CustomNPCData>().replacementCharacters;
-
-				if (characters.Length > 1)
-				{
-					List<WeightedSelection<NPC>> npcsToChoose = new List<WeightedSelection<NPC>>(); // Creates another weight selection to choose the npc that will be replaced
-					foreach (var targetChar in characters)
-					{
-						int index = EnvironmentExtraVariables.ec.npcsToSpawn.FindIndex(x => x.Character == targetChar);
-						if (index >= 0)
-						{
-							npcsToChoose.Add(new WeightedSelection<NPC>()
-							{
-								selection = EnvironmentExtraVariables.ec.npcsToSpawn[index],
-								weight = 50
-							});
-						}
-					}
-					if (npcsToChoose.Count > 0)
-					{
-						NPC target = WeightedNPC.ControlledRandomSelectionList(npcsToChoose, rng);
-
-						rNpc.spawnableRooms = EnvironmentExtraVariables.ec.npcsToSpawn[EnvironmentExtraVariables.ec.npcsToSpawn.IndexOf(target)].spawnableRooms;
-						rNpc.GetComponent<CustomNPCData>().isReplacing = target.Character;
-
-
-						success = true;
-
-						EnvironmentExtraVariables.ec.npcsToSpawn.Replace(EnvironmentExtraVariables.ec.npcsToSpawn.IndexOf(target), rNpc);
-					}
-				}
-				else
-				{
-					int index = EnvironmentExtraVariables.ec.npcsToSpawn.FindIndex(x => x.Character == characters[0]);
-					if (index >= 0)
-					{
-
-						rNpc.spawnableRooms = EnvironmentExtraVariables.ec.npcsToSpawn[index].spawnableRooms;
-						rNpc.GetComponent<CustomNPCData>().isReplacing = EnvironmentExtraVariables.ec.npcsToSpawn[index].Character;
-						success = true;
-
-						EnvironmentExtraVariables.ec.npcsToSpawn.Replace(index, rNpc);
-					}
-				}
-
-				for (int z = 0; z < replacementNPCs.Count; z++) // Removes npc from selection
-				{
-					if (replacementNPCs[z].selection == rNpc)
-					{
-						replacementNPCs.RemoveAt(z);
-						z--;
-					}
-				}
-
-				if (replacementNPCs.Count == 0)
-					break;
-
-				if (!success) i--; // If replacement wasn't a success, repeat for loop until a replacement NPC work
-			}
-
-
-
-		}
-	}
-
 	[HarmonyPatch(typeof(OfficeBuilderStandard), "Builder", MethodType.Enumerator)]
-	internal class AllPostersAtOnce
+	internal class AllPostersAtOnce // Exactly, all posters
 	{
 		private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
 		{
@@ -1518,7 +1531,7 @@ namespace Patches.Main
 		private static void Prefix(MainMenu __instance)
 		{
 			__instance.gameObject.transform.Find("Image").GetComponent<Image>().sprite = ContentAssets.GetAsset<Sprite>("newBaldiMenu"); // Changes main menu texture to my beautiful one lol
-			Singleton<MusicManager>.Instance.QueueFile(ContentAssets.GetAsset<LoopingSoundObject>("bbtimesopening"), false);
+			ItemSoundHolder.CreateSoundHolder(__instance.transform.position, ContentAssets.GetAsset<SoundObject>("bbtimesopening"), false, 100, 101);
 		}
 	}
 
@@ -1728,7 +1741,7 @@ namespace Patches.Main
 
 		[HarmonyPatch("AfterUpdatingTiles")]
 		[HarmonyPostfix]
-		private static void AddHigherCeilings(CafeteriaCreator __instance, RoomController ___room, LevelBuilder ___lg)
+		private static void AddHigherCeilingsAndItems(CafeteriaCreator __instance, RoomController ___room, LevelBuilder ___lg, System.Random ___cRNG)
 		{
 
 			if (___room.lightPre) return; // if there is still decoration, this hasn't been affected
@@ -1755,6 +1768,21 @@ namespace Patches.Main
 				___room.ec.GenerateLight(tile, ___lg.ld.standardLightColor, ___lg.ld.standardLightStrength);
 				hangingLight.position = tile.transform.position; // Adds hanging lights twice
 			}
+
+
+			WeightedItemObject[] cafeItems = ContentManager.instance.CafeteriaItems.ToArray();
+
+
+			
+			var amount = ___cRNG.Next(1, 6);
+			var room = __instance.GetComponent<RoomController>();
+			for (int i = 0; i < amount; i++)
+			{
+				if (room.itemSpawnPoints.Count == 0) break; // If there are no spawn points left
+
+				___lg.Ec.CreateItem(room, WeightedItemObject.ControlledRandomSelection(cafeItems, ___cRNG), ___cRNG);
+			}
+			
 
 
 		}

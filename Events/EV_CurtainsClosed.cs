@@ -35,16 +35,15 @@ namespace BB_MOD.Events
 		public override void AfterUpdateSetup()
 		{
 			base.AfterUpdateSetup();
-			EnvironmentExtraVariables.OnPostGen.AddListener(() =>
+			
+			foreach (var window in FindObjectsOfType<Window>())
 			{
-				foreach (var window in FindObjectsOfType<Window>())
-				{
-					var curtain = PrefabInstance.SpawnPrefab<Curtains>(window.transform.position, window.transform.rotation, ec, false);
-					curtain.SetWindow(window);
-					curtain.Execute();
-					curtains.Add(curtain);
-				}
-			});
+				var curtain = PrefabInstance.SpawnPrefab<Curtains>(window.transform.position, window.transform.rotation, ec, false);
+				curtain.SetWindow(window);
+				curtain.Execute();
+				curtains.Add(curtain);
+			}
+			
 			
 		}
 
