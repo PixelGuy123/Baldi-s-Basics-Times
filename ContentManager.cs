@@ -1,4 +1,5 @@
-﻿using BB_MOD.Builders;
+﻿using BB_MOD.BepInEx;
+using BB_MOD.Builders;
 using BB_MOD.Events;
 using BB_MOD.ExtraComponents;
 using BB_MOD.ExtraItems;
@@ -1719,8 +1720,8 @@ namespace BB_MOD
 
 			// Misc Assets
 
-			AddSpriteAsset(Path.Combine(modPath, "Textures", "otherMainMenu.png"), 1, "newBaldiMenu"); // The BB Times Main Menu
-			AddSoundObject(Path.Combine(modPath, "Audio", "extras", "BAL_Speech.wav"), "bbtimesopening", "no", SoundType.Music, Color.white, hasSubtitle:false); // BB Times opening speech
+			AddSpriteAsset(Path.Combine(modPath, "Textures", BasePlugin.EndlessAvailable ? "endlessMainMenu.png" : "otherMainMenu.png"), 1, "newBaldiMenu"); // The BB Times Main Menu
+			AddSoundObject(Path.Combine(modPath, "Audio", "extras", BasePlugin.EndlessAvailable ? "BAL_Speech_InfiniteFloors.wav" : "BAL_Speech.wav"), "bbtimesopening", "no", SoundType.Music, Color.white, hasSubtitle:false); // BB Times opening speech
 
 			AddSpriteAsset(Path.Combine(modPath, "Textures", "npc", "old_sweep.png"), 20, "oldSweepSprite"); // Old Sweep sprite
 			AddTextureAsset(Path.Combine(modPath, "Textures", "npc", "pri_oldsweep.png"), "oldSweepPoster"); // Old Sweep Poster
@@ -1741,7 +1742,6 @@ namespace BB_MOD
 			AddTextureAsset(Path.Combine(modPath, "Textures", "schooltext", "defaultWall.png"), "defaultWallTexture"); // Adds the default texture for the wall
 			AddTextureAsset(Path.Combine(modPath, "Textures", "schooltext", "defaultSaloonTexture.png"), "defaultSaloonTexture"); // Adds the default texture for the wall
 
-			AddLoopingSoundObject("SchoolEscapeSong", Path.Combine(modPath, "Audio", "extras", "schoolHouseEscape.wav"));
 			AddLoopingSoundObject("AngrySchool_Phase1", Path.Combine(modPath, "Audio", "extras", "Quiet_noise_loop.wav")); // That UFO-like noise for the first phase of the red school house
 			AddLoopingSoundObject("AngrySchool_Phase2", Path.Combine(modPath, "Audio", "extras", "Chaos_EarlyLoopStart.wav"), Path.Combine(modPath, "Audio", "extras", "Chaos_EarlyLoop.wav")); // Phase 2 with initial starting "angry" noise
 
@@ -2546,7 +2546,16 @@ namespace BB_MOD
 			// New Object Builders Here
 			CreateAndAddObjBuilder<WallBellBuilder>("Bell Builder", ContentUtilities.AllFloors);
 			CreateAndAddObjBuilder<BananaTreeBuilder>("Banana Tree Builder", ContentUtilities.AllFloors);
-			CreateAndAddObjBuilder<TrapDoorBuilder>("Trap Door Builder", 115, ContentUtilities.AllFloorsExcept(Floors.F1));
+			TrapDoorBuilder[] bldrs = new TrapDoorBuilder[3];
+			bldrs[0] = CreateAndAddObjBuilder<TrapDoorBuilder>("Trap Door Builder", 85, Floors.F2);
+			bldrs[0].SetMyConfigurations(1, 2, 0, 2);
+
+			bldrs[1] = CreateAndAddObjBuilder<TrapDoorBuilder>("Trap Door Builder", 120, Floors.F3);
+			bldrs[1].SetMyConfigurations(1, 3, 3, 1);
+
+			bldrs[2] = CreateAndAddObjBuilder<TrapDoorBuilder>("Trap Door Builder", 100, Floors.END);
+			bldrs[2].SetMyConfigurations(2, 3, 1, 3);
+
 			CreateAndAddObjBuilder<VentBuilder>("Vent Builder", 85, ContentUtilities.AllFloorsExcept(Floors.F1));
 
 			// New Room Builders Here
@@ -2859,19 +2868,23 @@ namespace BB_MOD
 			}
 		}
 
-		private void CreateAndAddObjBuilder<B>(string name, int weight, Floors[] floors) where B : ObjectBuilder // Random
+		private B CreateAndAddObjBuilder<B>(string name, int weight, params Floors[] floors) where B : ObjectBuilder // Random
 		{
 			var obj = CreateObjectBuilder<B>(name, weight, floors);
+			var holder = new BuilderHolder(obj.selection, weight, floors);
 			if (obj.selection)
-				builders.Add(new BuilderHolder(obj.selection, weight, floors));
+				builders.Add(holder);
+			return (B)obj.selection;
 
 		}
 
-		private void CreateAndAddObjBuilder<B>(string name, Floors[] floors) where B : ObjectBuilder // Non Random
+		private B CreateAndAddObjBuilder<B>(string name, params Floors[] floors) where B : ObjectBuilder // Non Random
 		{
 			var obj = CreateObjectBuilder<B>(name, 1, floors);
+			var holder = new BuilderHolder(obj.selection, floors);
 			if (obj.selection)
-				builders.Add(new BuilderHolder(obj.selection, floors));
+				builders.Add(holder);
+			return (B)obj.selection;
 
 		}
 
@@ -2939,11 +2952,11 @@ namespace BB_MOD
 			if (!addedExtraContent[2]) // Extra Schoolhouse Themes here
 			{
 				addedExtraContent[2] = true;
-				/*CreateSchoolHouseMusic("mus_NewSchool.wav", ContentUtilities.AllFloorsExcept(Floors.F3));
-				CreateSchoolHouseMusic("mus_NewSchool1.wav", Floors.F1); // Bsidekid
-				CreateSchoolHouseMusic("mus_NewSchool2.wav", Floors.F3); // Bsidekid
+				CreateSchoolHouseMusic("mus_NewSchool.wav", ContentUtilities.AllFloorsExcept(Floors.F3));
+				CreateSchoolHouseMusic("mus_NewSchool1.mid", Floors.F1); // Bsidekid
+				CreateSchoolHouseMusic("mus_NewSchool2.mid", Floors.F3); // Bsidekid
 				CreateSchoolHouseMusic("mus_newschool3.wav", Floors.F2); // Bsidekid
-				CreateSchoolHouseMusic("mus_newschool4.wav", Floors.F2); // Bsidekid*/ // DISABLED TEMPORARILY UNTIL MIDIS ARE ADDED
+				CreateSchoolHouseMusic("mus_newschool4.wav", Floors.F2); // Bsidekid
 			}
 			if (!addedExtraContent[3])
 			{
@@ -3072,7 +3085,14 @@ namespace BB_MOD
 			var path = Path.Combine(modPath, "Audio", "extras", musicName);
 			try
 			{
-				schoolHouseMusics.Add(AssetManager.MidiFromFile(path, Path.GetFileNameWithoutExtension(musicName)), supportedFloors);
+				if (Path.GetExtension(path) == ".mid" || Path.GetExtension(path) == ".midi")
+					schoolHouseMusics.Add(AssetManager.MidiFromFile(path, Path.GetFileNameWithoutExtension(musicName)), supportedFloors);
+				else
+				{
+					string name = Path.GetFileNameWithoutExtension(musicName);
+					AddLoopingSoundObject(name, path);
+					schoolHouseMusics_wav.Add(new GenericObjectHolder<LoopingSoundObject>(GetAsset<LoopingSoundObject>(name), supportedFloors));
+				}
 			}
 			catch (Exception e)
 			{
@@ -3480,6 +3500,12 @@ namespace BB_MOD
 				AvailableFloors = floors;
 			}
 
+			public void SetParameters(int minAmount, int maxAmount)
+			{
+				MaxAmount = maxAmount;
+				MinAmount = minAmount;
+			}
+
 			public bool OnlyHalls { get; }
 			public int MaxAmount { get; private set; }
 			public int MinAmount { get; private set; }
@@ -3591,7 +3617,7 @@ namespace BB_MOD
 
 		public RoomData GetRoom(RoomCategory room) => roomDatas.First(x => x.Rooms.Contains(room));
 
-		public WeightedSpecialRoomCreator[] GetSpecialRooms(Floors floor) => specialRoomDatas.Where(x => x.AvailableFloors.Contains(floor)).Select(x => x.WeightedRoom).ToArray();
+		public WeightedSpecialRoomCreator[] GetSpecialRooms() => specialRoomDatas.Where(x => x.AvailableFloors.Contains(EnvironmentExtraVariables.currentFloor)).Select(x => x.WeightedRoom).ToArray();
 
 		public bool TryGetRoom(RoomCategory room, out RoomData roomDat)
 		{
@@ -3609,7 +3635,7 @@ namespace BB_MOD
 
 		public RoomData[] GetRooms(RoomCategory room) => roomDatas.Where(x => x.Rooms.Contains(room)).ToArray();
 
-		public RoomData[] GetRooms(Floors floor) => roomDatas.Where(x => x.AvailableFloors.Contains(floor)).ToArray();
+		public RoomData[] GetRooms() => roomDatas.Where(x => x.AvailableFloors.Contains(EnvironmentExtraVariables.currentFloor)).ToArray();
 
 		public bool HasRoom(RoomCategory room) => roomDatas.Any(x => x.Rooms.Contains(room));
 
@@ -3619,12 +3645,12 @@ namespace BB_MOD
 			return roomDatas.Any(x => x.Rooms.Contains(target));
 		}
 
-		public List<WeightedNPC> GetNPCs(Floors floor, bool onlyReplacementNPCs = false, bool forceGet = false)
+		public List<WeightedNPC> GetNPCs(bool onlyReplacementNPCs = false, bool forceGet = false)
 		{
 			var npcs = new List<WeightedNPC>();
 			for (int i = 0; i < allNpcs.Count; i++)
 			{
-				if (allNpcs[i].ReturnObjectIfAvailable(floor, out var npc, !onlyReplacementNPCs) || (allNpcs[i].IsObjectFromFloor(floor) && forceGet)) // Check whether the npc is from said floor and if it is a replacement NPC or not
+				if (allNpcs[i].ReturnObjectIfAvailable(EnvironmentExtraVariables.currentFloor, out var npc, !onlyReplacementNPCs) || (allNpcs[i].IsObjectFromFloor(EnvironmentExtraVariables.currentFloor) && forceGet)) // Check whether the npc is from said floor and if it is a replacement NPC or not
 				{
 					if (npc.selection.gameObject.GetComponent<CustomNPCData>().replacementCharacters.Length > 0 == onlyReplacementNPCs)
 						npcs.Add(npc);
@@ -3635,12 +3661,12 @@ namespace BB_MOD
 
 		internal List<WindowHolder> AllWindows => allWindows;
 
-		public List<WindowObject> GetWindows(Floors floor, bool nonRandomReplacement)
+		public List<WindowObject> GetWindows(bool nonRandomReplacement)
 		{
 			var windows = new List<WindowObject>();
 			foreach (var window in allWindows)
 			{
-				if (window.IsObjectAvailable(floor) && window.RandomReplacement == !nonRandomReplacement)
+				if (window.IsObjectAvailable(EnvironmentExtraVariables.currentFloor) && window.RandomReplacement == !nonRandomReplacement)
 				{
 					windows.Add(window.Object);
 				}
@@ -3648,12 +3674,12 @@ namespace BB_MOD
 			return windows;
 		}
 
-		public List<WindowObject> GetWindows(Floors floor, bool isRandomReplacement, RoomCategory supportedCategory)
+		public List<WindowObject> GetWindows(bool isRandomReplacement, RoomCategory supportedCategory)
 		{
 			var windows = new List<WindowObject>();
 			foreach (var window in allWindows)
 			{
-				if (window.IsObjectFromFloor(floor) && window.RandomReplacement == isRandomReplacement && window.TargetRooms.Contains(supportedCategory))
+				if (window.IsObjectFromFloor(EnvironmentExtraVariables.currentFloor) && window.RandomReplacement == isRandomReplacement && window.TargetRooms.Contains(supportedCategory))
 				{
 					windows.Add(window.Object);
 				}
@@ -3661,12 +3687,12 @@ namespace BB_MOD
 			return windows;
 		}
 
-		public List<WeightedRandomEvent> GetEvents(Floors floor)
+		public List<WeightedRandomEvent> GetEvents()
 		{
 			var events = new List<WeightedRandomEvent>();
 			for (int i = 0; i < allEvents.Count; i++)
 			{
-				if (allEvents[i].ReturnObjectIfAvailable(floor, out var @event)) // Check whether the item is from said floor
+				if (allEvents[i].ReturnObjectIfAvailable(EnvironmentExtraVariables.currentFloor, out var @event)) // Check whether the item is from said floor
 				{
 					events.Add(@event);
 				}
@@ -3676,12 +3702,12 @@ namespace BB_MOD
 
 		public ItemObject GetItemByEnum(Items item) => allNewItems.Find(x => x.Object.selection.itemType == item).Object.selection;
 
-		public List<WeightedItemObject> GetItems(Floors floor)
+		public List<WeightedItemObject> GetItems()
 		{
 			var items = new List<WeightedItemObject>();
 			for (int i = 0; i < allNewItems.Count; i++)
 			{
-				if (allNewItems[i].ReturnObjectIfAvailable(floor, out var item)) // Check whether the item is from said floor
+				if (allNewItems[i].ReturnObjectIfAvailable(EnvironmentExtraVariables.currentFloor, out var item)) // Check whether the item is from said floor
 				{
 					items.Add(item);
 				}
@@ -3689,12 +3715,12 @@ namespace BB_MOD
 			return items;
 		}
 
-		public List<WeightedItemObject> GetShoppingItems(Floors floor)
+		public List<WeightedItemObject> GetShoppingItems()
 		{
 			var items = new List<WeightedItemObject>();
 			foreach (var item in allShoppingItems)
 			{
-				if (item.ReturnObjectIfAvailable(floor, out var witem)) // Check whether the item is from said floor
+				if (item.ReturnObjectIfAvailable(EnvironmentExtraVariables.currentFloor, out var witem)) // Check whether the item is from said floor
 				{
 					items.Add(witem);
 				}
@@ -3702,15 +3728,15 @@ namespace BB_MOD
 			return items;
 		}
 
-		public List<WeightedTexture2D> GetSchoolText(Floors floor, SchoolTextType type, int roomType) // 0 = classroom, 1 = faculty room, 2 = if it is rooms only (not useful on this method)
+		public List<WeightedTexture2D> GetSchoolText(SchoolTextType type, int roomType) // 0 = classroom, 1 = faculty room, 2 = if it is rooms only (not useful on this method)
 		{
-			if (accessedExtraStuff[floor])
+			if (accessedExtraStuff[EnvironmentExtraVariables.currentFloor])
 				return new List<WeightedTexture2D>();
 
 			var texts = new List<WeightedTexture2D>();
 			for (int i = 0; i < allTexts.Count; i++)
 			{
-				if (textPair[i].Contains(floor) && allTexts.ElementAt(i).Value.Contains(type) && textPairForRooms[i][roomType]) // Check whether the text is from said floor and the texture type
+				if (textPair[i].Contains(EnvironmentExtraVariables.currentFloor) && allTexts.ElementAt(i).Value.Contains(type) && textPairForRooms[i][roomType]) // Check whether the text is from said floor and the texture type
 				{
 					texts.Add(allTexts.ElementAt(i).Key);
 				}
@@ -3719,15 +3745,15 @@ namespace BB_MOD
 
 		}
 
-		public List<WeightedTexture2D> GetSchoolText(Floors floor, SchoolTextType type)
+		public List<WeightedTexture2D> GetSchoolText(SchoolTextType type)
 		{
-			if (accessedExtraStuff[floor])
+			if (accessedExtraStuff[EnvironmentExtraVariables.currentFloor])
 				return new List<WeightedTexture2D>();
 
 			var texts = new List<WeightedTexture2D>();
 			for (int i = 0; i < allTexts.Count; i++)
 			{
-				if (textPair[i].Contains(floor) && allTexts.ElementAt(i).Value.Contains(type) && !textPairForRooms[i][2]) // Check whether the text is from said floor and the texture type
+				if (textPair[i].Contains(EnvironmentExtraVariables.currentFloor) && allTexts.ElementAt(i).Value.Contains(type) && !textPairForRooms[i][2]) // Check whether the text is from said floor and the texture type
 				{
 					texts.Add(allTexts.ElementAt(i).Key);
 				}
@@ -3753,12 +3779,12 @@ namespace BB_MOD
 			return bdrs;
 		}
 
-		public List<ObjectBuilder> GetForcedHallBuilders(Floors floor)
+		public List<ObjectBuilder> GetForcedHallBuilders()
 		{
 			List<ObjectBuilder> builders = new List<ObjectBuilder>();
 			foreach (var bld in GetBuilderHolders(BuilderType.ForcedObjectBuilder))
 			{
-				if (bld.AvailableFloors.Contains(floor))
+				if (bld.AvailableFloors.Contains(EnvironmentExtraVariables.currentFloor))
 				{
 					builders.Add(bld.ForcedObjectBuilder);
 				}
@@ -3766,12 +3792,12 @@ namespace BB_MOD
 			return builders;
 		}
 
-		public List<WeightedObjectBuilder> GetObjectBuilders(Floors floor)
+		public List<WeightedObjectBuilder> GetObjectBuilders()
 		{
 			List<WeightedObjectBuilder> builders = new List<WeightedObjectBuilder>();
 			foreach (var bld in GetBuilderHolders(BuilderType.RandomObjectBuilder))
 			{
-				if (bld.AvailableFloors.Contains(floor))
+				if (bld.AvailableFloors.Contains(EnvironmentExtraVariables.currentFloor))
 				{
 					builders.Add(bld.RandomObjectBuilder);
 				}
@@ -3804,7 +3830,6 @@ namespace BB_MOD
 
 		public void AssignCustomRooms() // main method to assign custom rooms
 		{
-			var currentFloor = EnvironmentExtraVariables.currentFloor;
 			for (int i = 0; i < roomDatas.Count; i++)
 			{
 				var roomDat = roomDatas[i];
@@ -4024,9 +4049,13 @@ namespace BB_MOD
 
 		readonly Dictionary<string, Floors[]> schoolHouseMusics = new Dictionary<string, Floors[]>();
 
+		readonly List<GenericObjectHolder<LoopingSoundObject>> schoolHouseMusics_wav = new List<GenericObjectHolder<LoopingSoundObject>>();
+
 		readonly Dictionary<string, MapIcon> mapIcons = new Dictionary<string, MapIcon>();
 
-		public string[] GetSchoolHouseThemes(Floors floor) => schoolHouseMusics.Where(x => x.Value.Contains(floor)).Select(x => x.Key).ToArray();
+		public string[] GetSchoolHouseThemes() => schoolHouseMusics.Where(x => x.Value.Contains(EnvironmentExtraVariables.currentFloor)).Select(x => x.Key).ToArray();
+
+		public LoopingSoundObject[] GetSchoolHouseThemes_Wav() => schoolHouseMusics_wav.Where(x => x.IsObjectFromFloor(EnvironmentExtraVariables.currentFloor)).Select(x => x.Object).ToArray();
 
 		// -------- DONT TOUCH Variables ---------
 
@@ -4072,10 +4101,8 @@ namespace BB_MOD
 
 		public static ContentPrefabs Prefabs = new ContentPrefabs();
 
-		public int RoomCount
+		public int RoomCount()
 		{
-			get
-			{
 				if (!EnvironmentExtraVariables.lb) return 0;
 				int extra = EnvironmentExtraVariables.events.Any(x => x.Type == RandomEventType.MysteryRoom) ? 1 : 0;
 				if (DebugMode) Debug.Log("Has mystery: " + extra);
@@ -4090,7 +4117,6 @@ namespace BB_MOD
 					selectedAmounts[i] = num;
 				}
 				return max + extra;
-			}
 		}
 
 		int[] selectedAmounts;
@@ -4104,6 +4130,8 @@ namespace BB_MOD
 		public LevelObject[] OgLbObjects => copyOfLevelObjects;
 
 		readonly RoomCategory[] currentValidCategories = new RoomCategory[] { RoomCategory.Class, RoomCategory.Office, RoomCategory.Faculty };
+
+		public static UnityEvent<List<NPC>, List<ItemObject>, List<RandomEvent>> EndedInitialization_CallBack = new UnityEvent<List<NPC>, List<ItemObject>, List<RandomEvent>>();
 
 	}
 

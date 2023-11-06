@@ -26,8 +26,6 @@ namespace Patches.Main
 		private static void Prefix()
 		{
 			if (HasDone) return;
-
-			HasDone = true;
 			// Add custom posters
 			var ogLds = new LevelObject[3];
 			try
@@ -126,33 +124,36 @@ namespace Patches.Main
 			{
 				// Setup constant variables
 				Floors currentFloor = ld.name.ToFloorIdentifier(); // Support for level object now
+				EnvironmentExtraVariables.currentFloor = currentFloor;
+
+				ld.OfficeDoorMat = newMat; // Changing the office material to a custom one
+
+
 
 				ld.posters = ld.posters.AddRangeToArray(ContentManager.instance.AllPosters(false).ToArray()); // Add posters
 
 				ld.chalkBoards = ld.chalkBoards.AddRangeToArray(ContentManager.instance.AllPosters(true).ToArray()); // Add chalkboards
 
-				ld.OfficeDoorMat = newMat; // Changing the office material to a custom one
-
-				ld.potentialNPCs.AddRange(ContentManager.instance.GetNPCs(currentFloor)); // Add Npcs
+				ld.potentialNPCs.AddRange(ContentManager.instance.GetNPCs()); // Add Npcs
 
 				// Hall Builders
 				ld.standardHallBuilders = ld.standardHallBuilders.AddRangeToArray(ContentManager.instance.StandardHallBuilders.ToArray());
-				ld.forcedSpecialHallBuilders = ld.forcedSpecialHallBuilders.AddRangeToArray(ContentManager.instance.GetForcedHallBuilders(currentFloor).ToArray());
-				ld.specialHallBuilders = ld.specialHallBuilders.AddRangeToArray(ContentManager.instance.GetObjectBuilders(currentFloor).ToArray());
+				ld.forcedSpecialHallBuilders = ld.forcedSpecialHallBuilders.AddRangeToArray(ContentManager.instance.GetForcedHallBuilders().ToArray());
+				ld.specialHallBuilders = ld.specialHallBuilders.AddRangeToArray(ContentManager.instance.GetObjectBuilders().ToArray());
 
 				// Room Builders
 				ld.classBuilders = ld.classBuilders.AddRangeToArray(ContentManager.instance.GetNewRoomBuilders(RoomCategory.Class).ToArray());
 				ld.facultyBuilders = ld.facultyBuilders.AddRangeToArray(ContentManager.instance.GetNewRoomBuilders(RoomCategory.Faculty).ToArray());
 				ld.officeBuilders = ld.officeBuilders.AddRangeToArray(ContentManager.instance.GetNewRoomBuilders(RoomCategory.Office).ToArray());
 
-				ld.items = ld.items.AddRangeToArray(ContentManager.instance.GetItems(currentFloor).ToArray()); // Add Items
+				ld.items = ld.items.AddRangeToArray(ContentManager.instance.GetItems().ToArray()); // Add Items
 
-				ld.shopItems = ld.shopItems.AddRangeToArray(ContentManager.instance.GetShoppingItems(currentFloor).ToArray()); // Add shopping items
+				ld.shopItems = ld.shopItems.AddRangeToArray(ContentManager.instance.GetShoppingItems().ToArray()); // Add shopping items
 
 				if (ld.fieldTrip)
 					ld.fieldTripItems.AddRange(ContentManager.instance.FieldTripItems); // Add field trip items
 
-				ld.randomEvents.AddRange(ContentManager.instance.GetEvents(currentFloor)); // Add queued events for the floor
+				ld.randomEvents.AddRange(ContentManager.instance.GetEvents()); // Add queued events for the floor
 
 
 
@@ -222,33 +223,36 @@ namespace Patches.Main
 
 				// Changes classroom stuff
 
-				ld.classCeilingTexs = ld.classCeilingTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(currentFloor, SchoolTextType.Ceiling, 0).ToArray());
-				ld.classWallTexs = ld.classWallTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(currentFloor, SchoolTextType.Wall, 0).ToArray());
-				ld.classFloorTexs = ld.classFloorTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(currentFloor, SchoolTextType.Floor, 0).ToArray());
+				ld.classCeilingTexs = ld.classCeilingTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(SchoolTextType.Ceiling, 0).ToArray());
+				ld.classWallTexs = ld.classWallTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(SchoolTextType.Wall, 0).ToArray());
+				ld.classFloorTexs = ld.classFloorTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(SchoolTextType.Floor, 0).ToArray());
 
 				// Changes faculty stuff
-				ld.facultyCeilingTexs = ld.facultyCeilingTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(currentFloor, SchoolTextType.Ceiling, 1).ToArray());
-				ld.facultyWallTexs = ld.facultyWallTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(currentFloor, SchoolTextType.Wall, 1).ToArray());
-				ld.facultyFloorTexs = ld.facultyFloorTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(currentFloor, SchoolTextType.Floor, 1).ToArray());
+				ld.facultyCeilingTexs = ld.facultyCeilingTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(SchoolTextType.Ceiling, 1).ToArray());
+				ld.facultyWallTexs = ld.facultyWallTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(SchoolTextType.Wall, 1).ToArray());
+				ld.facultyFloorTexs = ld.facultyFloorTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(SchoolTextType.Floor, 1).ToArray());
 
 				// Changes school stuff
-				ld.hallCeilingTexs = ld.hallCeilingTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(currentFloor, SchoolTextType.Ceiling).ToArray());
-				ld.hallFloorTexs = ld.hallFloorTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(currentFloor, SchoolTextType.Floor).ToArray());
-				ld.hallWallTexs = ld.hallWallTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(currentFloor, SchoolTextType.Wall).ToArray());
+				ld.hallCeilingTexs = ld.hallCeilingTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(SchoolTextType.Ceiling).ToArray());
+				ld.hallFloorTexs = ld.hallFloorTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(SchoolTextType.Floor).ToArray());
+				ld.hallWallTexs = ld.hallWallTexs.AddRangeToArray(ContentManager.instance.GetSchoolText(SchoolTextType.Wall).ToArray());
 
 
-				ld.specialRooms = ld.specialRooms.AddRangeToArray(ContentManager.instance.GetSpecialRooms(currentFloor));
-
-				foreach (var locker in Resources.FindObjectsOfTypeAll<MeshRenderer>().Where(x => x.name.EndsWith("Locker")))
-				{
-					if (locker.GetComponent<PlaceholderComponent>() == null)
-						locker.gameObject.AddComponent<PlaceholderComponent>();
-				}
-
-
-
-
+				ld.specialRooms = ld.specialRooms.AddRangeToArray(ContentManager.instance.GetSpecialRooms());
 			}
+
+			foreach (var locker in Resources.FindObjectsOfTypeAll<MeshRenderer>().Where(x => x.name.EndsWith("Locker")))
+			{
+				locker.gameObject.AddComponent<PlaceholderComponent>();
+			}
+
+			ContentManager.EndedInitialization_CallBack.Invoke( // Specifically for mods such as Endless Floors
+				ContentManager.instance.AllNpcs.Select(x => x.selection).ToList(),
+				ContentManager.instance.AllNewItems.Select(x => x.selection).ToList(),
+				ContentManager.instance.AllEvents.Select(x => x.selection).ToList()
+				);
+
+			HasDone = true;
 		}
 
 		static bool HasDone = false;
@@ -303,7 +307,7 @@ namespace Patches.Main
 			{
 				// Npc Replacement here
 
-				var replacementNPCs = ContentManager.instance.GetNPCs(Singleton<CoreGameManager>.Instance.sceneObject.levelTitle.ToFloorIdentifier(), true, true);
+				var replacementNPCs = ContentManager.instance.GetNPCs(true, true);
 
 				if (replacementNPCs.Count == 0) // In case no replacement NPCs exist
 					return;
@@ -408,7 +412,7 @@ namespace Patches.Main
 
 			int i = codeInstructions.IndexAt(x => x.opcode == OpCodes.Stfld && x.operand.ToString().ToLower().Contains("<roomcount>")) - 4; // finds the room count and goes 4 instructions back to put the count
 			codeInstructions.Insert(i, new CodeInstruction(OpCodes.Add)); // This is inverted btw
-			codeInstructions.Insert(i, Transpilers.EmitDelegate<Func<int>>(() => ContentManager.instance.RoomCount)); // Adds the room count here
+			codeInstructions.Insert(i, Transpilers.EmitDelegate<Func<int>>(() => ContentManager.instance.RoomCount())); // Adds the room count here
 
 			i = codeInstructions.IndexAt(x => x.opcode == OpCodes.Stfld && x.operand.ToString().ToLower().Contains("potentialclassrooms"));
 			codeInstructions.Insert(i, Transpilers.EmitDelegate<Action>(ContentManager.instance.AssignCustomRooms));
@@ -778,19 +782,17 @@ namespace Patches.Main
 			if (__instance.name.StartsWith("CustomWindow_")) // Skips custom windows or disabled
 				return;
 
-			var currentFloor = EnvironmentExtraVariables.currentFloor;
-
 			var rng = EnvironmentExtraVariables.lb.controlledRNG;
 
 			List<List<WindowObject>> windowCollection = new List<List<WindowObject>>();
 			if (__instance.bTile)
 			{
-				var windowsToChoose = ContentManager.instance.GetWindows(currentFloor, true, __instance.bTile.room.category);
+				var windowsToChoose = ContentManager.instance.GetWindows(true, __instance.bTile.room.category);
 				if (windowsToChoose.Count > 0) windowCollection.Add(windowsToChoose);
 			}
 			if (__instance.aTile)
 			{
-				var secWindowsToChoose = ContentManager.instance.GetWindows(currentFloor, true, __instance.aTile.room.category);
+				var secWindowsToChoose = ContentManager.instance.GetWindows(true, __instance.aTile.room.category);
 				if (secWindowsToChoose.Count > 0) windowCollection.Add(secWindowsToChoose);
 			}
 
@@ -905,7 +907,7 @@ namespace Patches.Main
 					sound = ContentAssets.GetAsset<SoundObject>("BaldiAngryEscape"); // Angry Speak!
 				else
 				{
-					Singleton<MusicManager>.Instance.QueueFile(ContentAssets.GetAsset<LoopingSoundObject>("SchoolEscapeSong"), true); // Normal Escape Sequence
+					Singleton<MusicManager>.Instance.PlayMidi("Level_1_End", true); // escape sequence
 					sound = ContentAssets.GetAsset<SoundObject>("BaldiNormalEscape");
 				}
 				__instance.StartCoroutine(EnvironmentExtraVariables.SmoothFOVSlide(7.5f, 15, offset:25f));
@@ -1128,11 +1130,34 @@ namespace Patches.Main
 			if (EnvironmentExtraVariables.lb.controlledRNG.Next(0, 2) == 1) // Chance to change audio or not
 				return;
 
-			var musics = ContentManager.instance.GetSchoolHouseThemes(EnvironmentExtraVariables.currentFloor);
-			if (musics.Length == 0) return; // If array is empty
+			var musics1 = ContentManager.instance.GetSchoolHouseThemes();
+			var musics2 = ContentManager.instance.GetSchoolHouseThemes_Wav();
+			bool m1 = musics1.Length > 0;
+			bool m2 = musics2.Length > 0;
+			if (!m1 & !m2) return; // If array is empty
 
 			Singleton<MusicManager>.Instance.StopMidi();
-			Singleton<MusicManager>.Instance.PlayMidi(musics[EnvironmentExtraVariables.lb.controlledRNG.Next(musics.Length)], true); // Gets a random music instance to play
+
+			if (m1 & m2)
+			{
+				if (EnvironmentExtraVariables.lb.controlledRNG.NextDouble() >= 0.5)
+				{
+					Singleton<MusicManager>.Instance.PlayMidi(musics1[EnvironmentExtraVariables.lb.controlledRNG.Next(musics1.Length)], true); // Gets a random music instance to play
+				}
+				else
+				{
+					Singleton<MusicManager>.Instance.QueueFile(musics2[EnvironmentExtraVariables.lb.controlledRNG.Next(musics2.Length)], true);
+				}
+			}
+			else if (m1)
+			{
+				Singleton<MusicManager>.Instance.PlayMidi(musics1[EnvironmentExtraVariables.lb.controlledRNG.Next(musics1.Length)], true); // Gets a random music instance to play
+			}
+			else if (m2)
+			{
+				Singleton<MusicManager>.Instance.QueueFile(musics2[EnvironmentExtraVariables.lb.controlledRNG.Next(musics2.Length)], true);
+			}
+			
 		}
 	}
 
@@ -1144,11 +1169,34 @@ namespace Patches.Main
 			if (EnvironmentExtraVariables.lb.controlledRNG.Next(0, 2) == 1) // Chance to change audio or not
 				return;
 
-			var musics = ContentManager.instance.GetSchoolHouseThemes(EnvironmentExtraVariables.currentFloor);
-			if (musics.Length == 0) return; // If array is empty
+			var musics1 = ContentManager.instance.GetSchoolHouseThemes();
+			var musics2 = ContentManager.instance.GetSchoolHouseThemes_Wav();
+			bool m1 = musics1.Length > 0;
+			bool m2 = musics2.Length > 0;
+			if (!m1 & !m2) return; // If array is empty
 
 			Singleton<MusicManager>.Instance.StopMidi();
-			Singleton<MusicManager>.Instance.PlayMidi(musics[EnvironmentExtraVariables.lb.controlledRNG.Next(musics.Length)], true); // Gets a random music instance to play
+
+			if (m1 & m2)
+			{
+				if (EnvironmentExtraVariables.lb.controlledRNG.NextDouble() >= 0.5)
+				{
+					Singleton<MusicManager>.Instance.PlayMidi(musics1[EnvironmentExtraVariables.lb.controlledRNG.Next(musics1.Length)], true); // Gets a random music instance to play
+				}
+				else
+				{
+					Singleton<MusicManager>.Instance.QueueFile(musics2[EnvironmentExtraVariables.lb.controlledRNG.Next(musics2.Length)], true);
+				}
+			}
+			else if (m1)
+			{
+				Singleton<MusicManager>.Instance.PlayMidi(musics1[EnvironmentExtraVariables.lb.controlledRNG.Next(musics1.Length)], true); // Gets a random music instance to play
+			}
+			else if (m2)
+			{
+				Singleton<MusicManager>.Instance.QueueFile(musics2[EnvironmentExtraVariables.lb.controlledRNG.Next(musics2.Length)], true);
+			}
+
 		}
 	}
 
@@ -1535,6 +1583,7 @@ namespace Patches.Main
 		{
 			__instance.gameObject.transform.Find("Image").GetComponent<Image>().sprite = ContentAssets.GetAsset<Sprite>("newBaldiMenu"); // Changes main menu texture to my beautiful one lol
 			ItemSoundHolder.CreateSoundHolder(__instance.transform.position, ContentAssets.GetAsset<SoundObject>("bbtimesopening"), false, 100, 101);
+			__instance.gameObject.transform.Find("ChangelogButton").GetComponent<Image>().color = Color.clear;
 		}
 	}
 
@@ -1744,7 +1793,7 @@ namespace Patches.Main
 
 		[HarmonyPatch("AfterUpdatingTiles")]
 		[HarmonyPostfix]
-		private static void AddHigherCeilingsAndItems(CafeteriaCreator __instance, RoomController ___room, LevelBuilder ___lg, System.Random ___cRNG)
+		private static void AddHigherCeilingsAndItems(CafeteriaCreator __instance, RoomController ___room, LevelBuilder ___lg, System.Random ___cRNG, ref RoomBuilder ___builder)
 		{
 
 			if (___room.lightPre) return; // if there is still decoration, this hasn't been affected
@@ -1772,19 +1821,28 @@ namespace Patches.Main
 				hangingLight.position = tile.transform.position; // Adds hanging lights twice
 			}
 
+			__instance.StartCoroutine(WaitToSpawn(___builder));
 
-			WeightedItemObject[] cafeItems = ContentManager.instance.CafeteriaItems.ToArray();
+			IEnumerator WaitToSpawn(RoomBuilder bld)
+			{
+				while (bld.Building) { yield return null; }
 
+				WeightedItemObject[] cafeItems = ContentManager.instance.CafeteriaItems.ToArray();
+
+
+
+				var amount = ___cRNG.Next(1, 6);
+				for (int i = 0; i < amount; i++)
+				{
+					if (___room.itemSpawnPoints.Count == 0) break; // If there are no spawn points left
+
+					___lg.Ec.CreateItem(___room, WeightedItemObject.ControlledRandomSelection(cafeItems, ___cRNG), ___cRNG);
+				}
+
+				yield break;
+			}
 
 			
-			var amount = ___cRNG.Next(1, 6);
-			var room = __instance.GetComponent<RoomController>();
-			for (int i = 0; i < amount; i++)
-			{
-				if (room.itemSpawnPoints.Count == 0) break; // If there are no spawn points left
-
-				___lg.Ec.CreateItem(room, WeightedItemObject.ControlledRandomSelection(cafeItems, ___cRNG), ___cRNG);
-			}
 			
 
 

@@ -1,7 +1,5 @@
-﻿using MTM101BaldAPI;
-using MTM101BaldAPI.AssetManager;
-using System.Collections;
-using System.IO;
+﻿using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace BB_MOD.NPCs
@@ -53,10 +51,11 @@ namespace BB_MOD.NPCs
 
 		public override void PlayerInSight(PlayerManager player)
 		{
-			if (called)
+			if (called || player.Tagged)
 				return;
 
-			if (!player.Tagged && ec.TileFromPos(player.transform.position) != null && ec.TileFromPos(player.transform.position).room.category != RoomCategory.Class && ec.TileFromPos(player.transform.position).room.category != RoomCategory.Office)
+			var pos = ec.TileFromPos(player.transform.position);
+			if (pos != null && !allowedSpots.Contains(pos.room.category))
 			{
 				StartCoroutine(Cooldown(100f));
 				audMan.PlaySingle(aud_BaldiComeHere);
@@ -78,6 +77,10 @@ namespace BB_MOD.NPCs
 			yield break;
 		}
 
+		readonly List<RoomCategory> allowedSpots = new List<RoomCategory>() {
+			RoomCategory.Class,
+			RoomCategory.Office
+		};
 
 		private AudioManager audMan;
 

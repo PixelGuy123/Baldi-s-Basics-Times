@@ -3,9 +3,11 @@ using BepInEx.Configuration;
 using HarmonyLib;
 using UnityEngine;
 using MTM101BaldAPI.AssetManager;
+using BepInEx.Bootstrap;
 
 namespace BB_MOD.BepInEx
 {
+	[BepInDependency(EndlessFloorsID, BepInDependency.DependencyFlags.SoftDependency)]
     [BepInPlugin(ModInfo.id, ModInfo.name, ModInfo.version)]
     public class BasePlugin : BaseUnityPlugin
     {
@@ -29,6 +31,7 @@ namespace BB_MOD.BepInEx
 				);
 
 			man.DebugMode = debug.Value;
+			EndlessAvailable = Chainloader.PluginInfos.ContainsKey(EndlessFloorsID);
 
 			ContentManager.instance.SetupAssetData();
 
@@ -37,7 +40,12 @@ namespace BB_MOD.BepInEx
 
 		}
 
-    }
+		public static bool EndlessAvailable = false;
+
+		public const string EndlessFloorsID = "mtm101.rulerp.baldiplus.endlessfloors";
+
+
+	}
 
 
 }

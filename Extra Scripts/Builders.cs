@@ -165,9 +165,9 @@ namespace BB_MOD.Builders
 			if (tiles.Count == 0) return;
 			var currentFloor = EnvironmentExtraVariables.currentFloor;
 
-			int amount = cRng.Next(trapdoorAmounts[currentFloor][0], trapdoorAmounts[currentFloor][1] + 1);
-			int allowedLinkeds = trapdoorAmounts[currentFloor][2];
-			int allowedRandoms = trapdoorAmounts[currentFloor][3];
+			int amount = cRng.Next(minAmount, maxAmount + 1);
+			int allowedLinkeds = amountOfLinkedTrapDoors;
+			int allowedRandoms = amountOfRngTrapDoors;
 			for (int i = 0; i < amount; i++)
 			{
 				if (tiles.Count == 0 || (allowedLinkeds <= 0 && allowedRandoms <= 0)) break;
@@ -213,13 +213,15 @@ namespace BB_MOD.Builders
 			}
 		}
 
-		readonly Dictionary<Floors, int[]> trapdoorAmounts = new Dictionary<Floors, int[]>()
+		public void SetMyConfigurations(int minAmount, int maxAmount, int amountOfRandomTrapDoors, int amountOfLinkedTrapDoors)
 		{
-			{Floors.F1, ContentUtilities.Array(0, 0, 0, 0)  }, // first 2 numbers: how many trapdoors. third number: how many linked trapdoors allowed. fourth number: how many random trapdoors allowed
-			{Floors.F2, ContentUtilities.Array(1, 2, 2, 0)  },
-			{Floors.F3, ContentUtilities.Array(1, 3, 1, 3)  },
-			{Floors.END, ContentUtilities.Array(2, 3, 3, 1)  }
-		};
+			this.minAmount = minAmount;
+			this.maxAmount = maxAmount;
+			this.amountOfRngTrapDoors = amountOfRandomTrapDoors;
+			this.amountOfLinkedTrapDoors = amountOfLinkedTrapDoors;
+		}
+
+		int minAmount = 0, maxAmount = 0, amountOfRngTrapDoors = 0, amountOfLinkedTrapDoors = 0;
 	}
 
 	// Here are the custom room builders, which can either be a replacement for a existent builder, or a new builder for a new room type (this is planned and will be added soon!)
