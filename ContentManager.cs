@@ -2955,8 +2955,8 @@ namespace BB_MOD
 				CreateSchoolHouseMusic("mus_NewSchool.wav", ContentUtilities.AllFloorsExcept(Floors.F3));
 				CreateSchoolHouseMusic("mus_NewSchool1.mid", Floors.F1); // Bsidekid
 				CreateSchoolHouseMusic("mus_NewSchool2.mid", Floors.F3); // Bsidekid
-				CreateSchoolHouseMusic("mus_newschool3.wav", Floors.F2); // Bsidekid
-				CreateSchoolHouseMusic("mus_newschool4.wav", Floors.F2); // Bsidekid
+				CreateSchoolHouseMusic("mus_newschool3.mid", Floors.F2); // Bsidekid
+				CreateSchoolHouseMusic("mus_newschool4.mid", Floors.F2); // Bsidekid
 			}
 			if (!addedExtraContent[3])
 			{
