@@ -272,7 +272,7 @@ namespace Patches.Main
 			EnvironmentExtraVariables.ec = __instance.Ec;
 			EnvironmentExtraVariables.lb = __instance;
 
-			EnvironmentExtraVariables.SetVariables();
+			FeatureData.SetVariables();
 
 			ogPotentialNpcs = new List<WeightedNPC>(__instance.ld.potentialNPCs);
 
@@ -1909,7 +1909,7 @@ namespace Patches.Main
 	{
 		private static void Prefix(LayerMaskObject ___layerMask, ITM_GrapplingHook __instance, ref bool ___locked, PlayerManager ___pm)
 		{
-			if (___locked) return;
+			if (!FeatureData.GrapplingHookBreaksWindow || ___locked) return;
 
 			if (Physics.Raycast(__instance.transform.position, __instance.transform.forward, out RaycastHit raycastHit, 5f, ___layerMask.mask, QueryTriggerInteraction.Collide) && raycastHit.transform.CompareTag("Window"))
 			{
@@ -2036,7 +2036,7 @@ namespace Patches.Main
 					var instruction = enumerator.Current;
 					if (!patchedAmount && instruction.Is(OpCodes.Ldc_I4_S, 10))
 					{
-						instruction.operand = 19; // should be 19 here
+						instruction = Transpilers.EmitDelegate<Func<int>>(() => FeatureData.DefaultNumballAmount + FeatureData.AmountOfExtraNumBalls + 1);
 						patchedAmount = true;
 					}
 					yield return instruction;
@@ -2045,7 +2045,7 @@ namespace Patches.Main
 		}
 		[HarmonyTranspiler]
 		[HarmonyPatch("NewProblem")]
-		private static IEnumerable<CodeInstruction> AddMoreMathQuestions(IEnumerable<CodeInstruction> instructions)
+		private static IEnumerable<CodeInstruction> AddMoreAdditionMathQuestions(IEnumerable<CodeInstruction> instructions)
 		{
 			List<CodeInstruction> codes = new List<CodeInstruction>(instructions);
 			int i = codes.IndexAt(x => x.opcode == OpCodes.Ldloc_2);
@@ -2062,7 +2062,7 @@ namespace Patches.Main
 			__instance.Corrupt(false);
 			List<MathMachineNumber> bals = new List<MathMachineNumber>();
 			var ogList = new List<MathMachineNumber>(___numberPres);
-			for (int i = 0; i < 9; i++)
+			for (int i = 0; i < FeatureData.AmountOfExtraNumBalls; i++)
 			{
 				MathMachineNumber number = UnityEngine.Object.Instantiate(___numberPres[0]);
 				AccessTools.Field(typeof(MathMachineNumber), "value").SetValue(number, i + 10);
@@ -2093,7 +2093,7 @@ namespace Patches.Main
 		private static void ChangeAnswerSize(MathMachine __instance)
 		{
 			var text = __instance.transform.Find("Answer").GetComponent<TMP_Text>();
-			text.autoSizeTextContainer = false;
+			text.autoSizeTextContainer = false; // Work around so it adapts with the container
 			text.autoSizeTextContainer = true;
 		}
 	}
@@ -2132,7 +2132,7 @@ namespace Patches.Main
 		{
 			var speedField = AccessTools.Field(typeof(BeltManager), "speed");
 			float speed = (float)speedField.GetValue(beltManager);
-			speed += EnvironmentExtraVariables.lb.controlledRNG.Next(-EnvironmentExtraVariables.MaxConveyorSpeedOffset, EnvironmentExtraVariables.MaxConveyorSpeedOffset); // Sets a random speed for the conveyor
+			speed += EnvironmentExtraVariables.lb.controlledRNG.Next(-FeatureData.MaxConveyorSpeedOffset, FeatureData.MaxConveyorSpeedOffset); // Sets a random speed for the conveyor
 			beltManager.SetSpeed(speed);
 			EnvironmentExtraVariables.belts.Add(beltManager, speed); // Stores the belt manager for public use
 		}
@@ -2175,7 +2175,7 @@ namespace Patches.Main
 		[HarmonyPatch("Start")]
 		private static void MoreQuestions(ref int ___totalProblems)
 		{
-			___totalProblems = WeightedSelection<int>.RandomSelection(EnvironmentExtraVariables.MaxNewProblems);
+			___totalProblems = WeightedSelection<int>.RandomSelection(FeatureData.MaxNewProblems);
 		}
 
 		[HarmonyPrefix]

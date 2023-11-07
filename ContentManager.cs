@@ -429,6 +429,70 @@ namespace BB_MOD
 		}
 	}
 
+	/// <summary>
+	/// Here are stored important variables THAT SHOULD NOT BE TOUCHED unless it is by another mod
+	/// </summary>
+	public static class FeatureData
+	{
+		public static bool GrapplingHookBreaksWindow = true;
+
+		public static WeightedSelection<int>[] MaxNewProblems = new WeightedSelection<int>[0];
+
+		public static int MaxConveyorSpeedOffset = 0;
+
+		public static int AmountOfExtraNumBalls = 9; // By default it's 9
+
+		public static void SetVariables()
+		{
+			switch (EnvironmentExtraVariables.currentFloor)
+			{
+				case Floors.F1:
+					MaxConveyorSpeedOffset = 2;
+					MaxNewProblems = new WeightedSelection<int>[]
+					{
+						new WeightedSelection<int>() { selection = 1, weight = 100 }
+					};
+					AmountOfExtraNumBalls = 0;
+					break;
+				case Floors.F2:
+					MaxConveyorSpeedOffset = 4;
+					MaxNewProblems = new WeightedSelection<int>[2]
+					{
+						new WeightedSelection<int>() { selection = 1, weight = 100 },
+						new WeightedSelection<int>() { selection = 2, weight = 75 }
+					};
+					AmountOfExtraNumBalls = 3;
+					break;
+				case Floors.F3:
+					MaxConveyorSpeedOffset = 2;
+					MaxNewProblems = new WeightedSelection<int>[4]
+					{
+						new WeightedSelection<int>() { selection = 1, weight = 100 },
+						new WeightedSelection<int>() { selection = 2, weight = 75 },
+						new WeightedSelection<int>() { selection = 3, weight = 50 },
+						new WeightedSelection<int>() { selection = 4, weight = 10 }
+					};
+					AmountOfExtraNumBalls = 9;
+					break;
+				case Floors.END:
+					MaxConveyorSpeedOffset = 3;
+					MaxNewProblems = new WeightedSelection<int>[2]
+					{
+						new WeightedSelection<int>() { selection = 1, weight = 100 },
+						new WeightedSelection<int>() { selection = 2, weight = 25 }
+					};
+					AmountOfExtraNumBalls = 3;
+					break;
+
+				default:
+				break;
+
+			}
+		}
+
+		public const int DefaultNumballAmount = 9;
+	}
+
 	public static class EnvironmentExtraVariables
 	{
 		public static void ResetVariables() // Resets literally everything
@@ -445,8 +509,6 @@ namespace BB_MOD
 			elevatorTilePositions.Clear();
 			allowHangingLights = true;
 			isEndGame = false;
-			BlackOut.OutageGoing = false;
-			ITM_SpeedPotion.ResetCount();
 			OnEndGame.RemoveAllListeners();
 			FovModifiers.Clear();
 			CurrentFOV = PlayerDefaultFOV;
@@ -461,48 +523,12 @@ namespace BB_MOD
 				i--;
 			}
 			customHuds.Clear();
+
+			// Down here are outside the class to reset static variables
+			ITM_SpeedPotion.ResetCount();
 		}
 
-		public static void SetVariables()
-		{
-			switch (currentFloor)
-			{
-				case Floors.F1:
-					MaxConveyorSpeedOffset = 2;
-					MaxNewProblems = new WeightedSelection<int>[]
-					{
-						new WeightedSelection<int>() { selection = 1, weight = 100 }
-					};
-					break;
-				case Floors.F2:
-					MaxConveyorSpeedOffset = 4;
-					MaxNewProblems = new WeightedSelection<int>[2]
-					{
-						new WeightedSelection<int>() { selection = 1, weight = 100 },
-						new WeightedSelection<int>() { selection = 2, weight = 75 }
-					};
-					break;
-				case Floors.F3:
-					MaxConveyorSpeedOffset = 2;
-					MaxNewProblems = new WeightedSelection<int>[4]
-					{
-						new WeightedSelection<int>() { selection = 1, weight = 100 },
-						new WeightedSelection<int>() { selection = 2, weight = 75 },
-						new WeightedSelection<int>() { selection = 3, weight = 50 },
-						new WeightedSelection<int>() { selection = 4, weight = 10 }
-					};
-					break;
-				case Floors.END:
-					MaxConveyorSpeedOffset = 3;
-					MaxNewProblems = new WeightedSelection<int>[2]
-					{
-						new WeightedSelection<int>() { selection = 1, weight = 100 },
-						new WeightedSelection<int>() { selection = 2, weight = 25 }
-					};
-					break;
-
-			}
-		}
+		
 
 		/// <summary>
 		/// Turn the subtitles off or on
@@ -560,13 +586,6 @@ namespace BB_MOD
 		private static bool isEndGame = false;
 		public static bool AreSubtitlesForceDisabled => forceDisableSubtitles;
 		public static bool IsEndGame => isEndGame;
-
-
-
-		// Some custom attributes for each level that are set up by the environment
-		public static WeightedSelection<int>[] MaxNewProblems { get; private set; }
-
-		public static int MaxConveyorSpeedOffset { get; private set; }
 
 		// Internal Generator Custom Variables >> Should not be touched in any means
 
@@ -2971,6 +2990,7 @@ namespace BB_MOD
 				CreateSchoolHouseMusic("mus_NewSchool2.mid", Floors.F3); // Bsidekid
 				CreateSchoolHouseMusic("mus_newschool3.mid", Floors.F2); // Bsidekid
 				CreateSchoolHouseMusic("mus_newschool4.mid", Floors.F2); // Bsidekid
+				CreateSchoolHouseMusic("mus_newSchool5.mid", Floors.F1); // Made by TSU
 			}
 			if (!addedExtraContent[3])
 			{
