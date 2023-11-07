@@ -16,6 +16,7 @@ using System.Reflection.Emit;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using MidiPlayerTK;
 
 namespace Patches.Main
 {
@@ -245,6 +246,9 @@ namespace Patches.Main
 			{
 				locker.gameObject.AddComponent<PlaceholderComponent>();
 			}
+
+			ContentManager.instance.LoadSf2Files();
+
 			HasDone = true;
 
 			ContentManager.EndedInitialization_CallBack.Invoke( // Specifically for mods to use this callback (WeightedNPC, WeightedItemObject, WeightedRandomEvent)
@@ -252,12 +256,12 @@ namespace Patches.Main
 				ContentManager.instance.AllNewItems.ToList(),
 				ContentManager.instance.AllEvents.ToList()
 				);
-
-			
 		}
 
 		public static bool HasDone { get; private set; } = false; // Public getter just to tell when the setup is done
 	}
+
+
 
 	[HarmonyPatch(typeof(LevelGenerator), "StartGenerate")]
 	public class SetupExtraContent // Setup items, npcs, events, etc.

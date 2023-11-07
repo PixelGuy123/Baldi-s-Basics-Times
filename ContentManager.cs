@@ -5,6 +5,7 @@ using BB_MOD.ExtraComponents;
 using BB_MOD.ExtraItems;
 using BB_MOD.NPCs;
 using HarmonyLib;
+using MidiPlayerTK;
 using MTM101BaldAPI;
 using MTM101BaldAPI.AssetManager;
 using Patches.Main;
@@ -1821,6 +1822,20 @@ namespace BB_MOD
 
 
 
+		}
+
+		public void LoadSf2Files()
+		{
+			LoadSf2("GS_Wavetable_Synth.sf2"); // For Cherrubble Songs
+
+
+
+
+
+
+
+			void LoadSf2(string name) => MidiPlayerGlobal.MPTK_LoadLiveSF("file://" + Path.Combine(modPath, "Audio", "sfs", name));
+			
 		}
 
 		// ------------------------------------------------------ NPC CREATION STUFF ------------------------------------------------------
