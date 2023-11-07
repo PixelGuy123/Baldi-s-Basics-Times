@@ -2951,7 +2951,7 @@ namespace BB_MOD
 			if (!addedExtraContent[2]) // Extra Schoolhouse Themes here
 			{
 				addedExtraContent[2] = true;
-				CreateSchoolHouseMusic("mus_NewSchool.wav", ContentUtilities.AllFloorsExcept(Floors.F3));
+				CreateSchoolHouseMusic("mus_NewSchool_Remake.midi", ContentUtilities.AllFloorsExcept(Floors.F3)); // Made by TSU, Re-created to MIDI by Bsidekid
 				CreateSchoolHouseMusic("mus_NewSchool1.mid", Floors.F1); // Bsidekid
 				CreateSchoolHouseMusic("mus_NewSchool2.mid", Floors.F3); // Bsidekid
 				CreateSchoolHouseMusic("mus_newschool3.mid", Floors.F2); // Bsidekid
@@ -4130,7 +4130,7 @@ namespace BB_MOD
 
 		readonly RoomCategory[] currentValidCategories = new RoomCategory[] { RoomCategory.Class, RoomCategory.Office, RoomCategory.Faculty };
 
-		public static UnityEvent<List<NPC>, List<ItemObject>, List<RandomEvent>> EndedInitialization_CallBack = new UnityEvent<List<NPC>, List<ItemObject>, List<RandomEvent>>();
+		public static UnityEvent<List<WeightedNPC>, List<WeightedItemObject>, List<WeightedRandomEvent>> EndedInitialization_CallBack = new UnityEvent<List<WeightedNPC>, List<WeightedItemObject>, List<WeightedRandomEvent>>();
 
 	}
 

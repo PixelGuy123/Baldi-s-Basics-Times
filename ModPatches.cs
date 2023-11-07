@@ -21,7 +21,7 @@ namespace Patches.Main
 {
 
 	[HarmonyPatch(typeof(NameManager), "Awake")]
-	internal class ThisisWhereAllBegins // Yup, most important patch by now
+	public class MainPatch // Yup, most important patch by now
 	{
 		private static void Prefix()
 		{
@@ -245,17 +245,18 @@ namespace Patches.Main
 			{
 				locker.gameObject.AddComponent<PlaceholderComponent>();
 			}
+			HasDone = true;
 
-			ContentManager.EndedInitialization_CallBack.Invoke( // Specifically for mods such as Endless Floors
-				ContentManager.instance.AllNpcs.Select(x => x.selection).ToList(),
-				ContentManager.instance.AllNewItems.Select(x => x.selection).ToList(),
-				ContentManager.instance.AllEvents.Select(x => x.selection).ToList()
+			ContentManager.EndedInitialization_CallBack.Invoke( // Specifically for mods to use this callback (WeightedNPC, WeightedItemObject, WeightedRandomEvent)
+				ContentManager.instance.AllNpcs.ToList(),
+				ContentManager.instance.AllNewItems.ToList(),
+				ContentManager.instance.AllEvents.ToList()
 				);
 
-			HasDone = true;
+			
 		}
 
-		static bool HasDone = false;
+		public static bool HasDone { get; private set; } = false; // Public getter just to tell when the setup is done
 	}
 
 	[HarmonyPatch(typeof(LevelGenerator), "StartGenerate")]
