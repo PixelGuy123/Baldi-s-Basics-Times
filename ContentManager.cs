@@ -452,6 +452,7 @@ namespace BB_MOD
 			StaminaRisingPatch.staminaModifiers.Clear();
 			LookerDistancingPatch.lookerModifiers.Clear();
 			generationBooleans = new bool[booleansAmount];
+			windows.Clear();
 
 			for (int i = 0; i < customHuds.Count; i++) // Destroy the huds hre
 			{
@@ -530,6 +531,8 @@ namespace BB_MOD
 		public static Dictionary<BeltManager, float> belts = new Dictionary<BeltManager, float>();
 
 		public static List<MathMachine> completedMachines = new List<MathMachine>();
+
+		public static List<Window> windows = new List<Window>();
 
 		public static Dictionary<IntVector2, Direction> elevatorTilePositions = new Dictionary<IntVector2, Direction>();
 
@@ -722,12 +725,13 @@ namespace BB_MOD
 		/// </summary>
 		/// <param name="window"></param>
 		/// <param name="replacementWindow"></param>
-		public static void ReplaceWindow(Window window, WindowObject replacementWindow, EnvironmentController ec)
+		public static Window ReplaceWindow(Window window, WindowObject replacementWindow, EnvironmentController ec)
 		{
 			var newWindow = UnityEngine.Object.Instantiate(replacementWindow.windowPre);
 			newWindow.gameObject.SetActive(true);
 			newWindow.Initialize(ec, IntVector2.GetGridPosition(window.transform.position), window.direction, replacementWindow);
 			UnityEngine.Object.Destroy(window.gameObject);
+			return newWindow;
 		}
 
 		/// <summary>
@@ -2420,6 +2424,8 @@ namespace BB_MOD
 			CreateSchoolTexture("white_rustyCeiling.png", ContentUtilities.AllFloorsExcept(Floors.F1), SchoolTextType.Ceiling, false, false, false, 100); // Jofitzy
 			CreateSchoolTexture("redMosaicCarpet.png", ContentUtilities.AllFloorsExcept(Floors.F2), SchoolTextType.Floor, roomsOnly: true, existOnClassrooms: true, weight: 80); // Jofitzy
 			CreateSchoolTexture("redcarpet.png", ContentUtilities.AllFloors, SchoolTextType.Floor, roomsOnly: true, existOnFaculties: true); // Cherubble
+			CreateSchoolTexture("officeRedBricks.png", ContentUtilities.AllFloorsExcept(Floors.F1), SchoolTextType.Wall, roomsOnly: true, existOnFaculties: true); //NyanDev
+			CreateSchoolTexture("woodFloor2.png", ContentUtilities.AllFloors, SchoolTextType.Floor, existOnFaculties: true); //NyanDev
 
 		}
 
@@ -2546,15 +2552,8 @@ namespace BB_MOD
 			// New Object Builders Here
 			CreateAndAddObjBuilder<WallBellBuilder>("Bell Builder", ContentUtilities.AllFloors);
 			CreateAndAddObjBuilder<BananaTreeBuilder>("Banana Tree Builder", ContentUtilities.AllFloors);
-			TrapDoorBuilder[] bldrs = new TrapDoorBuilder[3];
-			bldrs[0] = CreateAndAddObjBuilder<TrapDoorBuilder>("Trap Door Builder", 85, Floors.F2);
-			bldrs[0].SetMyConfigurations(1, 2, 0, 2);
-
-			bldrs[1] = CreateAndAddObjBuilder<TrapDoorBuilder>("Trap Door Builder", 120, Floors.F3);
-			bldrs[1].SetMyConfigurations(1, 3, 3, 1);
-
-			bldrs[2] = CreateAndAddObjBuilder<TrapDoorBuilder>("Trap Door Builder", 100, Floors.END);
-			bldrs[2].SetMyConfigurations(2, 3, 1, 3);
+			CreateAndAddObjBuilder<TrapDoorBuilder>("Trap Door Builder", 85, Floors.F2); // Yes this trick works, must have 2 equal objects, but their code adapts with the floors
+			CreateAndAddObjBuilder<TrapDoorBuilder>("Trap Door Builder", 115, Floors.F3, Floors.END);
 
 			CreateAndAddObjBuilder<VentBuilder>("Vent Builder", 85, ContentUtilities.AllFloorsExcept(Floors.F1));
 

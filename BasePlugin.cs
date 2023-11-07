@@ -7,7 +7,7 @@ using BepInEx.Bootstrap;
 
 namespace BB_MOD.BepInEx
 {
-	[BepInDependency(EndlessFloorsID, BepInDependency.DependencyFlags.SoftDependency)]
+	// [BepInDependency(EndlessFloorsID, BepInDependency.DependencyFlags.SoftDependency)] Can cause issues
     [BepInPlugin(ModInfo.id, ModInfo.name, ModInfo.version)]
     public class BasePlugin : BaseUnityPlugin
     {

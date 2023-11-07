@@ -36,7 +36,7 @@ namespace BB_MOD.Events
 		{
 			base.AfterUpdateSetup();
 			
-			foreach (var window in FindObjectsOfType<Window>())
+			foreach (var window in EnvironmentExtraVariables.windows)
 			{
 				var curtain = PrefabInstance.SpawnPrefab<Curtains>(window.transform.position, window.transform.rotation, ec, false);
 				curtain.SetWindow(window);

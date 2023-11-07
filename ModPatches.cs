@@ -806,7 +806,11 @@ namespace Patches.Main
 			if (windowCollection.Count > 0 && rng.NextDouble() >= 0.85d)
 			{
 				var collection = windowCollection[rng.Next(windowCollection.Count)];
-				ContentUtilities.ReplaceWindow(__instance, collection[rng.Next(collection.Count)],__instance.ec); // Gets a random collection
+				EnvironmentExtraVariables.windows.Add(ContentUtilities.ReplaceWindow(__instance, collection[rng.Next(collection.Count)],__instance.ec)); // Gets a random collection
+			}
+			else
+			{
+				EnvironmentExtraVariables.windows.Add(__instance);
 			}
 		}
 	}

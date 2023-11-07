@@ -161,18 +161,24 @@ namespace BB_MOD.Builders
 	{
 		public override void Build(EnvironmentController ec, RoomController room, System.Random cRng)
 		{
+			SetMyConfigurations();
+
 			var tiles = room.GetTilesOfShape(new List<TileShape>() { TileShape.Corner, TileShape.End }, false).Where(x => !x.containsObject).ToList();
+			if (ContentManager.instance.DebugMode)
+				Debug.Log("spots found for trapdoors: " + tiles.Count);
 			if (tiles.Count == 0) return;
-			var currentFloor = EnvironmentExtraVariables.currentFloor;
 
 			int amount = cRng.Next(minAmount, maxAmount + 1);
+			if (ContentManager.instance.DebugMode)
+				Debug.Log("Amount: " + amount);
+
 			int allowedLinkeds = amountOfLinkedTrapDoors;
 			int allowedRandoms = amountOfRngTrapDoors;
 			for (int i = 0; i < amount; i++)
 			{
 				if (tiles.Count == 0 || (allowedLinkeds <= 0 && allowedRandoms <= 0)) break;
 				int idx = cRng.Next(tiles.Count);
-				if (allowedLinkeds > 0 && tiles.Count > 1 && cRng.NextDouble() >= 0.5f)
+				if (allowedLinkeds > 0 && tiles.Count > 1 && (cRng.NextDouble() >= 0.5f || allowedRandoms <= 0))
 				{ // Linked trapdoor
 					
 					var firstTrapdoor = PrefabInstance.SpawnPrefab<Trapdoor>(tiles[idx], ec, false);
@@ -213,12 +219,31 @@ namespace BB_MOD.Builders
 			}
 		}
 
-		public void SetMyConfigurations(int minAmount, int maxAmount, int amountOfRandomTrapDoors, int amountOfLinkedTrapDoors)
+		private void SetMyConfigurations()
 		{
-			this.minAmount = minAmount;
-			this.maxAmount = maxAmount;
-			this.amountOfRngTrapDoors = amountOfRandomTrapDoors;
-			this.amountOfLinkedTrapDoors = amountOfLinkedTrapDoors;
+			switch (EnvironmentExtraVariables.currentFloor)
+			{
+				case Floors.F2:
+					minAmount = 1;
+					maxAmount = 2;
+					amountOfLinkedTrapDoors = 2;
+				break;
+				case Floors.F3:
+					minAmount = 2;
+					maxAmount = 3;
+					amountOfLinkedTrapDoors = 1;
+					amountOfRngTrapDoors = 3;
+				break;
+				case Floors.END:
+					minAmount = 1;
+					maxAmount = 2;
+					amountOfRngTrapDoors = 2;
+					amountOfLinkedTrapDoors = 2;
+				break;
+
+				default:
+				break;
+			}
 		}
 
 		int minAmount = 0, maxAmount = 0, amountOfRngTrapDoors = 0, amountOfLinkedTrapDoors = 0;
