@@ -2810,6 +2810,7 @@ namespace BB_MOD
 
 			roomDatas[roomDatas.Count - 1] = RoomData.ConvertToRoom(roomDatas[roomDatas.Count - 1], onlyConnectedToHall, minAmount, maxAmount, Path.Combine(modPath, "Textures", "customRooms", doorClosedPath), Path.Combine(modPath, "Textures", "customRooms", doorOpenPath), mapColor, darkRoom, rEnum, ceiling, wall, floor, lightPre);
 
+			basicRoomPairs.Add(rEnum, new int[] { minAmount, maxAmount });
 		}
 
 		private WeightedTexture2D_ForRooms CreateRawSchoolTexture(string textureName, int weight = 100)
@@ -4145,13 +4146,22 @@ namespace BB_MOD
 				for (int i = 0; i < roomDatas.Count; i++)
 				{
 					int num = 0;
-					if (roomDatas[i].IsANewRoom && roomDatas[i].AvailableFloors.Contains(EnvironmentExtraVariables.currentFloor))
-						num = EnvironmentExtraVariables.lb.controlledRNG.Next(roomDatas[i].MinAmount, roomDatas[i].MaxAmount + 1);
+				if (roomDatas[i].IsANewRoom && roomDatas[i].AvailableFloors.Contains(EnvironmentExtraVariables.currentFloor))
+				{
+					if (basicRoomPairs.TryGetValue(roomDatas[i].Rooms[0], out var values))
+					{
+						num = EnvironmentExtraVariables.lb.controlledRNG.Next(values[0], values[1] + 1);
+					}
+				}
 					max += num;
 					selectedAmounts[i] = num;
 				}
 				return max + extra;
 		}
+
+		readonly Dictionary<RoomCategory, int[]> basicRoomPairs = new Dictionary<RoomCategory, int[]>(); // Min Amount, Max Amount
+
+		
 
 		int[] selectedAmounts;
 
