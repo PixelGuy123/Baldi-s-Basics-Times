@@ -962,7 +962,9 @@ namespace BB_MOD.Builders
 			}
 			if (other.tag == "Player")
 			{
-				StartCoroutine(EnvironmentExtraVariables.SmoothFOVSlide(4f, token, -30f));
+				if (animation != null)
+					StopCoroutine(animation);
+				animation = StartCoroutine(EnvironmentExtraVariables.SmoothFOVSlide(4f, token, -30f));
 				overlay.SetActive(true);
 			}
 		}
@@ -985,10 +987,14 @@ namespace BB_MOD.Builders
 			}
 			if (other.tag == "Player")
 			{
-				StartCoroutine(EnvironmentExtraVariables.SmoothFOVSlide(4f, token, removeAfter:true));
+				if (animation != null)
+					StopCoroutine(animation);
+				animation = StartCoroutine(EnvironmentExtraVariables.SmoothFOVSlide(4f, token, removeAfter:true));
 				overlay.SetActive(false);
 			}
 		}
+
+		Coroutine animation = null;
 
 		readonly FOVToken token = new FOVToken(0f, 10);
 

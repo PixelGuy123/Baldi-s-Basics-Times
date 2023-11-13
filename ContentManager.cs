@@ -442,6 +442,10 @@ namespace BB_MOD
 
 		public static int AmountOfExtraNumBalls = 9; // By default it's 9
 
+		public static double DecoyGreenLockerChance = 0.25d; // Chance of green lockers being decoys, this one is a direct one
+
+		public static float DecoyBlueLockerStartingChance = 100f; // it's a decrementing chance, which means after some selections, the chances gets rarer. So a starting small chance means it can virtually have no decoys
+
 		public static void SetVariables()
 		{
 			switch (EnvironmentExtraVariables.currentFloor)

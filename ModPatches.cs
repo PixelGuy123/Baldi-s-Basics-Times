@@ -1101,7 +1101,7 @@ namespace Patches.Main
 					locker.material.SetColor("_TextureColor", Color.green);
 					var green = locker.gameObject.AddComponent<GreenLocker>();
 
-					if (cRNG.NextDouble() > 0.25d)
+					if (cRNG.NextDouble() > FeatureData.DecoyGreenLockerChance)
 					{
 						green.MakeMeDecoy();
 						locker.materials[1].SetTexture("_MainTex", ContentAssets.GetAsset<Texture2D>("d_greenLocker"));
@@ -1110,7 +1110,7 @@ namespace Patches.Main
 				UnityEngine.Object.Destroy(l);
 			}
 
-			chance = 100f;
+			chance = FeatureData.DecoyBlueLockerStartingChance;
 
 
 			foreach (var locker in UnityEngine.Object.FindObjectsOfType<PlaceholderComponent>())
