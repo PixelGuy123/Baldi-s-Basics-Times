@@ -530,6 +530,7 @@ namespace BB_MOD
 
 			// Down here are outside the class to reset static variables
 			ITM_SpeedPotion.ResetCount();
+			BlackOut.OutageGoing = false;
 		}
 
 		

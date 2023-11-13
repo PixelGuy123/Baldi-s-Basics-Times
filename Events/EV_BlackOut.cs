@@ -30,12 +30,6 @@ namespace BB_MOD.Events
 
 		}
 
-		public override void AfterUpdateSetup() // Disable this to not cause issues
-		{
-			base.AfterUpdateSetup();
-			OutageGoing = false;
-		}
-
 		private void TurnStructures(bool turn)
 		{
 			ec.MaxRaycast = turn ? float.PositiveInfinity : maxRaycast;
