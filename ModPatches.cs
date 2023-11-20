@@ -105,10 +105,6 @@ namespace Patches.Main
 
 			ContentManager.instance.SetupSchoolTextWeights(); // Custom Textures
 
-			var sweep = Resources.FindObjectsOfTypeAll<GottaSweep>()[0];
-			ContentManager.instance.sweepPoster = UnityEngine.Object.Instantiate(sweep.Poster.baseTexture);
-			ContentManager.instance.sweepSprite = UnityEngine.Object.Instantiate(sweep.spriteBase.transform.Find("Sprite").GetComponent<SpriteRenderer>().sprite); // Specifically for classic sweep
-
 			ContentManager.instance.SetupExtraContent(); // Extra Content like PrefabInstances
 
 
@@ -279,28 +275,6 @@ namespace Patches.Main
 			System.Random rng = new System.Random(Singleton<CoreGameManager>.Instance.Seed());
 
 			// Extra Stuff
-
-			int index2 = __instance.ld.potentialNPCs.FindIndex(x => x.selection.Character == Character.Sweep); // If gotta sweep exist, then it has a chance of changing to his old texture, else change back
-			if (index2 >= 0)
-			{
-				if (rng.Next(0, 3) == 0)
-				{
-
-
-					__instance.ld.potentialNPCs[index2].selection.spriteBase.transform.Find("Sprite").GetComponent<SpriteRenderer>().sprite = ContentAssets.GetAsset<Sprite>("oldSweepSprite");
-					__instance.ld.potentialNPCs[index2].selection.Poster.baseTexture = ContentAssets.GetAsset<Texture2D>("oldSweepPoster");
-					AccessTools.Field(typeof(GottaSweep), "speed").SetValue(__instance.ld.potentialNPCs[index2].selection, 70f);
-					AccessTools.Field(typeof(GottaSweep), "moveModMultiplier").SetValue(__instance.ld.potentialNPCs[index2].selection, 1f);
-				}
-				else
-				{
-
-					__instance.ld.potentialNPCs[index2].selection.spriteBase.transform.Find("Sprite").GetComponent<SpriteRenderer>().sprite = ContentManager.instance.sweepSprite;
-					__instance.ld.potentialNPCs[index2].selection.Poster.baseTexture = ContentManager.instance.sweepPoster;
-					AccessTools.Field(typeof(GottaSweep), "speed").SetValue(__instance.ld.potentialNPCs[index2].selection, 40f);
-					AccessTools.Field(typeof(GottaSweep), "moveModMultiplier").SetValue(__instance.ld.potentialNPCs[index2].selection, 0.9f);
-				}
-			}
 
 			AddReplacementNpcs();
 

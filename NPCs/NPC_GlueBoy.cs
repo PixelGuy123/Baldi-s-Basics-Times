@@ -56,7 +56,8 @@ namespace BB_MOD.NPCs
 
 		public override void Despawn() // Runs when the npc is about to despawn, it is really useful to remove an effect that the npc leaves behind, such as gotta sweep with it's sweeping power
 		{
-			currentGlue?.Despawn(true);
+			if (currentGlue != null)
+				currentGlue.Despawn(true);
 			base.Despawn();
 		}
 
@@ -93,7 +94,7 @@ namespace BB_MOD.NPCs
 				yield return null;
 			}
 
-			currentGlue.Despawn(true);
+			currentGlue?.Despawn(true);
 			wantGlueAgain = true;
 			yield break;
 		}

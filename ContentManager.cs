@@ -1871,6 +1871,20 @@ namespace BB_MOD
 
 			Prefabs.flatMaterial = Instantiate(Resources.FindObjectsOfTypeAll<Material>().First(x => x.name.ToLower() == "chalkles"));
 
+			var oldSweep = Instantiate(Resources.FindObjectsOfTypeAll<GottaSweep>()[0]);
+			var data = oldSweep.gameObject.AddComponent<CustomNPCData>();
+			data.MyCharacter = oldSweep.Character;
+			data.replacementCharacters = ContentUtilities.Array(Character.Sweep);
+			AccessTools.Field(typeof(GottaSweep), "speed").SetValue(oldSweep, 70f);
+			AccessTools.Field(typeof(GottaSweep), "moveModMultiplier").SetValue(oldSweep, 1f);
+			oldSweep.spriteBase.transform.Find("Sprite").GetComponent<SpriteRenderer>().sprite = GetAsset<Sprite>("oldSweepSprite");
+			AccessTools.Field(typeof(GottaSweep), "poster").SetValue(oldSweep, Instantiate(oldSweep.Poster)); 
+			oldSweep.Poster.baseTexture = GetAsset<Texture2D>("oldSweepPoster");
+			DontDestroyOnLoad(oldSweep.gameObject);
+			oldSweep.gameObject.SetActive(false);
+
+			allNpcs.Add(new GenericObjectHolder<WeightedNPC>(new WeightedNPC() { selection = oldSweep, weight = 1000 }, ContentUtilities.AllFloors));
+
 			// THIS IS THE PART WHERE YOU PUT YOUR CUSTOM CHARACTER
 			// Add the custom npc to the list using the CreateNPC<C> method as seen below (C stands for Character Class, which is the class the NPC will use)
 
@@ -4169,10 +4183,6 @@ namespace BB_MOD
 		
 
 		int[] selectedAmounts;
-
-		public Texture2D sweepPoster; // This variable is used SPECIFICALLY for a patch that changes gotta sweep parameters, so when switching back, I use this variable
-
-		public Sprite sweepSprite; // Same applies here
 
 		private readonly LevelObject[] copyOfLevelObjects = new LevelObject[3]; // A copy of each level object to replace the current one (so custom characters aren't added to the next level)
 
