@@ -446,6 +446,8 @@ namespace BB_MOD
 
 		public static float DecoyBlueLockerStartingChance = 100f; // it's a decrementing chance, which means after some selections, the chances gets rarer. So a starting small chance means it can virtually have no decoys
 
+		public static bool UseLevelObjectFeature = true;
+
 		public static void SetVariables()
 		{
 			switch (EnvironmentExtraVariables.currentFloor)

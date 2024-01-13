@@ -16,7 +16,6 @@ using System.Reflection.Emit;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using MidiPlayerTK;
 
 namespace Patches.Main
 {
@@ -37,11 +36,14 @@ namespace Patches.Main
 				ogLds[1] = ContentUtilities.FindResourceObjectWithName<LevelObject>("Main2");
 				ogLds[2] = ContentUtilities.FindResourceObjectWithName<LevelObject>("Main3");
 
-				foreach (var ld in ogLds)
+				if (FeatureData.UseLevelObjectFeature)
 				{
-					ContentManager.instance.AddLevelObject(UnityEngine.Object.Instantiate(ld));
-					ld.previousLevels = ContentManager.instance.GetLevelObjectCopy(ld); 
-					// Basically replaces the previousLevels variable that is used on the npcs spawn, so npcs from specific floor aren't includes on unexpected ones
+					foreach (var ld in ogLds)
+					{
+						ContentManager.instance.AddLevelObject(UnityEngine.Object.Instantiate(ld));
+						ld.previousLevels = ContentManager.instance.GetLevelObjectCopy(ld);
+						// Basically replaces the previousLevels variable that is used on the npcs spawn, so npcs from specific floor aren't includes on unexpected ones
+					}
 				}
 			}
 			catch (Exception e)
